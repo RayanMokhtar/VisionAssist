@@ -205,21 +205,15 @@ std::vector<cv::Point> trouverPointsInteret(Mat frameHarris, Mat &frameCouleur)
 {
     std::vector<cv::Point> pointInterets;
 
+    float seuil = 200;
+
     for (int y = 1; y < frameHarris.rows - 1; y++)
     {
         for (int x = 1; x < frameHarris.cols - 1; x++)
         {
             float val = frameHarris.at<float>(y, x);
 
-            if (
-                val > frameHarris.at<float>(y-1, x-1) &&
-                val > frameHarris.at<float>(y-1, x) &&
-                val > frameHarris.at<float>(y-1, x+1) &&
-                val > frameHarris.at<float>(y, x-1) &&
-                val > frameHarris.at<float>(y, x+1) &&
-                val > frameHarris.at<float>(y+1, x-1) &&
-                val > frameHarris.at<float>(y+1, x) &&
-                val > frameHarris.at<float>(y+1, x+1))
+            if (val < seuil)
             {
                 circle(frameCouleur, Point(x, y), 3, Scalar(0, 0, 255), 1);
                 pointInterets.push_back(Point(x, y));
@@ -240,7 +234,7 @@ void normalisation(Mat frame, Mat *frameNormaliser)
     {
         for (int x = 0; x < frame.cols; x++)
         {
-            (*frameNormaliser).at<float>(y, x) = ((frame.at<float>(y, x) - min) / (max - min)) * 255;
+            (*frameNormaliser).at<float>(y, x) = (float)((float)(frame.at<float>(y, x) - min) / (float)(max - min)) * 255;
         }
     }
 }
@@ -261,8 +255,7 @@ int main(int argc, char** argv)
 
     masqueGaussien(&masque, 0.04, 3);
 
-/*
-    for(;;)
+    /* for(;;)
     {
         cap >> frame;
 
@@ -298,8 +291,15 @@ int main(int argc, char** argv)
         frame.copyTo(frameOld);
 
         if(waitKey(33) == 27) break;
-    }
-*/
+    } */
+
+    frame = imread("Harris_Detector_Original_Image.jpg", IMREAD_COLOR);
+//niveauGris(frame, &frameGris);
+//cornerHarris(frameGris, frameHarris, 1, 3, 0.04);
+    harris(frame, &frameGris, &frameSobelX, &frameSobelY, &frameHarris, masque, 0.04);
+    normalisation(frameHarris, &frameHarris);
+    trouverPointsInteret(frameHarris, frame);
+    imwrite("Harris_Detector_Original_Image_Output.jpg", frame);
 
     for(;;)
     {
@@ -311,7 +311,7 @@ int main(int argc, char** argv)
 
         niveauGris(frameOld, &frameGrisOld);
 
-        harris(frame, &frameGris, &frameSobelX, &frameSobelY, &frameHarris, masque, 1.0);
+        harris(frame, &frameGris, &frameSobelX, &frameSobelY, &frameHarris, masque, 0.04);
         normalisation(frameHarris, &frameHarris);
         trouverPointsInteret(frameHarris, frame);
 
