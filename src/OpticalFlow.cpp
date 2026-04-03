@@ -313,9 +313,94 @@ int main(int argc, char** argv)
 
         harris(frame, &frameGris, &frameSobelX, &frameSobelY, &frameHarris, masque, 0.04);
         normalisation(frameHarris, &frameHarris);
-        trouverPointsInteret(frameHarris, frame);
 
         diffIntensite(frameGris, frameGrisOld, &frameDiffIntensite);
+
+        std::vector<cv::Point> pointInterets = trouverPointsInteret(frameHarris, frame);
+        cv::Point pointInteret = pointInterets.back();
+
+        int cols = 20;
+        int rows = 20;
+        Mat intensiteBlock = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+        Mat sobelXBlock = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+        Mat sobelYBlock = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+
+        for (int j = pointInteret.y-rows/2; j < pointInteret.y+rows/2; j++)
+        {
+            for (int i = pointInteret.x-cols/2; i < pointInteret.x+cols/2; i++)
+            {
+                if (j < 0 || j >= frame.rows)
+                    continue;
+
+                if (i < 0 || i >= frame.cols)
+                    continue;
+
+                int bj = j - (pointInteret.y - rows / 2);
+                int bi = i - (pointInteret.x - cols / 2);
+
+                intensiteBlock.at<float>(bj, bi) = frameDiffIntensite.at<float>(j, i);
+                sobelXBlock.at<float>(bj, bi) = frameSobelX.at<float>(j, i);
+                sobelYBlock.at<float>(bj, bi) = frameSobelY.at<float>(j, i);
+
+                circle(frame, Point(i, j), 3, Scalar(255, 0, 0), 1);
+            }
+        }
+
+        Mat carreX = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+        Mat carreY = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+        Mat produitXY = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+        Mat produitXT = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+        Mat produitYT = cv::Mat(rows, cols, CV_32FC1, cv::Scalar(0));
+
+        carre(&sobelXBlock, &carreX);
+        carre(&sobelYBlock, &carreY);
+        produit(&sobelXBlock, &sobelYBlock, &produitXY);
+
+        produit(&sobelXBlock, &intensiteBlock, &produitXT);
+        produit(&sobelYBlock, &intensiteBlock, &produitYT);
+
+        Mat A = cv::Mat(2, 2, CV_32FC1, cv::Scalar(0));
+        Mat b = cv::Mat(2, 1, CV_32FC1, cv::Scalar(0));
+
+        float x2, y2, xy, xt, yt;
+
+        for (int j = 0; j < rows; j++) {
+            for (int i = 0; i < cols; i++)
+            {
+                x2 += carreX.at<float>(j, i);
+                y2 += carreY.at<float>(j, i);
+                xy += produitXY.at<float>(j, i);
+
+                xt += produitXT.at<float>(j, i);
+                yt += produitYT.at<float>(j, i);
+            }
+        }
+
+        A.at<float>(0, 0) = x2;
+        A.at<float>(0, 1) = xy;
+        A.at<float>(1, 0) = xy;
+        A.at<float>(1, 1) = y2;
+
+        b.at<float>(0, 0) = xt;
+        b.at<float>(1, 0) = yt;
+
+        float det = x2*y2 - xy*xy;
+
+        Mat inverseA = cv::Mat(2, 2, CV_32FC1, cv::Scalar(0));
+
+        float u, v;
+
+        if ((det - 0.1) != 0) {
+            inverseA.at<float>(0, 0) = y2 * 1/det;
+            inverseA.at<float>(0, 1) = -xy * 1/det;
+            inverseA.at<float>(1, 0) = -xy * 1/det;
+            inverseA.at<float>(1, 1) = x2 * 1/det;
+
+            u = inverseA.at<float>(0, 0) * b.at<float>(0, 0) + inverseA.at<float>(0, 1) * b.at<float>(1, 0);
+            v = inverseA.at<float>(1, 0) * b.at<float>(0, 0) + inverseA.at<float>(1, 1) * b.at<float>(1, 0);
+        }
+
+        std::cout << u << " " << v << std::endl;
 
         //frameGris.convertTo(frameGris, CV_8UC1);
         //frameSobelX.convertTo(frameSobelX, CV_8UC1);
