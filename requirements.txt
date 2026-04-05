@@ -1,0 +1,26 @@
+# VisionAssist – Dépendances Python
+# Jetson IA Locale : STT + TTS + MQTT Broker + Serveur distant
+#
+# Installation :
+#   pip install -r requirements.txt
+#
+# Sur Jetson avec CUDA (recommandé) :
+#   pip install faster-whisper[cuda]
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Speech-to-Text ─────────────────────────────────────────────────────────────
+faster-whisper>=1.0.0        # Whisper via CTranslate2, optimisé ARM/CUDA
+pyaudio>=0.2.13              # Capture microphone (requiert PortAudio)
+                             # Jetson : sudo apt install python3-pyaudio portaudio19-dev
+
+# ── Text-to-Speech ─────────────────────────────────────────────────────────────
+piper-tts>=1.2.0             # Synthèse ONNX ARM-optimisée
+                             # Voix : https://huggingface.co/rhasspy/piper-voices
+
+# ── Broker MQTT ────────────────────────────────────────────────────────────────
+paho-mqtt>=2.0.0             # Client MQTT (paho v2 recommandé)
+
+# ── Utilitaires ────────────────────────────────────────────────────────────────
+numpy>=1.21.0                # Utilisé par faster-whisper / piper
+python-dotenv>=1.0.0         # Chargement de variables d'env depuis .env
+pydantic
