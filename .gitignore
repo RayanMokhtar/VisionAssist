@@ -1,0 +1,24 @@
+# --- SÉCURITÉ & SECRETS ---
+# On ne pousse JAMAIS les clés privées (faille de sécurité majeure)
+*.key
+# On ne pousse pas les demandes de signature (fichiers de travail OpenSSL)
+*.csr
+*.srl
+# On exclut la base de données réelle qui contient les hashs Argon2id
+users_db.json
+bdd.py
+
+# --- PYTHON ---
+# Fichiers compilés et caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environnements virtuels
+venv/
+.venv/
+env/
+
+# --- SYSTÈME ---
+.DS_Store
+Thumbs.db
