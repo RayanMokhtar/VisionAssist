@@ -8,3 +8,5 @@ env/
 data/tts/modeles/
 *.onnx
 *.onnx.json
+logs/
+*.log

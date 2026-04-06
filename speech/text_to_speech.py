@@ -130,4 +130,4 @@ class TextToSpeech:
 
 
 tts = TextToSpeech()
-tts.pipeline("araaaaaaaaaaaaaaaaaaaaaaaaaaaaabe synthétise moi ça lazibus dragibus et dis moi s'il y a des soucis dans ce que tu vois ? sale hmar")
+tts.pipeline("ya timsah diri la ttay diri la ttay mlqabsa lelberraqi ,  y a zina goulili wah wella lala wella tebeini liyam")

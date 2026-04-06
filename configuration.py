@@ -33,27 +33,28 @@ class AudioConfig(BaseModel):
     device_index: Optional[int] = None
 
 
+
+
+class TopicConfig(BaseModel):
+    stt_topic  : str = "results/stt"
+    tts_topic : str = "results/tts"
+    vision_topic : str = "results/vision"
+    erreurs_topic : str = "results/erreurs" 
+
+
+
 class BrokerConfig(BaseModel):
     type_broker : Literal["RabbitMQ","mosquitto"] = "mosquitto"
     host: str = "localhost"
     port: int = Field(1883, ge=1, le=65535)
     keepalive: int = 60
-    client_id: str = "visionassist-jetson"
+    client_id: str = "visionassist-jetson" #TODO à modifier dans serveurito
     username: Optional[str] = None
     password: Optional[str] = None
     use_tls: bool = False
     qos: Literal[0, 1, 2] = 1
-    retain: bool = False
-
-
-class TopicConfig(BaseModel):
-    stt_result: str = "visionassist/stt/result"
-    tts_input: str = "visionassist/tts/input"
-    server_request: str = "visionassist/server/request"
-    server_response: str = "visionassist/server/response"
-    events: str = "visionassist/events"
-    persist: str = "visionassist/persist"
-    errors: str = "visionassist/errors"
+    retain: bool = True
+    topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
 
 
 class PathConfig(BaseModel):
@@ -78,9 +79,8 @@ class Configuration(BaseSettings):
     tts:TTSConfig=Field(default_factory=TTSConfig,description="configuration modele tts")
     audio:AudioConfig=Field(default_factory=AudioConfig,description="configuration modele audio")
     broker:BrokerConfig=Field(default_factory=BrokerConfig,description="configuration broker")
-    topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
     paths: PathConfig=Field(default_factory=PathConfig,description="conf paths chemin fichiers")
-
+    
 
 def get_configuration():
     return Configuration()
