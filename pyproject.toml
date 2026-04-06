@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = [
     "faster-whisper>=1.0.0",
     "pyaudio>=0.2.13",
-    "piper-tts>=1.2.0",
+    "piper-tts==1.4.1", #je fige pour éviter les problemes
     "paho-mqtt>=2.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings[toml]>=2.0.0",

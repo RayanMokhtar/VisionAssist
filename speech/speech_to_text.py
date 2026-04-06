@@ -119,6 +119,7 @@ class SpeechToText:
         stream.close()
         audio.terminate()
         print("enregistrement fini ")
+        #écriture dans un fichier temporaire
         fichier_temporaire_stockage = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)#suppression après via le unlink
         with wave.open(fichier_temporaire_stockage.name, "wb") as f:
             #écriture entête pour fastWhisper

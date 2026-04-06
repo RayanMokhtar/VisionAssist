@@ -18,16 +18,16 @@ class STTConfig(BaseModel):
 
 
 class TTSConfig(BaseModel):
-    moteur_tts: Literal["piper", "espeak",""] = "piper"
-    chemin_modele: str = "./data/tts/modeles/tts/fr_FR-siwis-medium.onnx"
+    moteur_tts: Literal["piper", "espeak","voxtral"] = "piper" #à voir si on migre sur du voxtral ? 
+    chemin_modele: str = "./data/tts/modeles/fr_FR-siwis-medium.onnx"
     configuration_modele : Optional[str] = "./data/tts/modeles/fr_FR-siwis-medium.onnx.json"
     taux_echantillonnage_hz: int = 22050
-    vitesse: float = Field(1.0, ge=0.5, le=2.0)
+    multiplicateur_lenteur: float = 1.0 # 2 alors 2 fois plus lent
     dossier_sortie: str = "./data/tts/sortie_modeles"
 
 
 class AudioConfig(BaseModel):
-    taux_echantillonnage_hz: int = 16000
+    taux_echantillonnage_hz: int = 16000  #recommandé pour le tts à voir si on unifie pas
     canaux_ecoute : int = 1 # 2 si stéréo 
     taille_chunk : int = 1024
     device_index: Optional[int] = None
@@ -78,8 +78,8 @@ class Configuration(BaseSettings):
     tts:TTSConfig=Field(default_factory=TTSConfig,description="configuration modele tts")
     audio:AudioConfig=Field(default_factory=AudioConfig,description="configuration modele audio")
     broker:BrokerConfig=Field(default_factory=BrokerConfig,description="configuration broker")
-    topics:TopicConfig  =Field(default_factory=TopicConfig,description="configuration topics")
-    paths: PathConfig =Field(default_factory=PathConfig,description="conf paths chemin fichiers")
+    topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
+    paths: PathConfig=Field(default_factory=PathConfig,description="conf paths chemin fichiers")
 
 
 def get_configuration():
