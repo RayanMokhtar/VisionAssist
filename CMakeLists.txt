@@ -2,13 +2,15 @@ cmake_minimum_required(VERSION 3.16)
 
 project(VisionAssist LANGUAGES CXX)
 
+
 find_package(OpenCV REQUIRED)
 
 add_executable(main)
 
 target_sources(main
     PRIVATE
-        src/OpticalFlow.cpp
+        #src/OpticalFlow.cpp
+        src/yolo.cpp
 )
 
 target_compile_features(main

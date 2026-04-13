@@ -362,7 +362,7 @@ int main(int argc, char** argv)
         Mat A = cv::Mat(2, 2, CV_32FC1, cv::Scalar(0));
         Mat b = cv::Mat(2, 1, CV_32FC1, cv::Scalar(0));
 
-        float x2, y2, xy, xt, yt;
+        float x2 = 0, y2 = 0, xy = 0, xt = 0, yt = 0;
 
         for (int j = 0; j < rows; j++) {
             for (int i = 0; i < cols; i++)
@@ -381,8 +381,8 @@ int main(int argc, char** argv)
         A.at<float>(1, 0) = xy;
         A.at<float>(1, 1) = y2;
 
-        b.at<float>(0, 0) = xt;
-        b.at<float>(1, 0) = yt;
+        b.at<float>(0, 0) = -xt;
+        b.at<float>(1, 0) = -yt;
 
         float det = x2*y2 - xy*xy;
 
@@ -390,7 +390,7 @@ int main(int argc, char** argv)
 
         float u, v;
 
-        if ((det - 0.1) != 0) {
+        if (std::fabs(det) > 0.1) {
             inverseA.at<float>(0, 0) = y2 * 1/det;
             inverseA.at<float>(0, 1) = -xy * 1/det;
             inverseA.at<float>(1, 0) = -xy * 1/det;
