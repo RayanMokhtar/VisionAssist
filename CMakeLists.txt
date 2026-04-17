@@ -4,6 +4,7 @@ project(VisionAssist LANGUAGES CXX)
 
 
 find_package(OpenCV REQUIRED)
+find_package(OpenMP REQUIRED)
 
 add_executable(main)
 
@@ -31,4 +32,5 @@ target_include_directories(main
 target_link_libraries(main
     PRIVATE
         ${OpenCV_LIBS}
+        OpenMP::OpenMP_CXX
 )
