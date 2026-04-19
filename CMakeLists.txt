@@ -6,12 +6,15 @@ project(VisionAssist LANGUAGES CXX)
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
 
+include_directories(include)
+
 add_executable(main)
 
 target_sources(main
     PRIVATE
-        #src/OpticalFlow.cpp
-        src/yolo.cpp
+        src/OpticalFlow.cpp
+        src/Yolo.cpp
+        src/main.cpp
 )
 
 target_compile_features(main
