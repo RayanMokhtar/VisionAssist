@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(VisionAssist LANGUAGES CXX)
 
+set(OpenCV_DIR "/home/opencv/build") 
 
 find_package(OpenCV REQUIRED)
 find_package(OpenMP REQUIRED)
+
 
 include_directories(include)
 

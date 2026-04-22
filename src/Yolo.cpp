@@ -91,7 +91,6 @@ void Yolo::detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &out
         }
 
         data += 85;
-
     }
 
     std::vector<int> nms_result;
@@ -106,20 +105,22 @@ void Yolo::detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &out
     }
 }
 
-
-Yolo::Yolo(){
+Yolo::Yolo() {
 
     class_list = load_class_list();
 
     load_net(net, is_cuda);
 
+std::cout << cv::cuda::getCudaEnabledDeviceCount() << std::endl;
+std::cout << net.empty() << std::endl;
+std::cout << cv::getBuildInformation() << std::endl;
+std::cout << "OpenCV Version: " << cv::getVersionString() << std::endl;
+std::cout << "OpenCV Path: " << std::endl;
+system("ldd your_executable | grep opencv");
 }
 
 std::vector<Yolo::Detection> Yolo::exec(Mat frame)
-{
-
-
- 
+{ 
     std::vector<Detection> output;
     detect(frame, net, output, class_list);
 
@@ -129,7 +130,6 @@ std::vector<Yolo::Detection> Yolo::exec(Mat frame)
 
     for (int i = 0; i < detections; ++i)
     {
-
         auto detection = output[i];
         auto box = detection.box;
         auto classId = detection.class_id;
@@ -142,7 +142,6 @@ std::vector<Yolo::Detection> Yolo::exec(Mat frame)
 
     if (frame_count >= 30)
     {
-
         auto end = std::chrono::high_resolution_clock::now();
         fps = frame_count * 1000.0 / std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
@@ -152,7 +151,6 @@ std::vector<Yolo::Detection> Yolo::exec(Mat frame)
 
     if (fps > 0)
     {
-
         std::ostringstream fps_label;
         fps_label << std::fixed << std::setprecision(2);
         fps_label << "FPS: " << fps;
@@ -161,6 +159,5 @@ std::vector<Yolo::Detection> Yolo::exec(Mat frame)
         cv::putText(frame, fps_label_str.c_str(), cv::Point(10, 25), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
     }
     
-
     return output;
 }

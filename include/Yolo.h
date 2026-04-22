@@ -30,7 +30,7 @@ class Yolo{
         std::vector<std::string> class_list;
 
         const std::vector<cv::Scalar> colors = {cv::Scalar(255, 255, 0), cv::Scalar(0, 255, 0), cv::Scalar(0, 255, 255), cv::Scalar(255, 0, 0)};
-        bool is_cuda = false;
+        bool is_cuda = true;
 
         const float INPUT_WIDTH = 640.0;
         const float INPUT_HEIGHT = 640.0;

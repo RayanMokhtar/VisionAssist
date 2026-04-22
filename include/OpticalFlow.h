@@ -21,12 +21,6 @@ class OpticalFlow{
 
 
     public : 
-        struct vectDepl
-        {
-            float u;
-            float v;
-        };
-
         Mat exec(Mat frame, Mat frameOld);
     
     private :

@@ -9,7 +9,7 @@ struct ObjectDetected
     int class_id;
     float confidence;
     cv::Rect box;
-    OpticalFlow::vectDepl vect;
+    Vec2f vect;
     Point centreGravity;
 };
 
@@ -25,11 +25,16 @@ std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<Yolo::Detection
         for (int j = detect.box.y; j < detect.box.y + detect.box.height; j++)
         {
             for (int i = detect.box.x; i < detect.box.x + detect.box.width; i++)
-            {           
-                OpticalFlow::vectDepl& p = deplacement.at<OpticalFlow::vectDepl>(j, i);
-                sum_u += p.u;
-                sum_v += p.v;
-                count++;
+            {
+                // TODO: Yolo out of box
+                if (j >= 0 && j < deplacement.rows && i >= 0 && i < deplacement.cols)
+                {
+                    cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
+
+                    sum_u += p[0];
+                    sum_v += p[1];
+                    count++;
+                }
             }
         }
 
@@ -59,7 +64,7 @@ Mat drawMeanFlow(Mat frame, std::vector<ObjectDetected> objects)
     for (ObjectDetected object : objects)
     {
         cv::Point p1(object.centreGravity.x, object.centreGravity.y);
-        cv::Point p2(object.centreGravity.x + object.vect.u * scale, object.centreGravity.y + object.vect.v * scale);
+        cv::Point p2(object.centreGravity.x + object.vect[0] * scale, object.centreGravity.y + object.vect[1] * scale);
 
         cv::arrowedLine(meanFlowDraw, p1, p2, cv::Scalar(0, 0, 255), 2);
     }
@@ -69,29 +74,32 @@ Mat drawMeanFlow(Mat frame, std::vector<ObjectDetected> objects)
 
 int main(int argc, char** argv)
 {
+    OpticalFlow opticalFlow;
+    Yolo yolo;
+    Mat frameOld;
+    Mat frame;
 
-    VideoCapture cap(0);
+    std::string pipeline =
+        "nvarguscamerasrc sensor-id=0 ! "
+        "video/x-raw(memory:NVMM), width=620, height=480, framerate=30/1 ! "
+        "nvvidconv ! "
+        "video/x-raw, format=BGRx ! "
+        "appsink drop=true max-buffers=1 sync=false";
+
+    VideoCapture cap(pipeline, CAP_GSTREAMER);
 
     if (!cap.isOpened()) {
         std::cerr << "ERROR! Unable to open camera\n";
         return -1;
     }
 
-    OpticalFlow opticalFlow;
-    Yolo yolo;
-    Mat frameOld;
-    Mat frame;
-
-
     cap >> frameOld;
-    Size newSize(200, 200);
-        
-    resize(frameOld, frameOld, newSize, 0, 0, INTER_LINEAR);
+    cv::cvtColor(frameOld, frameOld, cv::COLOR_BGRA2BGR);
 
     for(;;){
 
         cap >> frame;
-        resize(frame, frame, newSize, 0, 0, INTER_LINEAR);
+        cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
 
         Mat deplacement = opticalFlow.exec(frame, frameOld);
         std::vector<Yolo::Detection> yoloDetection = yolo.exec(frame);
@@ -106,7 +114,6 @@ int main(int argc, char** argv)
 
         frame.copyTo(frameOld);
 
-        if(waitKey(33) == 27) break;
+        if(waitKey(1) == 27) break;
     }
-
 }
