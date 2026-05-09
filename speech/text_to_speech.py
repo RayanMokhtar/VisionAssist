@@ -14,6 +14,8 @@ from piper import PiperVoice , SynthesisConfig
 from pydantic import BaseModel, Field
 
 from configuration import CONFIGURATION
+from broker.service import get_broker_client 
+from broker.broker_interface import IBroker 
 
 
 ### TTS piper : https://arxiv.org/html/2512.08006v1
@@ -118,7 +120,6 @@ class TextToSpeech:
 
 
     def pipeline(self, texte: str, nom_fichier_sortie : str = "test.wav", supprimer_fichier: bool = False) -> TTSResult:
-
         resultat = self.synthetiser(texte, nom_fichier_sortie=nom_fichier_sortie)
         try:
             self.lire_audio(resultat.chemin_fichier_audio)
@@ -126,8 +127,33 @@ class TextToSpeech:
             if supprimer_fichier and os.path.exists(resultat.chemin_fichier_audio):
                 os.unlink(resultat.chemin_fichier_audio)
         return resultat
+    
+    def fonction_trigger(self , topic , message_recu : str):
+        MESSAGE_AVERTISSEMENT = "erreur potentielle dans la récupération du message faites attention"
+        texte = message_recu.get("resultat_llm","")
+        if texte : 
+            LOGGER.info(f"tts demandé pour synthetiser ce texte : {texte}")
+            resultat = self.pipeline(texte)
+            #TODO : à voir si on publie dans le broker ou pas ??   
+        else : 
+            LOGGER.warning("Message TTS sans texte")
+            resultat = self.pipeline(MESSAGE_AVERTISSEMENT)
 
 
+#à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
+def lancement_service_tts(client_id : str = "tts", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
+    broker = get_broker_client(client_id) # à vori si singelton ou pas 
+    TTS = TextToSpeech()
+    broker.connexion()
+    broker.sabonner(topic_sur_ecoute,TTS.fonction_trigger)
 
-tts = TextToSpeech()
-tts.pipeline("ya timsah diri la ttay diri la ttay mlqabsa lelberraqi ,  y a zina goulili wah wella lala wella tebeini liyam")
+    LOGGER.info("TTS en écoute sur topic %s...",topic_sur_ecoute)
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        broker.deconnexion()
+        LOGGER.info("TTS arrêté.")
+
+
+lancement_service_tts()

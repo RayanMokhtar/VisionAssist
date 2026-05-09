@@ -26,12 +26,12 @@ class MqttClientBroker(IBroker):
         if conf_broker.use_tls:
             self.client.tls_set()
         
-        self._connected = False
+        self.est_connecte = False
         self.abonnement_topic_callback : dict[str, Callable] = {}
     
     def connexion(self):
         self.client.on_connect = self._wrapper_connexion_personnalisee
-        self.client.on_message = self._wrapper_hook_lors_envoi_message
+        self.client.on_message = self._wrapper_lors_envoi_message
         
         self.client.connect(self.conf.host, self.conf.port, self.conf.keepalive)
         self.client.loop_start()
@@ -63,17 +63,18 @@ class MqttClientBroker(IBroker):
         self.client.unsubscribe(topic)
         logger.info(f"Désabonné de {topic}")
     
-    def is_connected_to_broker(self) -> bool:
-        return self._connected
+    def isest_connecte_to_broker(self) -> bool:
+        return self.est_connecte
     
     def _wrapper_connexion_personnalisee(self, client, userdata, flags, rc):
         if rc == 0:
-            self._connected = True
+            self.est_connecte = True
             logger.info("Connecté au broker")
         else:
             logger.error(f"Erreur connexion : {rc}")
     
-    def _wrapper_hook_lors_envoi_message(self, client, userdata, msg):
+    def _wrapper_lors_envoi_message(self, client, userdata, msg):
+        #doti avoir topic et payload ce message
         topic = msg.topic
         try:
             payload = json.loads(msg.payload.decode("utf-8"))
@@ -83,16 +84,11 @@ class MqttClientBroker(IBroker):
         if topic in self.abonnement_topic_callback:
             self.abonnement_topic_callback[topic](topic, payload)
 
-def get_broker_factory() -> IBroker:
-    if conf_broker.type_broker == "mosquitto":
-        return MqttClientBroker(client_id=conf_broker.client_id)
-    
-    elif conf_broker.type_broker == "RabbitMQ":
-        raise NotImplementedError("RabbitMQ pas implémenté")
-    
-    else:
-        raise ValueError(f"Type broker inconnu : {conf_broker.type_broker}")
-    
+    def clean_up_ressources(self,topic):
+        try : 
+            self.desabonner(topic=topic)
+        except Exception as e: 
+            logger.error(f"cleanup fail {e}")
 
 
 
