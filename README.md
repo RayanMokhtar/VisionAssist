@@ -50,3 +50,12 @@ installer_piper dans utils ...  mais ensuite déplacer le modèle dans le bon r�
 mqtt explorer à installer pour visualiser messages dans le topic
 
 installer le broker mosquitto via l'installer https://mosquitto.org/download/ : puis lancer mosquitto -v , et en admin sc query mosquitto pour voir état et sc stop mosquitto pour le stopper si jamais le port est pris ou qu'on se retrouve dans des situtations reloues
+
+
+
+ ## worker vision ( à automatiser dans un setup.sh par la suiteg)
+ 1 - wsl installé , ouvrir terminal 
+ 2 - créer build 
+ 3 - cd worker_vision/build 
+ 4 - cmake ..
+ 5 - make puis ./main

@@ -13,6 +13,13 @@ struct ObjectDetected
     Point centreGravity;
 };
 
+
+#define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
+
+
+#define FALLBACK_VIDEO "../../data/videos/video_test_camera_fonctionne_pas.mp4"  
+
+
 std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<Yolo::Detection> yoloDetection)
 {
     std::vector<ObjectDetected> objects;
@@ -79,6 +86,9 @@ int main(int argc, char** argv)
     Mat frameOld;
     Mat frame;
 
+    VideoCapture cap;   
+
+    // TODO : à déplacer peut être dans un meilleur endroit ? où à injecter directement dnas le cap selon choix config
     std::string pipeline =
         "nvarguscamerasrc sensor-id=0 ! "
         "video/x-raw(memory:NVMM), width=620, height=480, framerate=30/1 ! "
@@ -86,11 +96,27 @@ int main(int argc, char** argv)
         "video/x-raw, format=BGRx ! "
         "appsink drop=true max-buffers=1 sync=false";
 
-    VideoCapture cap(pipeline, CAP_GSTREAMER);
+    cap.open(pipeline, CAP_GSTREAMER);
 
+    // si problème récupérationl video ? on teste avec webcam classqieu (marche avec linux , sinon test video dans le capture ... )
     if (!cap.isOpened()) {
-        std::cerr << "ERROR! Unable to open camera\n";
-        return -1;
+        std::cerr << "Pipeline GStreamer nvidia failed test avec webcam...\n";
+
+        if (USE_WEBCAM_FALLBACK) {
+            cap.open(0); 
+            if (!cap.isOpened()) {
+                std::cerr << "Webcam fallback erreur, test avec vidéo\n";
+                cap.open(FALLBACK_VIDEO);
+                if (!cap.isOpened()) {
+                    std::cerr << "Video fallback erreur\n";
+                    return -1;
+                }
+            }
+        }
+        else {
+            std::cerr << "pas de fallback actif , vérifier chemin vers video ou potentiels problemes avec l'environnement.\n";
+            return -1;
+        }
     }
 
     cap >> frameOld;
