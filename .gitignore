@@ -10,3 +10,4 @@ data/tts/modeles/
 *.onnx.json
 logs/
 *.log
+worker_vision/build #à ajouter
