@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"    
+
+[project]
+name = "visionassist"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+    "faster-whisper>=1.0.0",
+    "pyaudio>=0.2.13",
+    "piper-tts==1.4.1", #je fige pour éviter les problemes
+    "paho-mqtt>=2.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings[toml]>=2.0.0",
+    "numpy>=1.21.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["speech*", "broker*", "repository*"]
+
+[project.scripts]
+visionassist = "main:main"

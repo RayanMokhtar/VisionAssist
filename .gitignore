@@ -1,2 +1,13 @@
-build
-YOLO
+/env
+/data
+*.egg-info
+.env
+__pycache__ 
+**/__pycache__
+env/
+data/tts/modeles/
+*.onnx
+*.onnx.json
+logs/
+*.log
+worker_vision/build/
