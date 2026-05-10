@@ -59,3 +59,9 @@ installer le broker mosquitto via l'installer https://mosquitto.org/download/ : 
  3 - cd worker_vision/build 
  4 - cmake ..
  5 - make puis ./main
+
+à faire dans env : 
+    sudo apt install libpaho-mqtt-dev
+
+
+changer le fichier de configuration mosquitto.conf en ajoutant le listerner et vérifier avec netstat -an | find "1883" si en écoute sur toutes les interfaces réseau

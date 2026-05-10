@@ -1,5 +1,6 @@
 #include "Yolo.h"
 #include "OpticalFlow.h"
+#include "mqtt.h"
 
 #include "opencv2/opencv.hpp"
 using namespace cv;
@@ -19,6 +20,7 @@ struct ObjectDetected
 
 #define FALLBACK_VIDEO "../../data/videos/video_test_camera_fonctionne_pas.mp4"  
 
+#define SEUIL_DECISION 5 // TODO à définir par la suite selon comment on fait le système de décision .... 
 
 std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<Yolo::Detection> yoloDetection)
 {
@@ -85,8 +87,12 @@ int main(int argc, char** argv)
     Yolo yolo;
     Mat frameOld;
     Mat frame;
-
+    MqttClient mqttClient ; //sur la stack aussi pas problématique apparemment 
     VideoCapture cap;   
+
+    int scoreFinal = 0 ; 
+    std::string messageFinal ;
+
 
     // TODO : à déplacer peut être dans un meilleur endroit ? où à injecter directement dnas le cap selon choix config
     std::string pipeline =
@@ -98,7 +104,7 @@ int main(int argc, char** argv)
 
     cap.open(pipeline, CAP_GSTREAMER);
 
-    // si problème récupérationl video ? on teste avec webcam classqieu (marche avec linux , sinon test video dans le capture ... )
+    // si problème récupérationl video ? on teste avec webcam classique (marche avec linux , sinon test video dans le capture ... )
     if (!cap.isOpened()) {
         std::cerr << "Pipeline GStreamer nvidia failed test avec webcam...\n";
 
@@ -122,6 +128,7 @@ int main(int argc, char** argv)
     cap >> frameOld;
     cv::cvtColor(frameOld, frameOld, cv::COLOR_BGRA2BGR);
 
+    //TODO : à ajouter un sleep
     for(;;){
 
         cap >> frame;
@@ -139,6 +146,15 @@ int main(int argc, char** argv)
         cv::imshow("deplacement", meanFlowDraw);
 
         frame.copyTo(frameOld);
+        mqttClient.publier("results/vision","messageFinal",1,true); //TODO à déplacer les constantes dans le mqtt client 
+
+
+        // ajouter variable score ici dans score decision 
+        //scoreFinal = systemeDecision(Mat fluxOptique, Mat ObjetsYolo ... ?  ) à définir 
+        if (scoreFinal >= SEUIL_DECISION) {
+            //messageFinal = construireMessageDepuisDonneesScore(scoreFinal,objetsYolo); à définir 
+            mqttClient.publier("results/vision",messageFinal,1,true); //TODO à déplacer les constantes dans le mqtt client 
+        } 
 
         if(waitKey(1) == 27) break;
     }
