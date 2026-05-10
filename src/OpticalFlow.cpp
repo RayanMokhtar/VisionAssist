@@ -4,16 +4,20 @@ void OpticalFlow::niveauGris(Mat frame, Mat *frameGris)
 {
     *frameGris = cv::Mat(frame.rows, frame.cols, CV_32FC1);
 
-    for (int y = 0; y < frame.rows; y++)
+    #pragma omp parallel default(none) shared(frame, frameGris)
     {
-        cv::Vec3b *src = frame.ptr<cv::Vec3b>(y);
-        float *dst = frameGris->ptr<float>(y);
-
-        for (int x = 0; x < frame.cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame.rows; y++)
         {
-            const cv::Vec3b& pixel = src[x];
+            cv::Vec3b *src = frame.ptr<cv::Vec3b>(y);
+            float *dst = frameGris->ptr<float>(y);
 
-            dst[x] = (pixel[0] + pixel[1] + pixel[2]) / 3.0f;
+            for (int x = 0; x < frame.cols; x++)
+            {
+                const cv::Vec3b& pixel = src[x];
+
+                dst[x] = (pixel[0] + pixel[1] + pixel[2]) / 3.0f;
+            }
         }
     }
 }
@@ -66,15 +70,19 @@ void OpticalFlow::diffIntensite(Mat frame1, Mat frame2, Mat *frameDiffIntensite)
 {
     *frameDiffIntensite = cv::Mat(frame1.rows, frame1.cols, CV_32FC1);
 
-    for (int y = 0; y < frame1.rows; y++)
+    #pragma omp parallel default(none) shared(frame1, frame2, frameDiffIntensite)
     {
-        float *p1 = frame1.ptr<float>(y);
-        float *p2 = frame2.ptr<float>(y);
-        float *pd = frameDiffIntensite->ptr<float>(y);
-
-        for (int x = 0; x < frame1.cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame1.rows; y++)
         {
-            pd[x] = p1[x] - p2[x];
+            float *p1 = frame1.ptr<float>(y);
+            float *p2 = frame2.ptr<float>(y);
+            float *pd = frameDiffIntensite->ptr<float>(y);
+
+            for (int x = 0; x < frame1.cols; x++)
+            {
+                pd[x] = p1[x] - p2[x];
+            }
         }
     }
 }
@@ -83,16 +91,21 @@ void OpticalFlow::carre(Mat *frame, Mat *frameCarre)
 {
     *frameCarre = cv::Mat(frame->rows, frame->cols, CV_32FC1);
 
-    for (int y = 0; y < frame->rows; y++)
+    #pragma omp parallel default(none) shared(frame, frameCarre)
     {
-        float *src = frame->ptr<float>(y);
-        float *dst = frameCarre->ptr<float>(y);
-
-        for (int x = 0; x < frame->cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame->rows; y++)
         {
-            float v = src[x];
-            dst[x] = v * v;
+            float *src = frame->ptr<float>(y);
+            float *dst = frameCarre->ptr<float>(y);
+
+            for (int x = 0; x < frame->cols; x++)
+            {
+                float v = src[x];
+                dst[x] = v * v;
+            }
         }
+
     }
 }
 
@@ -100,15 +113,19 @@ void OpticalFlow::somme(Mat frame1, Mat frame2, Mat *frameSomme)
 {
     *frameSomme = cv::Mat(frame1.rows, frame1.cols, CV_32FC1);
 
-    for (int y = 0; y < frame1.rows; y++)
+    #pragma omp parallel default(none) shared(frame1, frame2, frameSomme)
     {
-        float *p1 = frame1.ptr<float>(y);
-        float *p2 = frame2.ptr<float>(y);
-        float *pd = frameSomme->ptr<float>(y);
-
-        for (int x = 0; x < frame1.cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame1.rows; y++)
         {
-            pd[x] = p1[x] + p2[x];
+            float *p1 = frame1.ptr<float>(y);
+            float *p2 = frame2.ptr<float>(y);
+            float *pd = frameSomme->ptr<float>(y);
+
+            for (int x = 0; x < frame1.cols; x++)
+            {
+                pd[x] = p1[x] + p2[x];
+            }
         }
     }
 }
@@ -117,15 +134,19 @@ void OpticalFlow::produit(Mat *frame1, Mat *frame2, Mat *frameProduit)
 {
     *frameProduit = cv::Mat(frame1->rows, frame1->cols, CV_32FC1);
 
-    for (int y = 0; y < frame1->rows; y++)
+    #pragma omp parallel default(none) shared(frame1, frame2, frameProduit)
     {
-        float *p1 = frame1->ptr<float>(y);
-        float *p2 = frame2->ptr<float>(y);
-        float *pd = frameProduit->ptr<float>(y);
-
-        for (int x = 0; x < frame1->cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame1->rows; y++)
         {
-            pd[x] = p1[x] * p2[x];
+            float *p1 = frame1->ptr<float>(y);
+            float *p2 = frame2->ptr<float>(y);
+            float *pd = frameProduit->ptr<float>(y);
+
+            for (int x = 0; x < frame1->cols; x++)
+            {
+                pd[x] = p1[x] * p2[x];
+            }
         }
     }
 }
@@ -234,7 +255,7 @@ Mat OpticalFlow::exec(Mat frame, Mat frameOld)
         }
     }
 
-    //cv::imshow("vis", vis);
+    cv::imshow("vis", vis);
 
     return matDepl;
 }

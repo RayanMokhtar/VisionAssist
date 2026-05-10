@@ -4,6 +4,10 @@
 #include "opencv2/opencv.hpp"
 using namespace cv;
 
+#define JETSON 0
+
+#define runOnGPU JETSON==1
+
 struct ObjectDetected
 {
     int class_id;
@@ -13,11 +17,11 @@ struct ObjectDetected
     Point centreGravity;
 };
 
-std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<Yolo::Detection> yoloDetection)
+std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<YOLO::Detection> yoloDetection)
 {
     std::vector<ObjectDetected> objects;
 
-    for (Yolo::Detection detect : yoloDetection)
+    for (YOLO::Detection detect : yoloDetection)
     {
         float sum_u = 0, sum_v = 0;
         int count = 0;
@@ -33,6 +37,7 @@ std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<Yolo::Detection
 
                     sum_u += p[0];
                     sum_v += p[1];
+                    std::cout << p[0] << ", " << p[1] << std::endl;
                     count++;
                 }
             }
@@ -75,10 +80,11 @@ Mat drawMeanFlow(Mat frame, std::vector<ObjectDetected> objects)
 int main(int argc, char** argv)
 {
     OpticalFlow opticalFlow;
-    Yolo yolo;
+    YOLO yolo("../YoloUtils/yolov8n.onnx", cv::Size(640, 640), "classes.txt", runOnGPU);
     Mat frameOld;
     Mat frame;
 
+#if JETSON
     std::string pipeline =
         "nvarguscamerasrc sensor-id=0 ! "
         "video/x-raw(memory:NVMM), width=620, height=480, framerate=30/1 ! "
@@ -87,6 +93,9 @@ int main(int argc, char** argv)
         "appsink drop=true max-buffers=1 sync=false";
 
     VideoCapture cap(pipeline, CAP_GSTREAMER);
+#else
+    VideoCapture cap(0);    
+#endif
 
     if (!cap.isOpened()) {
         std::cerr << "ERROR! Unable to open camera\n";
@@ -102,9 +111,10 @@ int main(int argc, char** argv)
         cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
 
         Mat deplacement = opticalFlow.exec(frame, frameOld);
-        std::vector<Yolo::Detection> yoloDetection = yolo.exec(frame);
+        std::vector<YOLO::Detection> yoloDetection = yolo.exec(frame);
 
         std::vector<ObjectDetected> objects = mapping(deplacement, yoloDetection);
+        
 
         Mat meanFlowDraw = drawMeanFlow(frame, objects);
 
