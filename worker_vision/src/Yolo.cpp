@@ -223,7 +223,7 @@ std::vector<YOLO::Detection> YOLO::exec(const cv::Mat &frame)
         //     cv::rectangle(frame, textBox, color, cv::FILLED);
         //     cv::putText(frame, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
         // }
-        // // Inference ends here...
+        // // // Inference ends here...
 
         return output;
 }

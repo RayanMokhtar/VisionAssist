@@ -5,28 +5,72 @@
 using namespace cv;
 
 #define JETSON 0
-
 #define runOnGPU JETSON==1
+#define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
+#define FALLBACK_VIDEO "../../data/videos/video_test_camera_fonctionne_pas.mp4"
+#define MAXDISTANCE 50
 
 struct ObjectDetected
 {
-    int class_id;
+    int id;
+    int classYolo;
     float confidence;
     cv::Rect box;
     Vec2f vect;
     Point centreGravity;
+    cv::Scalar color{};
+    std::string className{};
 };
 
+int globalId = 0;
 
-#define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
-
-
-#define FALLBACK_VIDEO "../../data/videos/video_test_camera_fonctionne_pas.mp4"  
-
-
-std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<YOLO::Detection> yoloDetection)
+void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDetected>& objectsCopy)
 {
-    std::vector<ObjectDetected> objects;
+    if (objectsCopy.empty())
+        return;
+
+    std::set<int> usedIds;
+
+    for (ObjectDetected& objectNew : objectsNew)
+    {
+        float minDist = 1000;
+        const ObjectDetected* objectOldRef = nullptr;
+
+        for (const ObjectDetected& objectOld : objectsCopy)
+        {
+            if(usedIds.count(objectOld.id))
+                continue;
+
+            if (objectOld.classYolo != objectNew.classYolo) {
+               continue;
+            }
+
+            Point pOld(objectOld.centreGravity.x + objectOld.vect[0], objectOld.centreGravity.y + objectOld.vect[1]);
+            Point pNew = objectNew.centreGravity;
+
+            float dist = sqrt(((pNew.x  - pOld.x) * (pNew.x  - pOld.x)) + ((pNew.y  - pOld.y) * (pNew.y  - pOld.y)));
+            if (dist > MAXDISTANCE)
+                continue;
+
+            if (dist < minDist) {
+                minDist = dist;
+                objectOldRef = &objectOld;
+            }
+        }
+
+        if (objectOldRef != nullptr) {
+            objectNew.id = objectOldRef->id;
+            usedIds.insert(objectOldRef->id);
+        }
+        else {
+            objectNew.id = globalId++;       
+        }
+    }
+}
+
+std::vector<ObjectDetected> mapping(Mat deplacement,  const std::vector<YOLO::Detection> yoloDetection)
+{
+    std::vector<ObjectDetected> objectsNew;
 
     for (YOLO::Detection detect : yoloDetection)
     {
@@ -53,20 +97,22 @@ std::vector<ObjectDetected> mapping(Mat deplacement, std::vector<YOLO::Detection
         float v = sum_v / count;
 
         float norm = sqrt(u*u + v*v);
-        //if (norm < 1) continue;
+        if (norm < 0.1) continue;
 
         int xGravity = detect.box.x + (detect.box.width) / 2;
         int yGravity = detect.box.y + (detect.box.height) / 2;
 
-        ObjectDetected object{detect.class_id, detect.confidence, detect.box, {u, v}, Point(xGravity, yGravity)};
+        globalId = globalId % 100000;
 
-        objects.push_back(object);
+        ObjectDetected object{-1, detect.class_id, detect.confidence, detect.box, {u, v}, Point(xGravity, yGravity), detect.color, detect.className};
+
+        objectsNew.push_back(object);
     }
 
-    return objects;
+    return objectsNew;
 }
 
-Mat drawMeanFlow(Mat frame, std::vector<ObjectDetected> objects)
+Mat drawMeanFlow(Mat frame, const std::vector<ObjectDetected> objects)
 {
     cv::Mat meanFlowDraw(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
@@ -81,6 +127,29 @@ Mat drawMeanFlow(Mat frame, std::vector<ObjectDetected> objects)
     }
 
     return meanFlowDraw;
+}
+
+void drawTracking(Mat frame, const std::vector<ObjectDetected> objects)
+{
+    int size = objects.size();
+    for (int i = 0; i < size; ++i)
+    {
+        ObjectDetected object = objects[i];
+
+        cv::Rect box = object.box;
+        cv::Scalar color = object.color;
+
+        // Detection box
+        cv::rectangle(frame, box, color, 2);
+
+        // Detection box text
+        std::string classString = object.className + ' ' + std::to_string(object.confidence).substr(0, 4) + " id:" + std::to_string(object.id);
+        cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
+        cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
+
+        cv::rectangle(frame, textBox, color, cv::FILLED);
+        cv::putText(frame, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
+    }
 }
 
 int main(int argc, char** argv)
@@ -128,6 +197,9 @@ int main(int argc, char** argv)
 
     cap >> frameOld;
     cv::cvtColor(frameOld, frameOld, cv::COLOR_BGRA2BGR);
+    std::vector<ObjectDetected> objects;
+    std::vector<ObjectDetected> objectsNew;
+
 
     for(;;){
 
@@ -137,10 +209,14 @@ int main(int argc, char** argv)
         Mat deplacement = opticalFlow.exec(frame, frameOld);
         std::vector<YOLO::Detection> yoloDetection = yolo.exec(frame);
 
-        std::vector<ObjectDetected> objects = mapping(deplacement, yoloDetection);
-        
+        if(!objectsNew.empty()) 
+            objects = objectsNew;
 
-        Mat meanFlowDraw = drawMeanFlow(frame, objects);
+        objectsNew = mapping(deplacement, yoloDetection);
+        tracker(objectsNew, objects);
+
+        Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
+        drawTracking(frame, objectsNew);
 
         cv::imshow("capture", frame);
 
