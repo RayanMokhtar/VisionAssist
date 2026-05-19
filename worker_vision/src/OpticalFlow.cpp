@@ -219,43 +219,43 @@ Mat OpticalFlow::exec(Mat frame, Mat frameOld)
         }
     }
 
-    cv::Mat vis(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
+    // cv::Mat vis(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
-    int step = 20;
-    float scale = 50;
+    // int step = 20;
+    // float scale = 50;
 
-    for (int y = step; y < matDepl.rows - step; y += step)
-    {
-        for (int x = step; x < matDepl.cols - step; x += step)
-        {
-            float sum_u = 0, sum_v = 0;
-            int count = 0;
+    // for (int y = step; y < matDepl.rows - step; y += step)
+    // {
+    //     for (int x = step; x < matDepl.cols - step; x += step)
+    //     {
+    //         float sum_u = 0, sum_v = 0;
+    //         int count = 0;
 
-            for (int j = y - step/2; j < y + step/2; j++)
-            {
-                for (int i = x - step/2; i < x + step/2; i++)
-                {
-                    cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
-                    sum_u += p[0];
-                    sum_v += p[1];
-                    count++;
-                }
-            }
+    //         for (int j = y - step/2; j < y + step/2; j++)
+    //         {
+    //             for (int i = x - step/2; i < x + step/2; i++)
+    //             {
+    //                 cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
+    //                 sum_u += p[0];
+    //                 sum_v += p[1];
+    //                 count++;
+    //             }
+    //         }
 
-            float u = sum_u / count;
-            float v = sum_v / count;
+    //         float u = sum_u / count;
+    //         float v = sum_v / count;
 
-            float norm = sqrt(u*u + v*v);
-            if (norm < 1) continue;
+    //         float norm = sqrt(u*u + v*v);
+    //         if (norm < 1) continue;
 
-            cv::Point p1(x, y);
-            cv::Point p2(x + u * scale, y + v * scale);
+    //         cv::Point p1(x, y);
+    //         cv::Point p2(x + u * scale, y + v * scale);
 
-            cv::arrowedLine(vis, p1, p2, cv::Scalar(0, 0, 255), 2);
-        }
-    }
+    //         cv::arrowedLine(vis, p1, p2, cv::Scalar(0, 0, 255), 2);
+    //     }
+    // }
 
-    cv::imshow("vis", vis);
+    // cv::imshow("vis", vis);
 
     return matDepl;
 }

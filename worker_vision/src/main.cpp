@@ -6,9 +6,11 @@ using namespace cv;
 
 #define JETSON 0
 #define runOnGPU JETSON==1
-#define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
-#define FALLBACK_VIDEO "../../data/videos/video_test_camera_fonctionne_pas.mp4"
-#define MAXDISTANCE 50
+#define USE_WEBCAM_FALLBACK 0  // 1 = activé, 0 = désactivé
+#define FALLBACK_AVEC_CHEMIN_VIDEO "../../data/videos/video1_test.mp4"
+#define MAXDISTANCE 100
+#define MAX_PERSISTANCE 10
+#define RAYON_DETECTION 150
 
 struct ObjectDetected
 {
@@ -20,12 +22,27 @@ struct ObjectDetected
     Point centreGravity;
     cv::Scalar color{};
     std::string className{};
+    int counterDetectionFailed = 0;
+    std::vector<cv::Point> trajectory;
+    std::vector<cv::Vec2f> velocity;
 };
 
 int globalId = 0;
 
 void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDetected>& objectsCopy)
 {
+    //std::cout << "Début tracker ---------------------------------------------------------------------- "<< std::endl;
+
+    // for (const ObjectDetected& objectOld : objectsCopy)
+    // {
+    //     std::cout << "objectOld id: " << objectOld.id << " class: " << objectOld.className << std::endl;
+    // }
+
+    // for (ObjectDetected& objectNew : objectsNew)
+    // {
+    //     std::cout << "objectNew id: " << objectNew.id << " class: " << objectNew.className << std::endl;
+    // }
+
     if (objectsCopy.empty())
         return;
 
@@ -38,44 +55,77 @@ void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDe
 
         for (const ObjectDetected& objectOld : objectsCopy)
         {
-            if(usedIds.count(objectOld.id))
+            if(usedIds.count(objectOld.id)) {
+                //std::cout << "Used id: " << objectOld.id << " class: " << objectOld.className << std::endl;
                 continue;
+            }
 
             if (objectOld.classYolo != objectNew.classYolo) {
+                //std::cout << "Class mismatch: " << objectOld.className << " vs " << objectNew.className << " id: " << objectNew.id << std::endl;
                continue;
             }
 
             Point pOld(objectOld.centreGravity.x + objectOld.vect[0], objectOld.centreGravity.y + objectOld.vect[1]);
             Point pNew = objectNew.centreGravity;
 
+            //std::cout << "pOld: " << pOld << " pNew: " << pNew << " id new: " << objectNew.id << " class: " << objectNew.className << " id old: " << objectOld.id << " class old: " << objectOld.className << std::endl;
+
             float dist = sqrt(((pNew.x  - pOld.x) * (pNew.x  - pOld.x)) + ((pNew.y  - pOld.y) * (pNew.y  - pOld.y)));
-            if (dist > MAXDISTANCE)
+            //std::cout << "id new: " << objectNew.id << " class new: " << objectNew.className << " id old: " << objectOld.id << "class old: " << objectOld.className << " dist: " << dist << " > " << MAXDISTANCE << std::endl;
+            if (dist > MAXDISTANCE) {
                 continue;
+            }
 
             if (dist < minDist) {
                 minDist = dist;
                 objectOldRef = &objectOld;
+                
             }
         }
 
         if (objectOldRef != nullptr) {
             objectNew.id = objectOldRef->id;
             usedIds.insert(objectOldRef->id);
+            objectNew.trajectory = objectOldRef->trajectory;
+            objectNew.trajectory.push_back(objectNew.centreGravity);
+            objectNew.velocity = objectOldRef->velocity;
+            objectNew.velocity.push_back(objectNew.vect);
+
+            if (objectNew.id == 0) {
+                cv::Mat vis(620, 620, CV_8UC3, cv::Scalar(255, 255, 255));
+                for(const Point& p : objectNew.trajectory) {
+                    //std::cout << "object id: " << objectNew.id << " class: " << objectNew.className << " trajectory point: " << p << std::endl;
+                    cv::circle(vis, p, 10, cv::Scalar(0, 0, 255), -1);
+                }
+                cv::imshow("pointo", vis);
+            }
+            
+
+            //std::cout << "SET object id: " << objectNew.id << " class: " << objectNew.className << std::endl;   
         }
-        else {
-            objectNew.id = globalId++;       
-        }
+        // else {
+        //     objectNew.id = globalId++;    
+        //     std::cout << "new object id: " << objectNew.id << " class: " << objectNew.className << std::endl;   
+        // }
     }
+
+        //std::cout << "Fin tracker ---------------------------------------------------------------------- "<< std::endl;
+
 }
 
-std::vector<ObjectDetected> mapping(Mat deplacement,  const std::vector<YOLO::Detection> yoloDetection)
+std::vector<ObjectDetected> mapping(Mat frame, Mat deplacement,  const std::vector<YOLO::Detection> yoloDetection)
 {
     std::vector<ObjectDetected> objectsNew;
+
+
 
     for (YOLO::Detection detect : yoloDetection)
     {
         float sum_u = 0, sum_v = 0;
         int count = 0;
+
+        // std::vector<float> us;
+        // std::vector<float> vs;
 
         for (int j = detect.box.y; j < detect.box.y + detect.box.height; j++)
         {
@@ -89,9 +139,18 @@ std::vector<ObjectDetected> mapping(Mat deplacement,  const std::vector<YOLO::De
                     sum_u += p[0];
                     sum_v += p[1];
                     count++;
+
+                    // us.push_back(p[0]);
+                    // vs.push_back(p[1]);
                 }
             }
         }
+
+        // std::sort(us.begin(), us.end());
+        // std::sort(vs.begin(), vs.end());
+
+        // float u = us[us.size()/2];
+        // float v = vs[vs.size()/2];
 
         float u = sum_u / count;
         float v = sum_v / count;
@@ -104,7 +163,7 @@ std::vector<ObjectDetected> mapping(Mat deplacement,  const std::vector<YOLO::De
 
         globalId = globalId % 100000;
 
-        ObjectDetected object{-1, detect.class_id, detect.confidence, detect.box, {u, v}, Point(xGravity, yGravity), detect.color, detect.className};
+        ObjectDetected object{globalId++, detect.class_id, detect.confidence, detect.box, {u, v}, Point(xGravity, yGravity), detect.color, detect.className, 0, {Point(xGravity, yGravity)}, {{u, v}}};
 
         objectsNew.push_back(object);
     }
@@ -124,6 +183,8 @@ Mat drawMeanFlow(Mat frame, const std::vector<ObjectDetected> objects)
         cv::Point p2(object.centreGravity.x + object.vect[0] * scale, object.centreGravity.y + object.vect[1] * scale);
 
         cv::arrowedLine(meanFlowDraw, p1, p2, cv::Scalar(0, 0, 255), 2);
+
+        cv::arrowedLine(frame, p1, p2, cv::Scalar(0, 255, 0), 2);
     }
 
     return meanFlowDraw;
@@ -149,17 +210,86 @@ void drawTracking(Mat frame, const std::vector<ObjectDetected> objects)
 
         cv::rectangle(frame, textBox, color, cv::FILLED);
         cv::putText(frame, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
+        cv::circle(frame, object.centreGravity, 5, cv::Scalar(0, 0, 255), -1);
+    }
+}
+
+std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDetected> objectsNew, std::vector<ObjectDetected> objectsCopy)
+{
+    std::vector<ObjectDetected> objectsPersistant;
+    objectsPersistant = objectsNew;
+
+    for (ObjectDetected& objectCopy : objectsCopy)
+    {
+        bool found = false;
+        for (const ObjectDetected& objectNew : objectsNew)
+        {
+            if (objectCopy.id == objectNew.id) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found && objectCopy.counterDetectionFailed < MAX_PERSISTANCE) {
+            objectCopy.counterDetectionFailed++;
+            // std::cout << "object id: " << objectCopy.id << " class: " << objectCopy.className << " counterDetectionFailed: " << objectCopy.counterDetectionFailed << std::endl;
+            // objectCopy.centreGravity.x += objectCopy.vect[0];
+            // objectCopy.centreGravity.y += objectCopy.vect[1];
+
+            // objectCopy.box.x += objectCopy.vect[0];
+            // objectCopy.box.y += objectCopy.vect[1];
+
+            objectsPersistant.push_back(objectCopy);
+        }        
+    }
+
+    return objectsPersistant;
+}
+
+
+void decisionMaking(Mat frame, Point centre, const std::vector<ObjectDetected> objectsNew) {
+
+    for (const ObjectDetected& object : objectsNew)
+    {   
+        cv::arrowedLine(frame, object.centreGravity, centre, cv::Scalar(0, 0, 255), 2);
+
+        float dx = object.centreGravity.x - centre.x;
+        float dy = object.centreGravity.y - centre.y;
+
+        float dist = std::sqrt(dx * dx + dy * dy);
+
+        Vec2f versCentre(centre.x - object.centreGravity.x, centre.y - object.centreGravity.y);
+
+        float dot = object.vect[0] * versCentre[0] + object.vect[1] * versCentre[1];
+        float normVect = std::sqrt(object.vect[0] * object.vect[0] + object.vect[1] * object.vect[1]);
+        float normVersCentre = std::sqrt(versCentre[0] * versCentre[0] + versCentre[1] * versCentre[1]);
+        float cosTetha = dot / (normVect * normVersCentre);
+
+        std::cout << "object id: " << object.id << " x : " << object.centreGravity.x  << " y : " << object.centreGravity.y << " class: " << object.className << " distance from center: " << dist << " cos: " << cosTetha << "angle: " << std::acos(cosTetha) * 180 / CV_PI << std::endl;
+
+        if(dist < RAYON_DETECTION && cosTetha > 0.8f) {
+            std::cout << "ALEEEEEEEEEEEEEEERRRRRRRRRRRTTTTTTTTTT: object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
+        }
+        else if(dist < RAYON_DETECTION && cosTetha < 0.8f && cosTetha > 0.5f) {
+            std::cout << "WARNING QUAND MEME: object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
+        }
+        else if(dist < RAYON_DETECTION) {
+            std::cout << "OBJET AU CENTRE MAIS ANGLE PAS DETECTE" << " object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
+        }
+        else {
+            std::cout << "Pas de danger immédiat: object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
+        }
     }
 }
 
 int main(int argc, char** argv)
 {
     OpticalFlow opticalFlow;
-    YOLO yolo("../YoloUtils/yolov8n.onnx", cv::Size(640, 640), "classes.txt", runOnGPU);
+    YOLO yolo("../YoloUtils/yolov8s.onnx", cv::Size(640, 640), "classes.txt", runOnGPU);
     Mat frameOld;
     Mat frame;
 
-#if JETSON
+    VideoCapture cap;   
 
     // TODO : à déplacer peut être dans un meilleur endroit ? où à injecter directement dnas le cap selon choix config
     std::string pipeline =
@@ -169,24 +299,24 @@ int main(int argc, char** argv)
         "video/x-raw, format=BGRx ! "
         "appsink drop=true max-buffers=1 sync=false";
 
-    VideoCapture cap(pipeline, CAP_GSTREAMER);
-#else
-    VideoCapture cap(0);    
-#endif
+    cap.open(pipeline, CAP_GSTREAMER);
 
     // si problème récupérationl video ? on teste avec webcam classqieu (marche avec linux , sinon test video dans le capture ... )
     if (!cap.isOpened()) {
         std::cerr << "Pipeline GStreamer nvidia failed test avec webcam...\n";
 
         if (USE_WEBCAM_FALLBACK) {
-            cap.open(0); 
+            cap.open(0);
             if (!cap.isOpened()) {
                 std::cerr << "Webcam fallback erreur, test avec vidéo\n";
-                cap.open(FALLBACK_VIDEO);
-                if (!cap.isOpened()) {
-                    std::cerr << "Video fallback erreur\n";
-                    return -1;
-                }
+            }        
+        }
+        else if (FALLBACK_AVEC_CHEMIN_VIDEO) {
+            std::cerr << "Webcam fallback erreur, test avec vidéo\n";
+            cap.open(FALLBACK_AVEC_CHEMIN_VIDEO);
+            if (!cap.isOpened()) {
+                std::cerr << "Video fallback erreur\n";
+                return -1;
             }
         }
         else {
@@ -195,6 +325,7 @@ int main(int argc, char** argv)
         }
     }
 
+
     cap >> frameOld;
     cv::cvtColor(frameOld, frameOld, cv::COLOR_BGRA2BGR);
     std::vector<ObjectDetected> objects;
@@ -202,27 +333,71 @@ int main(int argc, char** argv)
 
 
     for(;;){
-
+        std::cout << "------------------ Nouvelle frame ------------------" << std::endl;
         cap >> frame;
         cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
+        cv::circle(frame, cv::Point(frame.cols / 2, frame.rows / 2), 5, cv::Scalar(255, 0, 0), -1);
+        cv::circle(frame, cv::Point(frame.cols / 2, frame.rows / 2), RAYON_DETECTION, cv::Scalar(255, 0, 0), 2);
 
         Mat deplacement = opticalFlow.exec(frame, frameOld);
         std::vector<YOLO::Detection> yoloDetection = yolo.exec(frame);
 
-        if(!objectsNew.empty()) 
-            objects = objectsNew;
+        // for (const ObjectDetected& objectOld : objects)
+        // {
+        //     std::cout << "-------------------- avant objectOld id: " << objectOld.id << " class: " << objectOld.className << std::endl;
+        // }
 
-        objectsNew = mapping(deplacement, yoloDetection);
+        //if(!objectsNew.empty()) 
+        //{
+            // objects = objectsNew;
+        objects = persistanceBetweenFrame(objectsNew, objects);
+        //}
+
+        // for (const ObjectDetected& objectOld : objects)
+        // {
+        //     std::cout << "+++++++++++++++++++ après persistance objectOld id: " << objectOld.id << " class: " << objectOld.className << std::endl;
+        // }
+
+        objectsNew = mapping(frame, deplacement, yoloDetection);
+
+        //std::cout << "Avant Nbr objets YOLO : " << objectsNew.size() << std::endl;
+
+        // for (ObjectDetected& objectNew : objectsNew)
+        // {
+        //     std::cout << "Avant classe : " << objectNew.className << std::endl;
+        // }
+
+        // for (ObjectDetected& objectNew : objectsNew)
+        // {
+        //     std::cout << "YOLO AVANT_SET_ID : " << objectNew.id << " class: " << objectNew.className << std::endl;
+        // }
+
         tracker(objectsNew, objects);
+
+        //std::cout << "Après Nbr objets YOLO : " << objectsNew.size() << std::endl;
+
+        // for (ObjectDetected& objectNew : objectsNew)
+        // {
+        //     std::cout << "Après classe : " << objectNew.className << std::endl;
+        // }
+
+        // for (ObjectDetected& objectNew : objectsNew)
+        // {
+        //     std::cout << "YOLO Apreees_SET_ID :  " << objectNew.id << " class: " << objectNew.className << std::endl;
+        // }
 
         Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
         drawTracking(frame, objectsNew);
+
+        decisionMaking(frame, cv::Point(frame.cols / 2, frame.rows / 2), objectsNew);
 
         cv::imshow("capture", frame);
 
         cv::imshow("deplacement", meanFlowDraw);
 
         frame.copyTo(frameOld);
+
+        ///sleep(0.2);
 
         if(waitKey(1) == 27) break;
     }
