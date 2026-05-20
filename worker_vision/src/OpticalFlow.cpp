@@ -178,7 +178,6 @@ Mat OpticalFlow::exec(Mat frame, Mat frameOld)
         {
             for (int x = 1; x < frame.cols-1; x++)
             {
-                // TODO: Check bornes
                 int cols = 3;
                 int rows = 3;
 
@@ -186,15 +185,12 @@ Mat OpticalFlow::exec(Mat frame, Mat frameOld)
 
                 for (int j = y-rows/2; j < y+rows/2; j++)
                 {
-                    float *ix = frameDiffIntensite.ptr<float>(j);
-                    float *sx = frameSobelX.ptr<float>(j);
-                    float *sy = frameSobelY.ptr<float>(j);
-
                     for (int i = x-cols/2; i < x+cols/2; i++)
                     {
-                        float Ix = ix[i];
-                        float Sx = sx[i];
-                        float Sy = sy[i];
+                        float Ix = frameDiffIntensite.ptr<float>(j)[i];
+                        float Sx = frameSobelX.ptr<float>(j)[i];
+                        float Sy = frameSobelY.ptr<float>(j)[i];
+
                         x2 += Sx * Sx;
                         y2 += Sy * Sy;
                         xy += Sx * Sy;
@@ -214,48 +210,52 @@ Mat OpticalFlow::exec(Mat frame, Mat frameOld)
                     v = (-xy * (-xt) + x2 * (-yt)) / det;
                 }
 
-                matDepl.at<cv::Vec2f>(y, x) = cv::Vec2f(u, v);
+                matDepl.ptr<cv::Vec2f>(y)[x] = cv::Vec2f(u, v);
             }
         }
     }
 
-    // cv::Mat vis(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
+    cv::Mat matOpticalFlow(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
-    // int step = 20;
-    // float scale = 50;
+    int step = 3;
+    float scale = 1;
 
-    // for (int y = step; y < matDepl.rows - step; y += step)
-    // {
-    //     for (int x = step; x < matDepl.cols - step; x += step)
-    //     {
-    //         float sum_u = 0, sum_v = 0;
-    //         int count = 0;
+    for (int y = step; y < matDepl.rows - step; y += step)
+    {
+        for (int x = step; x < matDepl.cols - step; x += step)
+        {
+            float sum_u = 0, sum_v = 0;
+            int count = 0;
 
-    //         for (int j = y - step/2; j < y + step/2; j++)
-    //         {
-    //             for (int i = x - step/2; i < x + step/2; i++)
-    //             {
-    //                 cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
-    //                 sum_u += p[0];
-    //                 sum_v += p[1];
-    //                 count++;
-    //             }
-    //         }
+            for (int j = y - step/2; j < y + step/2; j++)
+            {
+                for (int i = x - step/2; i < x + step/2; i++)
+                {
+                    cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
+                    sum_u += p[0];
+                    sum_v += p[1];
+                    count++;
+                }
+            }
 
-    //         float u = sum_u / count;
-    //         float v = sum_v / count;
+            float u = sum_u / count;
+            float v = sum_v / count;
 
-    //         float norm = sqrt(u*u + v*v);
-    //         if (norm < 1) continue;
+            // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
+            // float u = p[0];
+            // float v = p[1];
 
-    //         cv::Point p1(x, y);
-    //         cv::Point p2(x + u * scale, y + v * scale);
+            //float norm = sqrt(u*u + v*v);
+            //if (norm < 1) continue;
 
-    //         cv::arrowedLine(vis, p1, p2, cv::Scalar(0, 0, 255), 2);
-    //     }
-    // }
+            cv::Point p1(x, y);
+            cv::Point p2(x + u * scale, y + v * scale);
 
-    // cv::imshow("vis", vis);
+            cv::arrowedLine(matOpticalFlow, p1, p2, cv::Scalar(0, 0, 255), 1);
+        }
+    }
+
+    cv::imshow("flux optique", matOpticalFlow);
 
     return matDepl;
 }

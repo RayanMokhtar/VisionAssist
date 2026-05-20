@@ -6,8 +6,9 @@ __pycache__
 **/__pycache__
 env/
 data/tts/modeles/
-*.onnx
 *.onnx.json
 logs/
 *.log
 worker_vision/build/
+script/
+worker_vision/YoloUtils/
