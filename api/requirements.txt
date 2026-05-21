@@ -12,3 +12,6 @@ Pillow>=10.0.0
 
 # LangChain
 langchain>=0.2.11
+
+
+#à ajouter le 

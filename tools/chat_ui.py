@@ -36,16 +36,18 @@ def _save_image(image: Image.Image | None) -> str | None:
 _AGENT = QwenAgent(model_service)
 
 
-def _format_history(history: list[list[str | None]]) -> list[list[str | None]]:
+def _format_history(
+    history: list[dict[str, str]] | None,
+) -> list[dict[str, str]]:
     return history if history is not None else []
 
 
 def _chat(
     message: str,
-    history: list[list[str | None]],
+    history: list[dict[str, str]] | None,
     image: Image.Image | None,
     session_id: str,
-) -> tuple[list[list[str | None]], str]:
+) -> tuple[list[dict[str, str]], str]:
     _ensure_model_loaded()
 
     image_path = _save_image(image)
@@ -56,11 +58,12 @@ def _chat(
         image_url=image_path,
     )
     response = _AGENT.handle(request)
-    if history is None:
-        history = []
-    
+    history = _format_history(history)
+
     user_text = message if image is None else f"{message}\n[image attached]"
-    history.append([user_text, response.response or ""])
+    history.append({"role": "user", "content": user_text})
+    print("contneu de la réponse", response.response)
+    history.append({"role": "assistant", "content": response.response or ""})
     return history, ""
 
 

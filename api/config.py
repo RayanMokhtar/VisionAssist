@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     """Paramètres de l'application, surchargeables via variables d'environnement."""
 
     # --- Modèle ---
-    model_id: str = "/mnt/d/modeles/Qwen3.5-0.8B"
+    model_id: str = "./modeles/Qwen3.5-27B"
     load_in_4bit: bool = True
 
     # --- Génération ---
