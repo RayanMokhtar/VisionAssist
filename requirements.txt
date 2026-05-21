@@ -1,0 +1,35 @@
+# Base
+accelerate>=1.0.0
+numpy>=1.26.0
+Pillow>=10.0.0
+torchvision>=0.19.0
+
+# Hugging Face / Qwen
+git+https://github.com/huggingface/transformers.git
+huggingface_hub>=0.24.0
+tokenizers>=0.20.0
+safetensors>=0.4.0
+sentencepiece>=0.2.0
+
+# Utils multimodales
+qwen-vl-utils>=0.0.8
+
+# Performances / confort
+einops>=0.8.0
+packaging>=24.0
+protobuf>=5.0.0
+requests>=2.32.0
+tqdm>=4.66.0
+
+# Images / vidéo
+opencv-python>=4.10.0
+av>=12.0.0
+
+# Optionnel mais utile pour certains backends / kernels
+scipy>=1.13.0
+
+# Interface locale optionnelle
+gradio<4.0.0
+
+# LangChain
+langchain>=0.2.11
