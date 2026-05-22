@@ -11,3 +11,5 @@ data/tts/modeles/
 logs/
 *.log
 worker_vision/build/
+modeles/
+api/
