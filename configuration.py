@@ -40,6 +40,9 @@ class TopicConfig(BaseModel):
     tts_topic : str = "results/tts"
     vision_topic : str = "results/vision"
     erreurs_topic : str = "results/erreurs" 
+    llm_topic_ecoute_stt : str = "results/stt"
+    llm_topic_ecoute_vision : str = "results/vision"
+    llm_topic_publication : str = "results/tts"
 
 
 

@@ -21,7 +21,6 @@ jetson = [
     "paho-mqtt>=2.0.0",
     "torch",
     "transformers"
-
 ]
 
 server = [
@@ -36,7 +35,8 @@ server = [
     "paho-mqtt>=2.0.0",
     "torch",
     "bitsandbytes==0.49.2",
-    "accelerate"
+    "accelerate",
+    "tqdm"
 ]
 
 #certains trucs se téléchargent pas sur pypi, mais sur l'index
