@@ -15,7 +15,7 @@ https://medium.com/@pinaki.brahma/improve-llm-based-response-through-parent-chil
 
 
 
-
+python3 -m piper.download_voices fr_FR-siwis-medium INSTALLER PIPER 
 ## docs tts : 
 
 
@@ -31,6 +31,7 @@ https://arxiv.org/pdf/2106.06103
 lien vers la démo : https://rhasspy.github.io/piper-samples/demo.html
 
 
+python3 -m piper.download_voices fr_FR-siwis-medium INSTALLER PIPER 
 
 
 entrainement : finetuning modele : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/TRAINING.md
@@ -72,3 +73,7 @@ installer le broker mosquitto via l'installer https://mosquitto.org/download/ : 
 
 
  nvidia-smi driver ... => résoudre probleme de dépendance version torch pas compatible avec le driver .. 
+
+
+ ajouter allow_anonymous dans broker
+ listener 1883 0.0.0.0 dans etc config

@@ -48,7 +48,7 @@ class TopicConfig(BaseModel):
 
 class BrokerConfig(BaseModel):
     type_broker : Literal["RabbitMQ","mosquitto"] = "mosquitto"
-    host: str = "localhost"
+    host: str = "172.20.10.4"
     port: int = Field(1883, ge=1, le=65535)
     keepalive: int = 60
     client_id: str = "visionassist-jetson" #TODO à modifier dans serveurito
