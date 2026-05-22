@@ -63,7 +63,7 @@ class MqttClientBroker(IBroker):
         self.client.unsubscribe(topic)
         logger.info(f"Désabonné de {topic}")
     
-    def isest_connecte_to_broker(self) -> bool:
+    def is_connected_to_broker(self) -> bool:
         return self.est_connecte
     
     def _wrapper_connexion_personnalisee(self, client, userdata, flags, rc):

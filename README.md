@@ -59,3 +59,16 @@ installer le broker mosquitto via l'installer https://mosquitto.org/download/ : 
  3 - cd worker_vision/build 
  4 - cmake ..
  5 - make puis ./main
+
+
+
+
+
+ ## refonte sdépendances 
+
+ pip install -e .[jetson] ou serveur
+
+ uv sync --extra jetson 
+
+
+ nvidia-smi driver ... => résoudre probleme de dépendance version torch pas compatible avec le driver .. 

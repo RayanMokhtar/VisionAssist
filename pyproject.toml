@@ -7,18 +7,45 @@ name = "visionassist"
 version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
-    "faster-whisper>=1.0.0",
-    "pyaudio>=0.2.13",
-    "piper-tts==1.4.1", #je fige pour éviter les problemes
-    "paho-mqtt>=2.0.0",
     "pydantic>=2.0.0",
     "pydantic-settings[toml]>=2.0.0",
     "numpy>=1.21.0",
 ]
 
+#à séparer après avec les commandes les dépendances de chaque module dans le projet 
+[project.optional-dependencies]
+jetson = [
+    "faster-whisper>=1.0.0",
+    "pyaudio>=0.2.13",
+    "piper-tts==1.4.1", #je fige pour éviter les problemes
+    "paho-mqtt>=2.0.0",
+    "torch",
+    "transformers"
+
+]
+
+server = [
+    "fastapi>=0.136.1",
+    "uvicorn>=0.47.0",
+    "gradio>=6.14.0",
+    "langchain>=1.3.1",
+    "langgraph>=1.2.0",
+    "requests>=2.0.0",
+    "fastapi>=0.136.1",
+    "uvicorn>=0.47.0",
+    "paho-mqtt>=2.0.0",
+    "torch",
+    "bitsandbytes==0.49.2",
+    "accelerate"
+]
+
+#certains trucs se téléchargent pas sur pypi, mais sur l'index
+#uv pip install torch --index-url https://download.pytorch.org/whl/cu121 => version là télécharger depuis l'url directement car compatible avec le driver ... 
+#python -m ou uv ou pip install torchvision --index-url https://download.pytorch.org/whl/cu121 
+
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["speech*", "broker*", "repository*"]
+include = ["speech*", "broker*", "repository*","langage*"]
 
 [project.scripts]
 visionassist = "main:main"
