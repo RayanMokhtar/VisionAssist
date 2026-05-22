@@ -1,0 +1,675 @@
+2026-05-22 17:47:38,067 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 18:18:20,512 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 18:28:36,125 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 18:28:36,745 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:28:36,745 - __main__ - INFO - STT en écoute pour enregistrement...
+2026-05-22 18:28:36,755 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:28:47,325 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:28:47,421 - faster_whisper - INFO - VAD filter removed 00:01.056 of audio
+2026-05-22 18:30:35,738 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 18:30:36,246 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:30:36,246 - __main__ - INFO - STT en écoute pour enregistrement...
+2026-05-22 18:30:36,257 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:30:46,795 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:30:46,889 - faster_whisper - INFO - VAD filter removed 00:00.016 of audio
+2026-05-22 18:30:48,531 - __main__ - INFO - Résultat STT publié: Je ne vais pas dire que t'étais tu ne m'a juste qu'elle a l'aime d'y moi, comment tu vas ? Est-ce que tu vas bien ?
+2026-05-22 18:30:59,054 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:30:59,102 - faster_whisper - INFO - VAD filter removed 00:07.792 of audio
+2026-05-22 18:30:59,998 - __main__ - INFO - Résultat STT publié: Amel.
+2026-05-22 18:31:10,474 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:31:10,525 - faster_whisper - INFO - VAD filter removed 00:04.192 of audio
+2026-05-22 18:31:19,681 - __main__ - INFO - Résultat STT publié: on va le faire. On va faire une autre chose. On va faire une autre chose. On va faire une autre chose. Il arrive.
+2026-05-22 18:32:01,155 - __main__ - ERROR - modele pas chargé ??
+2026-05-22 18:32:01,241 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:32:01,241 - broker.broker_repository - INFO - Abonné à results/tts
+2026-05-22 18:32:01,242 - __main__ - INFO - TTS en écoute sur topic results/tts...
+2026-05-22 18:32:01,251 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:32:01,274 - __main__ - INFO - tts demandé pour synthetiser ce texte : Bonjour ! Comment puis-je vous aider aujourd'hui ?
+2026-05-22 18:32:01,275 - broker.broker_repository - ERROR - Caught exception in on_message: # channels not specified
+2026-05-22 18:32:54,908 - broker.broker_repository - INFO - Déconnecté du broker
+2026-05-22 18:32:54,909 - __main__ - INFO - TTS arrêté.
+2026-05-22 18:33:16,743 - __main__ - ERROR - modele pas chargé ??
+2026-05-22 18:33:16,918 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:33:16,918 - broker.broker_repository - INFO - Abonné à results/tts
+2026-05-22 18:33:16,918 - __main__ - INFO - TTS en écoute sur topic results/tts...
+2026-05-22 18:33:17,115 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:33:17,521 - __main__ - INFO - tts demandé pour synthetiser ce texte : Bonjour ! Comment puis-je vous aider aujourd'hui ?
+2026-05-22 18:33:17,522 - broker.broker_repository - ERROR - Caught exception in on_message: # channels not specified
+2026-05-22 18:35:03,447 - broker.broker_repository - INFO - Déconnecté du broker
+2026-05-22 18:35:03,448 - __main__ - INFO - TTS arrêté.
+2026-05-22 18:39:33,579 - __main__ - INFO - Modèle chargé
+2026-05-22 18:39:33,966 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:39:33,967 - broker.broker_repository - INFO - Abonné à results/tts
+2026-05-22 18:39:33,967 - __main__ - INFO - TTS en écoute sur topic results/tts...
+2026-05-22 18:39:33,983 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:34,007 - __main__ - INFO - tts demandé pour synthetiser ce texte : Bonjour ! Comment puis-je vous aider aujourd'hui ?
+2026-05-22 18:39:42,102 - __main__ - INFO - Modèle chargé
+2026-05-22 18:39:42,249 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:39:42,249 - broker.broker_repository - INFO - Abonné à results/tts
+2026-05-22 18:39:42,249 - __main__ - INFO - TTS en écoute sur topic results/tts...
+2026-05-22 18:39:42,259 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:42,360 - __main__ - INFO - tts demandé pour synthetiser ce texte : Bonjour ! Comment puis-je vous aider aujourd'hui ?
+2026-05-22 18:39:43,389 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:46,950 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:47,990 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:49,320 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:50,850 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:51,882 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:53,024 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:54,320 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:55,431 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:56,695 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:58,222 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:39:59,667 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:40:01,189 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:40:02,192 - broker.broker_repository - INFO - Déconnecté du broker
+2026-05-22 18:40:02,193 - __main__ - INFO - TTS arrêté.
+2026-05-22 18:40:02,223 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:40:20,360 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 18:40:20,976 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:40:20,976 - __main__ - INFO - STT en écoute pour enregistrement...
+2026-05-22 18:40:20,986 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:40:31,598 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:40:31,691 - faster_whisper - INFO - VAD filter removed 00:03.040 of audio
+2026-05-22 18:40:33,142 - __main__ - INFO - Résultat STT publié: bonjour elle elle aime comment on va attend aujourd'hui est ce qu'il va bien
+2026-05-22 18:40:43,640 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:40:43,689 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:40:43,786 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:40:54,304 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:40:54,352 - faster_whisper - INFO - VAD filter removed 00:04.720 of audio
+2026-05-22 18:40:59,349 - __main__ - INFO - Résultat STT publié: On va y aller, il va se faire passer par la moitié !
+2026-05-22 18:41:09,958 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:41:10,006 - faster_whisper - INFO - VAD filter removed 00:07.488 of audio
+2026-05-22 18:41:13,995 - __main__ - INFO - Résultat STT publié: C'est à l'heure. C'est très bon. C'est très bon.
+2026-05-22 18:41:24,488 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:41:24,538 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:41:24,741 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:41:35,244 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:41:35,292 - faster_whisper - INFO - VAD filter removed 00:07.424 of audio
+2026-05-22 18:41:36,426 - __main__ - INFO - Résultat STT publié: Là, il n'y a pas toujours à toi, il n'y a pas.
+2026-05-22 18:41:46,975 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:41:47,023 - faster_whisper - INFO - VAD filter removed 00:04.752 of audio
+2026-05-22 18:41:54,027 - __main__ - INFO - Résultat STT publié: J'ai aussi eu du côté de l'explique et une petite, pourquoi? Après, il est pas idéal dans l'outlet, il n'y a pas de problème.
+2026-05-22 18:42:04,598 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:42:04,646 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:42:04,781 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:42:15,299 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:42:15,347 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:42:15,434 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:42:25,934 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:42:25,982 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:42:26,286 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:42:36,846 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:42:36,894 - faster_whisper - INFO - VAD filter removed 00:00.000 of audio
+2026-05-22 18:42:42,363 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:42:52,942 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:42:52,997 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:42:53,015 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:43:03,512 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:43:03,559 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:43:03,744 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:43:14,267 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:43:14,314 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:43:14,720 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:43:25,277 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:43:25,325 - faster_whisper - INFO - VAD filter removed 00:00.000 of audio
+2026-05-22 18:43:27,936 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:43:38,461 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:43:38,509 - faster_whisper - INFO - VAD filter removed 00:05.472 of audio
+2026-05-22 18:43:44,729 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:43:55,320 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:43:55,368 - faster_whisper - INFO - VAD filter removed 00:08.976 of audio
+2026-05-22 18:44:01,216 - __main__ - INFO - Résultat STT publié: C'est bon.
+2026-05-22 18:44:11,788 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:44:11,836 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:44:11,861 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:44:22,364 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:44:22,412 - faster_whisper - INFO - VAD filter removed 00:06.144 of audio
+2026-05-22 18:44:23,843 - __main__ - INFO - Résultat STT publié: Je n'ai pas envie de te faire, mais je ne l'ai pas envie de te faire, mais je n'ai pas envie de te faire.
+2026-05-22 18:44:34,396 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:44:34,444 - faster_whisper - INFO - VAD filter removed 00:07.936 of audio
+2026-05-22 18:44:35,924 - __main__ - INFO - Résultat STT publié: Je vous ferai à vous, je n'ai rien fait, je n'ai rien fait, je n'ai rien fait.
+2026-05-22 18:44:46,431 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:44:46,479 - faster_whisper - INFO - VAD filter removed 00:09.136 of audio
+2026-05-22 18:44:47,406 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:44:57,911 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:44:57,960 - faster_whisper - INFO - VAD filter removed 00:08.992 of audio
+2026-05-22 18:44:58,963 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:45:09,468 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:45:09,516 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:45:09,618 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:45:20,176 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:45:20,225 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:45:20,244 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:45:30,747 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:45:30,795 - faster_whisper - INFO - VAD filter removed 00:07.488 of audio
+2026-05-22 18:45:32,039 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:45:42,525 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:45:42,573 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:45:42,695 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:45:53,227 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:45:53,274 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:45:53,544 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:46:04,085 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:46:04,133 - faster_whisper - INFO - VAD filter removed 00:03.488 of audio
+2026-05-22 18:46:09,323 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:46:19,886 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:46:19,934 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:46:20,270 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:46:30,848 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:46:30,896 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:46:30,915 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:46:41,414 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:46:41,462 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:46:41,477 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:46:51,990 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:46:52,038 - faster_whisper - INFO - VAD filter removed 00:09.024 of audio
+2026-05-22 18:46:53,244 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:47:03,836 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:47:03,884 - faster_whisper - INFO - VAD filter removed 00:03.216 of audio
+2026-05-22 18:47:06,044 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:47:16,616 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:47:16,664 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:47:16,688 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:47:27,188 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:47:27,236 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:47:27,249 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:47:37,745 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:47:37,793 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:47:37,806 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:47:48,299 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:47:48,347 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:47:48,445 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:47:58,941 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:47:58,989 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:47:59,189 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:48:09,689 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:48:09,737 - faster_whisper - INFO - VAD filter removed 00:00.000 of audio
+2026-05-22 18:48:16,803 - __main__ - INFO - Résultat STT publié: et puis on va le faire. On va le faire.
+2026-05-22 18:48:27,293 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:48:27,341 - faster_whisper - INFO - VAD filter removed 00:09.088 of audio
+2026-05-22 18:48:28,579 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:48:39,112 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:48:39,165 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:48:39,235 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:48:49,753 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:48:49,801 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:48:49,816 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:49:00,304 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:49:00,352 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:49:00,528 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:49:11,100 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:49:11,148 - faster_whisper - INFO - VAD filter removed 00:02.832 of audio
+2026-05-22 18:49:12,322 - __main__ - INFO - Résultat STT publié: Je vais vous remercier. Je vais vous remercier. Je vais vous remercier.
+2026-05-22 18:49:22,869 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:49:22,918 - faster_whisper - INFO - VAD filter removed 00:01.008 of audio
+2026-05-22 18:49:24,603 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:49:35,108 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:49:35,157 - faster_whisper - INFO - VAD filter removed 00:04.480 of audio
+2026-05-22 18:49:45,890 - __main__ - INFO - Résultat STT publié: ...
+2026-05-22 18:49:56,477 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:49:56,525 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:49:56,746 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:50:07,245 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:50:07,293 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:50:07,498 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:50:18,041 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:50:18,089 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:50:18,106 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:50:28,636 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:50:28,684 - faster_whisper - INFO - VAD filter removed 00:00.272 of audio
+2026-05-22 18:50:31,252 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:50:41,805 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:50:41,855 - faster_whisper - INFO - VAD filter removed 00:04.080 of audio
+2026-05-22 18:50:48,151 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:50:58,761 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:50:58,809 - faster_whisper - INFO - VAD filter removed 00:08.832 of audio
+2026-05-22 18:50:59,825 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:51:10,423 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:51:10,471 - faster_whisper - INFO - VAD filter removed 00:06.944 of audio
+2026-05-22 18:51:28,810 - __main__ - INFO - Résultat STT publié: Je l'ai vu, je le crue.
+2026-05-22 18:51:39,390 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:51:39,438 - faster_whisper - INFO - VAD filter removed 00:08.864 of audio
+2026-05-22 18:51:40,590 - __main__ - INFO - Résultat STT publié: C'est vrai que c'est vrai que c'est vrai.
+2026-05-22 18:51:51,189 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:51:51,237 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:51:51,340 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:52:01,853 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:52:01,902 - faster_whisper - INFO - VAD filter removed 00:09.088 of audio
+2026-05-22 18:52:02,907 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:52:13,433 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:52:13,488 - faster_whisper - INFO - VAD filter removed 00:06.864 of audio
+2026-05-22 18:52:14,838 - __main__ - INFO - Résultat STT publié: C'est pour ça, c'est pour ça, c'est pour ça, c'est pour ça.
+2026-05-22 18:52:25,335 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:52:25,383 - faster_whisper - INFO - VAD filter removed 00:07.584 of audio
+2026-05-22 18:52:38,487 - __main__ - INFO - Résultat STT publié: et je te prépare là, j'ai pas fait, là, j'ai pas fait.
+2026-05-22 18:52:49,095 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:52:49,143 - faster_whisper - INFO - VAD filter removed 00:08.416 of audio
+2026-05-22 18:52:52,473 - __main__ - INFO - Résultat STT publié: J'espère que vous vous souhaitez.
+2026-05-22 18:53:03,001 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:53:03,049 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:53:03,217 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:53:26,106 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 18:53:26,668 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:53:26,669 - __main__ - INFO - STT en écoute pour enregistrement...
+2026-05-22 18:53:26,873 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:53:37,293 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:53:37,390 - faster_whisper - INFO - VAD filter removed 00:04.320 of audio
+2026-05-22 18:53:44,689 - __main__ - INFO - Résultat STT publié: comme on va suivre, on va faire qu'il y a un lien, et toi, et on est dans la vie.
+2026-05-22 18:53:55,248 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:53:55,297 - faster_whisper - INFO - VAD filter removed 00:08.736 of audio
+2026-05-22 18:53:56,261 - __main__ - INFO - Résultat STT publié: Merci.
+2026-05-22 18:54:06,747 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:54:06,795 - faster_whisper - INFO - VAD filter removed 00:09.152 of audio
+2026-05-22 18:54:07,735 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:54:18,342 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:54:18,390 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:54:18,586 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:54:29,066 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:54:29,113 - faster_whisper - INFO - VAD filter removed 00:08.544 of audio
+2026-05-22 18:54:32,307 - __main__ - INFO - Résultat STT publié: Je m'appelle Jérôme.
+2026-05-22 18:54:42,805 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:54:42,852 - faster_whisper - INFO - VAD filter removed 00:08.016 of audio
+2026-05-22 18:54:45,413 - __main__ - INFO - Résultat STT publié: Je vais vous remercier.
+2026-05-22 18:54:55,972 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:54:56,021 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:54:56,371 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:55:06,889 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:55:06,937 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:55:07,122 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:55:17,713 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:55:17,761 - faster_whisper - INFO - VAD filter removed 00:08.480 of audio
+2026-05-22 18:55:18,796 - __main__ - INFO - Résultat STT publié: C'est un petit petit petit petit petit petit petit petit.
+2026-05-22 18:55:29,276 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:55:29,326 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:55:29,453 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:55:39,980 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:55:40,028 - faster_whisper - INFO - VAD filter removed 00:02.832 of audio
+2026-05-22 18:55:43,274 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:55:53,788 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:55:53,837 - faster_whisper - INFO - VAD filter removed 00:08.992 of audio
+2026-05-22 18:55:55,022 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:56:05,559 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:56:05,606 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:56:05,706 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:56:16,220 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:56:16,268 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:56:16,354 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:56:26,870 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:56:26,918 - faster_whisper - INFO - VAD filter removed 00:08.192 of audio
+2026-05-22 18:56:32,637 - __main__ - INFO - Résultat STT publié: on peut arrêter pour lui.
+2026-05-22 18:56:43,183 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:56:43,231 - faster_whisper - INFO - VAD filter removed 00:08.240 of audio
+2026-05-22 18:56:48,810 - __main__ - INFO - Résultat STT publié: Je vous souhaite, je vous souhaite.
+2026-05-22 18:56:55,654 - __main__ - INFO - Modèle chargé
+2026-05-22 18:56:55,877 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 18:56:55,877 - broker.broker_repository - INFO - Abonné à results/tts
+2026-05-22 18:56:55,878 - __main__ - INFO - TTS en écoute sur topic results/tts...
+2026-05-22 18:56:56,285 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:56:57,065 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 18:56:59,382 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:56:59,431 - faster_whisper - INFO - VAD filter removed 00:04.528 of audio
+2026-05-22 18:57:01,488 - __main__ - INFO - tts demandé pour synthetiser ce texte : C'est une très belle phrase, pleine de sensibilité. Elle exprime souvent un geste de **solidarité**, de **pitié** ou de **respect** envers quelqu'un qui a besoin d'aide, de répit ou de reconnaissance.
+
+Selon le contexte, cela peut signifier :
+*   **S'arrêter physiquement** : Pour aider quelqu'un qui est fatigué, blessé ou en difficulté.
+*   **S'arrêter de travailler/parler** : Pour écouter quelqu'un, lui laisser la parole ou lui rendre hommage.
+*   **S'arrêter de courir après autre chose** : Pour se concentrer sur les besoins de cette personne.
+
+Est-ce que vous faites référence à une situation précise, à un livre, à un film, ou est-ce une réflexion personnelle que vous souhaitez approfondir ?
+2026-05-22 18:57:08,981 - __main__ - INFO - Résultat STT publié: d'un gris déclacage, elle a oublié un poin. Non.
+2026-05-22 18:57:19,610 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:57:19,658 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:57:20,045 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:57:30,606 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:57:30,659 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:57:30,998 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:57:41,548 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:57:41,596 - faster_whisper - INFO - VAD filter removed 00:07.744 of audio
+2026-05-22 18:57:44,012 - __main__ - INFO - Résultat STT publié: ça fait une arroche, il a fait une arroche, ça fait une arroche.
+2026-05-22 18:57:54,498 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:57:54,547 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:57:54,755 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:58:02,027 - __main__ - INFO - tts demandé pour synthetiser ce texte : Je vous souhaite le meilleur, à vous aussi ! Que votre journée soit remplie de joie, de sérénité et de belles surprises.
+
+Y a-t-il quelque chose de particulier que vous aimeriez accomplir ou dont vous aimeriez discuter aujourd'hui ?
+2026-05-22 18:58:05,300 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:58:05,348 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:58:05,362 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:58:15,494 - __main__ - INFO - tts demandé pour synthetiser ce texte : Il semble qu'il y ait quelques coquilles ou des mots mal orthographiés dans votre phrase. Voici une tentative de correction pour mieux comprendre votre pensée :
+
+**Correction probable :**
+> « D'un **gris délavé**, elle a oublié un **point**. Non. »
+
+**Analyse des corrections :**
+*   **déclacage** → **délavé** : Le mot « délavé » signifie dont la couleur s'est estompée (souvent utilisé pour le gris ou le bleu). « Déclacage » n'existe pas dans ce contexte.
+*   **poin** → **point** : Il manquait le « t » final.
+*   **Contexte** : La phrase semble décrire une situation où une couleur (gris délavé) est associée à une erreur ou un oubli (« un point »), suivi d'un refus ou d'une négation (« Non »).
+
+Est-ce que cette correction correspond à ce que vous vouliez dire ? Si vous faisiez référence à un contexte spécifique (comme de la couture, de la peinture, ou une métaphore), n'hésitez pas à préciser !
+2026-05-22 18:58:16,011 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:58:16,073 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:58:16,362 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:58:26,922 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:58:26,970 - faster_whisper - INFO - VAD filter removed 00:08.576 of audio
+2026-05-22 18:58:28,035 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:58:38,513 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:58:38,562 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:58:38,889 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:58:49,436 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:58:49,483 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:58:49,744 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:59:00,297 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:59:00,345 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:59:00,706 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:59:11,195 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:59:11,248 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:59:11,657 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:59:22,214 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:59:22,266 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:59:22,614 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:59:29,066 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 18:59:33,099 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:59:33,147 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:59:33,170 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:59:43,668 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:59:43,716 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 18:59:44,119 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 18:59:54,617 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 18:59:54,665 - faster_whisper - INFO - VAD filter removed 00:08.512 of audio
+2026-05-22 18:59:55,692 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:00:06,262 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:00:06,310 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:00:06,443 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:00:16,989 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:00:17,042 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:00:17,399 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:00:27,926 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:00:27,974 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:00:28,253 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:00:38,779 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:00:38,827 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:00:39,210 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:00:49,765 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:00:49,813 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:00:49,964 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:01:00,487 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:01:00,535 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:01:00,617 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:01:11,159 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:01:11,207 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:01:11,466 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:01:21,992 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:01:22,041 - faster_whisper - INFO - VAD filter removed 00:06.928 of audio
+2026-05-22 19:01:22,935 - __main__ - INFO - Résultat STT publié: bonjour Paris comment va-tu ?
+2026-05-22 19:01:33,461 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:01:33,509 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:01:33,685 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:01:44,233 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:01:44,281 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:01:44,541 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:01:51,030 - __main__ - INFO - Modèle chargé
+2026-05-22 19:01:51,100 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 19:01:51,101 - broker.broker_repository - INFO - Abonné à results/tts
+2026-05-22 19:01:51,101 - __main__ - INFO - TTS en écoute sur topic results/tts...
+2026-05-22 19:01:51,111 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 19:01:51,135 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:01:55,032 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:01:55,083 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:01:55,284 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:02:00,208 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:02:05,771 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:02:05,819 - faster_whisper - INFO - VAD filter removed 00:06.944 of audio
+2026-05-22 19:02:06,762 - __main__ - INFO - Résultat STT publié: bonjour, m'a fait le carrément.
+2026-05-22 19:02:17,268 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:02:17,316 - faster_whisper - INFO - VAD filter removed 00:08.560 of audio
+2026-05-22 19:02:18,333 - __main__ - INFO - Résultat STT publié: bonjour !
+2026-05-22 19:02:28,471 - __main__ - INFO - tts demandé pour synthetiser ce texte : Bonjour ! Je pense qu'il y a peut-être une petite faute de frappe ou une confusion dans votre phrase.
+
+Voulez-vous dire :
+1.  **« Bonjour, m'a fait le carrément »** (ce qui ne veut pas vraiment dire quelque chose de clair) ?
+2.  **« Bonjour, fais-moi le carrément »** (en demandant de faire quelque chose de manière directe ou franche) ?
+3.  Ou bien vous vouliez dire **« Bonjour, ça fait carrément du bien »** ?
+
+Pourriez-vous préciser ce que vous souhaitez que je fasse ou ce que vous voulez dire ? Je suis là pour vous aider !
+2026-05-22 19:02:28,955 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:02:29,060 - faster_whisper - INFO - VAD filter removed 00:08.080 of audio
+2026-05-22 19:02:31,241 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:02:32,597 - broker.broker_repository - INFO - Déconnecté du broker
+2026-05-22 19:02:32,597 - __main__ - INFO - STT arrêté.
+2026-05-22 19:02:48,117 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 19:02:48,553 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 19:02:48,553 - __main__ - INFO - STT en écoute pour enregistrement...
+2026-05-22 19:02:48,562 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 19:02:59,115 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:02:59,207 - faster_whisper - INFO - VAD filter removed 00:05.232 of audio
+2026-05-22 19:03:04,801 - __main__ - INFO - tts demandé pour synthetiser ce texte : Bonjour ! Comment puis-je vous aider aujourd'hui ?
+2026-05-22 19:03:08,333 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:03:09,949 - __main__ - INFO - Résultat STT publié: Je suis en train de faire une chaise. Pour ce moment, je suis en train de faire une chaise.
+2026-05-22 19:03:20,523 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:03:20,576 - faster_whisper - INFO - VAD filter removed 00:08.992 of audio
+2026-05-22 19:03:21,578 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:03:32,134 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:03:32,182 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:03:32,273 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:03:42,834 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:03:42,882 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:03:43,224 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:03:53,729 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:03:53,777 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:03:54,181 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:04:04,669 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:04:04,717 - faster_whisper - INFO - VAD filter removed 00:05.440 of audio
+2026-05-22 19:04:09,449 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:04:20,003 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:04:20,051 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:04:20,396 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:04:30,998 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:04:31,047 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:04:31,455 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:04:41,919 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:04:41,967 - faster_whisper - INFO - VAD filter removed 00:06.032 of audio
+2026-05-22 19:04:43,231 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:04:53,728 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:04:53,780 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:04:53,983 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:05:04,546 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:05:04,595 - faster_whisper - INFO - VAD filter removed 00:00.112 of audio
+2026-05-22 19:05:08,939 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:05:19,468 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:05:19,517 - faster_whisper - INFO - VAD filter removed 00:06.128 of audio
+2026-05-22 19:05:20,920 - __main__ - INFO - Résultat STT publié: C'est vrai que vous êtes en train de l'administration et que vous êtes en train de l'administration et que vous êtes en train d'administration
+2026-05-22 19:05:31,526 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:05:31,574 - faster_whisper - INFO - VAD filter removed 00:04.528 of audio
+2026-05-22 19:05:40,677 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:05:51,280 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:05:51,328 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:05:51,528 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:06:02,082 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:06:02,130 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:06:02,188 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:06:12,688 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:06:12,736 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:06:12,831 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:06:23,375 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:06:23,423 - faster_whisper - INFO - VAD filter removed 00:03.136 of audio
+2026-05-22 19:06:24,710 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:06:35,253 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:06:35,301 - faster_whisper - INFO - VAD filter removed 00:00.448 of audio
+2026-05-22 19:06:36,383 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:06:46,902 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:06:46,951 - faster_whisper - INFO - VAD filter removed 00:01.280 of audio
+2026-05-22 19:06:51,438 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:07:02,032 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:07:02,084 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:07:02,098 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:07:12,586 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:07:12,635 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:07:12,736 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:07:23,289 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:07:23,342 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:07:23,393 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:07:33,915 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:07:33,964 - faster_whisper - INFO - VAD filter removed 00:00.384 of audio
+2026-05-22 19:07:34,689 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:07:45,233 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:07:45,281 - faster_whisper - INFO - VAD filter removed 00:07.936 of audio
+2026-05-22 19:07:46,637 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:07:57,205 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:07:57,254 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:07:57,486 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:08:08,049 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:08:08,097 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:08:08,443 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:08:19,017 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:08:19,070 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:08:19,194 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:08:29,680 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:08:29,733 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:08:30,049 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:08:40,611 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:08:40,659 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:08:40,803 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:08:51,374 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:08:51,423 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:08:51,861 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:09:02,337 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:09:02,389 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:09:02,817 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:09:13,384 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:09:13,433 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:09:14,160 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:09:24,712 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:09:24,764 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:09:24,785 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:09:35,347 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:09:35,395 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:09:35,585 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:09:46,127 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:09:46,175 - faster_whisper - INFO - VAD filter removed 00:08.592 of audio
+2026-05-22 19:09:47,098 - __main__ - INFO - Résultat STT publié: C'est tout le monde, c'est tout le monde.
+2026-05-22 19:09:57,641 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:09:57,689 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:09:58,006 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:10:08,493 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:10:08,542 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:10:08,765 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:10:19,359 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:10:19,407 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:10:19,619 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:10:30,164 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:10:30,213 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:10:30,575 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:10:41,088 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:10:41,136 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:10:41,532 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:10:52,052 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:10:52,100 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:10:52,114 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:11:02,674 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:11:02,722 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:11:02,932 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:11:13,424 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:11:13,472 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:11:13,686 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:11:24,234 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:11:24,283 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:11:24,438 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:11:34,950 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:11:34,998 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:11:35,189 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:11:45,750 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:11:45,798 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:11:45,941 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:11:56,461 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:11:56,514 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:11:56,694 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:12:07,184 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:12:07,232 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:12:07,246 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:12:17,787 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:12:17,835 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:12:17,848 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:12:28,408 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:12:28,458 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:12:28,472 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:12:38,988 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:12:39,036 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:12:39,395 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:12:49,801 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:12:49,993 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:12:50,045 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:12:50,062 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:12:55,065 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:13:00,593 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:13:00,641 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:13:01,002 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:13:05,916 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:13:11,591 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:13:11,644 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:13:11,754 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:13:16,749 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:13:22,313 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:13:22,361 - faster_whisper - INFO - VAD filter removed 00:09.984 of audio
+2026-05-22 19:13:22,404 - __main__ - INFO - Résultat STT publié: 
+2026-05-22 19:13:27,398 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:15:36,183 - broker.broker_repository - INFO - Déconnecté du broker
+2026-05-22 19:15:36,184 - __main__ - INFO - TTS arrêté.
+2026-05-22 19:16:54,355 - __main__ - INFO - Modèle chargé
+2026-05-22 19:16:54,494 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 19:16:54,494 - broker.broker_repository - INFO - Abonné à results/tts
+2026-05-22 19:16:54,495 - __main__ - INFO - TTS en écoute sur topic results/tts...
+2026-05-22 19:16:54,508 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 19:16:54,533 - __main__ - WARNING - Message TTS sans texte
+2026-05-22 19:17:00,725 - httpx - INFO - HTTP Request: GET https://huggingface.co/api/models/Systran/faster-whisper-tiny/revision/main "HTTP/1.1 200 OK"
+2026-05-22 19:17:01,134 - broker.broker_repository - INFO - Connecté à 172.20.10.4:1883
+2026-05-22 19:17:01,134 - __main__ - INFO - STT en écoute pour enregistrement...
+2026-05-22 19:17:01,147 - broker.broker_repository - INFO - Connecté au broker
+2026-05-22 19:17:11,723 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:17:11,815 - faster_whisper - INFO - VAD filter removed 00:05.024 of audio
+2026-05-22 19:17:13,113 - __main__ - INFO - Résultat STT publié: Bonjour, je m'appelle Karim, je ne sais pas où je suis, êtes-moi.
+2026-05-22 19:17:20,949 - __main__ - INFO - tts demandé pour synthetiser ce texte : Karim, je suis votre assistant. Décrivez votre environnement pour vous aider.
+2026-05-22 19:17:28,707 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:17:28,755 - faster_whisper - INFO - VAD filter removed 00:07.920 of audio
+2026-05-22 19:17:29,599 - __main__ - INFO - Résultat STT publié: Je suis...
+2026-05-22 19:17:36,242 - __main__ - INFO - tts demandé pour synthetiser ce texte : Bonjour. Je suis là pour vous aider. Que souhaitez-vous faire ?
+2026-05-22 19:17:45,182 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:17:45,230 - faster_whisper - INFO - VAD filter removed 00:06.016 of audio
+2026-05-22 19:17:46,788 - __main__ - INFO - Résultat STT publié: C'est l'amère, c'est l'amère, tu te dis, c'est pas où je suis !
+2026-05-22 19:17:53,761 - __main__ - INFO - tts demandé pour synthetiser ce texte : Ne paniquez pas. Restez calme. Décrivez votre environnement immédiatement.
+2026-05-22 19:18:02,381 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:18:02,429 - faster_whisper - INFO - VAD filter removed 00:07.440 of audio
+2026-05-22 19:18:05,525 - __main__ - INFO - Résultat STT publié: c'est pas une autre
+2026-05-22 19:18:12,192 - __main__ - INFO - tts demandé pour synthetiser ce texte : Je suis là pour vous aider. Dites-moi votre besoin.
+2026-05-22 19:18:21,120 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:18:21,169 - faster_whisper - INFO - VAD filter removed 00:06.512 of audio
+2026-05-22 19:18:22,116 - __main__ - INFO - Résultat STT publié: Est-ce que c'est la merde ? Il va me cuire !
+2026-05-22 19:18:29,283 - __main__ - INFO - tts demandé pour synthetiser ce texte : Non, ce n'est pas ça. Restez calme et concentrez-vous.
+2026-05-22 19:18:37,696 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:18:37,744 - faster_whisper - INFO - VAD filter removed 00:06.304 of audio
+2026-05-22 19:18:38,823 - __main__ - INFO - Résultat STT publié: Ah, c'est vrai, c'est vrai, c'est vrai, c'est vrai.
+2026-05-22 19:18:45,565 - __main__ - INFO - tts demandé pour synthetiser ce texte : Je suis là. Dites-moi ce que vous voulez faire.
+2026-05-22 19:18:54,409 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:18:54,458 - faster_whisper - INFO - VAD filter removed 00:08.496 of audio
+2026-05-22 19:19:00,515 - __main__ - INFO - Résultat STT publié: C'est ce que tu veux, en tout cas, c'est ce que tu veux.
+2026-05-22 19:19:06,969 - __main__ - INFO - tts demandé pour synthetiser ce texte : Je suis là pour vous aider. Que souhaitez-vous faire ?
+2026-05-22 19:19:16,122 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:19:16,170 - faster_whisper - INFO - VAD filter removed 00:04.720 of audio
+2026-05-22 19:19:17,411 - __main__ - INFO - Résultat STT publié: Sabine est authentifié, elle n'arrive pas à l'encer sur l'ogistie.
+2026-05-22 19:19:23,967 - __main__ - INFO - tts demandé pour synthetiser ce texte : Vérifiez la connexion internet et rechargez la page.
+2026-05-22 19:19:33,031 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:19:33,079 - faster_whisper - INFO - VAD filter removed 00:06.528 of audio
+2026-05-22 19:19:34,307 - __main__ - INFO - Résultat STT publié: Et ça dit de vérifier la connexion interrette.
+2026-05-22 19:19:40,980 - __main__ - INFO - tts demandé pour synthetiser ce texte : Vérifiez si le câble est bien branché ou le Wi-Fi.
+2026-05-22 19:19:49,899 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:19:49,947 - faster_whisper - INFO - VAD filter removed 00:05.744 of audio
+2026-05-22 19:19:51,203 - __main__ - INFO - Résultat STT publié: Oui, mais tu m'as aujourd'hui. Est-ce que le oui-y ?
+2026-05-22 19:19:57,449 - __main__ - INFO - tts demandé pour synthetiser ce texte : Oui, je suis là pour vous aider aujourd'hui.
+2026-05-22 19:20:06,793 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:20:06,841 - faster_whisper - INFO - VAD filter removed 00:03.552 of audio
+2026-05-22 19:20:07,997 - __main__ - INFO - Résultat STT publié: Non, non, le bleu tout, il est bien ou pas, et pas !
+2026-05-22 19:20:14,342 - __main__ - INFO - tts demandé pour synthetiser ce texte : Le bleu est une couleur claire, souvent visible.
+2026-05-22 19:20:23,567 - faster_whisper - INFO - Processing audio with duration 00:09.984
+2026-05-22 19:20:23,619 - faster_whisper - INFO - VAD filter removed 00:05.248 of audio
+2026-05-22 19:20:24,690 - __main__ - INFO - Résultat STT publié: Le bouchon, le bouchon, le technologie.
+2026-05-22 19:20:31,241 - __main__ - INFO - tts demandé pour synthetiser ce texte : Le bouchon ferme la bouteille. La technologie l'améliore.

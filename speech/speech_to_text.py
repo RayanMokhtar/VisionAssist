@@ -3,6 +3,8 @@ import tempfile
 import time
 import wave
 import pyaudio
+import logging
+import uuid
 
 from typing import Callable, Optional , Literal 
 
@@ -11,7 +13,20 @@ from pydantic import BaseModel, Field
 from faster_whisper import WhisperModel
 
 from configuration import CONFIGURATION
+from broker.service import get_broker_client 
+from broker.broker_interface import IBroker 
 
+
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  
+    handlers=[
+        logging.StreamHandler(), #console 
+        logging.FileHandler(CONFIGURATION.paths.log_file), #fichier log
+    ]
+)
+
+LOGGER = logging.getLogger(__name__)
 
 #Lien de la cdoc de doc de la librairie faster_whisper :  https://github.com/SYSTRAN/faster-whisper
 
@@ -140,11 +155,41 @@ class SpeechToText:
         try:
             transcription = self.transcrire_fichier_audio(chemin_fichier)
             print("résultat transcription" , transcription)
+            return transcription
         finally:
             if type == "micro":
                 os.unlink(chemin_fichier)
 
-instance_stt = SpeechToText()
-resultat = instance_stt.pipeline(type="micro", duree_record=10)
 
-  
+def lancement_service_stt(client_id: str = "stt", topic_publie: str = CONFIGURATION.broker.topics.stt_topic):
+    broker = get_broker_client(client_id)
+    STT = SpeechToText()
+    broker.connexion()
+    
+    LOGGER.info("STT en écoute pour enregistrement...")
+    
+    try:
+        while True:
+            print("stt relancé, en écoute")
+            resultat = STT.pipeline(type="micro", duree_record=10)
+
+            message = {
+                "resultat_stt":{"texte": resultat.texte,
+                "langue": resultat.language,
+                "confiance": resultat.language_probability,
+                "segments": [s.dict() for s in resultat.segments],
+                "duree_ms": resultat.duration_ms},
+                "session_id":str(uuid.uuid4()) # ajouter logique centralisation session_id
+            }
+            
+            broker.publier(topic_publie, message)
+            LOGGER.info("Résultat STT publié: %s", resultat.texte)
+            time.sleep(5)
+            
+    except KeyboardInterrupt:
+        broker.deconnexion()
+        LOGGER.info("STT arrêté.")
+
+
+# Lancer le service
+lancement_service_stt()

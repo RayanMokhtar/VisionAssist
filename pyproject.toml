@@ -13,6 +13,8 @@ dependencies = [
 ]
 
 #à séparer après avec les commandes les dépendances de chaque module dans le projet 
+#python3 -m piper.download_voices fr_FR-siwis-medium
+
 [project.optional-dependencies]
 jetson = [
     "faster-whisper>=1.0.0",
@@ -22,7 +24,6 @@ jetson = [
     "torch",
     "transformers"
 ]
-
 server = [
     "fastapi>=0.136.1",
     "uvicorn>=0.47.0",
