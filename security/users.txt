@@ -1,0 +1,1 @@
+card_id | user_id | role | status | last_auth
