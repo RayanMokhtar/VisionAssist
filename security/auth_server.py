@@ -9,6 +9,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
 sys.path.insert(0, str(PROJECT_DIR))
+os.environ.setdefault("ENV_FILE", str(PROJECT_DIR / ".env.auth_server"))
 
 from broker.service import get_broker_client
 from configuration import CONFIGURATION
@@ -16,7 +17,8 @@ from configuration import CONFIGURATION
 
 DB_FILE = Path(__file__).with_name("users.txt")
 TOPICS = CONFIGURATION.broker.topics
-AUTH_REQUEST_SECURITY = TOPICS.security_request_topic
+AUTH_CLIENT_REQUEST_SECURITY = TOPICS.security_client_request_topic
+AUTH_ADMIN_REQUEST_SECURITY = TOPICS.security_admin_request_topic
 AUTH_RESPONSE_SECURITY = TOPICS.security_response_topic
 
 
@@ -188,12 +190,16 @@ def handle_status(broker, _topic, request):
 
 def handle_security_request(broker, topic, request):
     action = str(request.get("action", "")).strip().lower()
-    handlers = {
-        "verify-card": handle_verify_card,
-        "prepare-card": handle_prepare_card,
-        "activate-card": handle_activate_card,
-        "status": handle_status,
-    }
+    if topic == AUTH_CLIENT_REQUEST_SECURITY:
+        handlers = {
+            "verify-card": handle_verify_card,
+        }
+    else:
+        handlers = {
+            "prepare-card": handle_prepare_card,
+            "activate-card": handle_activate_card,
+            "status": handle_status,
+        }
     handler = handlers.get(action)
     if not handler:
         publish_response(broker, request, {"success": False, "error": f"action inconnue: {action}"})
@@ -206,9 +212,10 @@ def main():
     broker = get_broker_client("auth-server")
     broker.connexion()
     time.sleep(0.5)
-    broker.sabonner(AUTH_REQUEST_SECURITY, lambda topic, payload: handle_security_request(broker, topic, payload))
+    broker.sabonner(AUTH_CLIENT_REQUEST_SECURITY, lambda topic, payload: handle_security_request(broker, topic, payload))
+    broker.sabonner(AUTH_ADMIN_REQUEST_SECURITY, lambda topic, payload: handle_security_request(broker, topic, payload))
     print("Auth server MQTT lance")
-    print(f"Topic ecoute: {AUTH_REQUEST_SECURITY}")
+    print(f"Topics ecoutes: {AUTH_CLIENT_REQUEST_SECURITY}, {AUTH_ADMIN_REQUEST_SECURITY}")
     print(f"Topic reponse: {AUTH_RESPONSE_SECURITY}")
     print(f"BDD texte: {DB_FILE}")
     try:
