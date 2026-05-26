@@ -81,6 +81,7 @@ installer le broker mosquitto via l'installer https://mosquitto.org/download/ : 
 
  ### Carte Gemalto  : 
  sudo apt install pcscd pcsc-tools swig python3-dev libpcsclite-dev
+ 
  pip install pyscard (Dans un venv)
 
 Vérifier que le lecteur est détecté :
