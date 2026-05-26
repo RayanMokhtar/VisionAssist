@@ -87,3 +87,9 @@ sudo apt install -y nvidia-driver-550# maj driver
 
  ajouter allow_anonymous dans broker
  listener 1883 0.0.0.0 dans etc config
+ ### Carte Gemalto  : 
+ sudo apt install pcscd pcsc-tools swig python3-dev libpcsclite-dev
+ pip install pyscard (Dans un venv)
+
+Vérifier que le lecteur est détecté :
+pcsc_scan
