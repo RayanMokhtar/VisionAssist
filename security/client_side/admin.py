@@ -18,6 +18,7 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 sys.path.insert(0, CLIENT_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, PROJECT_DIR)
+os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env.admin"))
 os.chdir(CLIENT_DIR)
 
 from smartcard.util import toHexString
@@ -49,7 +50,7 @@ ADDR_CSC2_COUNTER = 0x3B            # CSC 2 Ratification Counter
 ADDR_PROTECTED_START = 0x3C         # Protected Area (0x3C-0x3F)
 ADDR_PROTECTED_END = 0x3F
 TOPICS = CONFIGURATION.broker.topics
-AUTH_REQUEST_SECURITY = TOPICS.security_request_topic
+AUTH_ADMIN_REQUEST_SECURITY = TOPICS.security_admin_request_topic
 AUTH_RESPONSE_SECURITY = TOPICS.security_response_topic
 PUBLIC_CARD_ID_START = 0x01
 PUBLIC_CARD_ID_WORDS = 2
@@ -204,7 +205,7 @@ def mqtt_request(action, payload, timeout=10):
     request["action"] = action
     request["request_id"] = request_id
     request["client_id"] = client_id
-    if not broker.publier(AUTH_REQUEST_SECURITY, request):
+    if not broker.publier(AUTH_ADMIN_REQUEST_SECURITY, request):
         broker.deconnexion()
         raise RuntimeError("publication MQTT impossible")
 

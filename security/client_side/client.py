@@ -12,6 +12,7 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 sys.path.insert(0, CLIENT_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, PROJECT_DIR)
+os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env.client"))
 os.chdir(CLIENT_DIR)
 
 from broker.service import get_broker_client  # noqa: E402
@@ -20,7 +21,7 @@ from common.reader import connect_card, is_sw_ok, read_word_bytes, verify_csc1  
 
 
 TOPICS = CONFIGURATION.broker.topics
-AUTH_REQUEST_SECURITY = TOPICS.security_request_topic
+AUTH_CLIENT_REQUEST_SECURITY = TOPICS.security_client_request_topic
 AUTH_RESPONSE_SECURITY = TOPICS.security_response_topic
 PUBLIC_CARD_ID_START = 0x01
 PUBLIC_CARD_ID_WORDS = 2
@@ -82,7 +83,7 @@ def mqtt_request(action, payload, timeout=10):
     request["action"] = action
     request["request_id"] = request_id
     request["client_id"] = client_id
-    if not broker.publier(AUTH_REQUEST_SECURITY, request):
+    if not broker.publier(AUTH_CLIENT_REQUEST_SECURITY, request):
         broker.deconnexion()
         raise RuntimeError("publication MQTT impossible")
 
