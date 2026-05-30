@@ -2,6 +2,10 @@
 #include "OpticalFlow.h"
 
 #include "opencv2/opencv.hpp"
+#include <gpiod.h>
+#include <chrono>
+#include <thread>
+
 using namespace cv;
 
 #define JETSON 1
@@ -369,22 +373,48 @@ void decisionMaking(Mat frame, Point centre, const std::vector<ObjectDetected> o
     }
 }
 
+void beep(int secondes)
+{
+    gpiod_chip* chip = gpiod_chip_open_by_name("gpiochip0");
+    gpiod_line* line = gpiod_chip_get_line(chip, 144);
+
+    gpiod_line_request_output(line, "buzzer", 0);
+
+    auto fin = std::chrono::steady_clock::now() + std::chrono::seconds(secondes);
+
+    while (std::chrono::steady_clock::now() < fin)
+    {
+        gpiod_line_set_value(line, 1);
+        std::this_thread::sleep_for(std::chrono::microseconds(250));
+
+        gpiod_line_set_value(line, 0);
+        std::this_thread::sleep_for(std::chrono::microseconds(250));
+    }
+
+    gpiod_line_release(line);
+    gpiod_chip_close(chip);
+}
+
 int main(int argc, char** argv)
 {
     OpticalFlow opticalFlow;
-    YOLO yolo("../YoloUtils/yolov8l.onnx", cv::Size(640, 640), "classes.txt", runOnGPU);
+    YOLO yolo("../YoloUtils/yolov8n.onnx", cv::Size(640, 640), "classes.txt", false);
     Mat frameOld;
     Mat frame;
 
     VideoCapture cap;   
 
+    beep(10);
+
 #if USE_WEBCAM_FALLBACK
     // TODO : à déplacer peut être dans un meilleur endroit ? où à injecter directement dnas le cap selon choix config
     std::string pipeline =
         "nvarguscamerasrc sensor-id=0 ! "
-        "video/x-raw(memory:NVMM), width=640, height=640, framerate=30/1 ! "
+        "video/x-raw(memory:NVMM), width=1280, height=720, framerate=30/1 ! "
         "nvvidconv ! "
-        "video/x-raw, format=BGRx ! "
+        "video/x-raw, width=640, height=640, format=BGRx ! "
+        "videoconvert ! "
+        "video/x-raw, format=BGR ! "
         "appsink drop=true max-buffers=1 sync=false";
 
     cap.open(pipeline, CAP_GSTREAMER);
@@ -425,7 +455,6 @@ int main(int argc, char** argv)
         //std::cout << "------------------ Nouvelle frame ------------------" << std::endl;
         cap >> frame;
 
-        
         //frame.resize(640, 640);
         
         cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);

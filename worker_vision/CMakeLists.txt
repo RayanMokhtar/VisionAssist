@@ -38,4 +38,5 @@ target_link_libraries(main
     PRIVATE
         ${OpenCV_LIBS}
         OpenMP::OpenMP_CXX
+        gpiod
 )
