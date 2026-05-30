@@ -12,7 +12,8 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 sys.path.insert(0, CLIENT_DIR)
 sys.path.insert(0, BASE_DIR)
 sys.path.insert(0, PROJECT_DIR)
-os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env.client"))
+os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env"))
+os.environ.setdefault("BROKER_CREDENTIAL_PROFILE", "CLIENT")
 os.chdir(CLIENT_DIR)
 
 from broker.service import get_broker_client  # noqa: E402
