@@ -9,7 +9,8 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 PROJECT_DIR = BASE_DIR.parent
 sys.path.insert(0, str(PROJECT_DIR))
-os.environ.setdefault("ENV_FILE", str(PROJECT_DIR / ".env.auth_server"))
+os.environ.setdefault("ENV_FILE", str(PROJECT_DIR / ".env"))
+os.environ.setdefault("BROKER_CREDENTIAL_PROFILE", "AUTH_SERVER")
 
 from broker.service import get_broker_client
 from configuration import CONFIGURATION
