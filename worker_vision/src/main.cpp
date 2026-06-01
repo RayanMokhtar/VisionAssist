@@ -382,14 +382,18 @@ void beep(int secondes)
 
     auto fin = std::chrono::steady_clock::now() + std::chrono::seconds(secondes);
 
+    gpiod_line_set_value(line, 1);
+
     while (std::chrono::steady_clock::now() < fin)
     {
-        gpiod_line_set_value(line, 1);
-        std::this_thread::sleep_for(std::chrono::microseconds(250));
+        // gpiod_line_set_value(line, 1);
+        // std::this_thread::sleep_for(std::chrono::microseconds(250));
 
-        gpiod_line_set_value(line, 0);
-        std::this_thread::sleep_for(std::chrono::microseconds(250));
+        // gpiod_line_set_value(line, 0);
+        // std::this_thread::sleep_for(std::chrono::microseconds(250));
     }
+
+    gpiod_line_set_value(line, 0);
 
     gpiod_line_release(line);
     gpiod_chip_close(chip);

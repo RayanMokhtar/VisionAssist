@@ -6,7 +6,7 @@ from configuration import CONFIGURATION
 
 
 
-def get_broker_client(client_id : str | None ) -> IBroker:
+def get_broker_client(client_id : str | None = None ) -> IBroker:
     if not client_id : 
         client_id = conf_broker.client_id
     if conf_broker.type_broker == "mosquitto":
