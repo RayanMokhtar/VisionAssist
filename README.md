@@ -86,4 +86,13 @@ installer le broker mosquitto via l'installer https://mosquitto.org/download/ : 
 
 Vérifier que le lecteur est détecté :
 pcsc_scan
+mosquitto_pub -h 127.0.0.1 -p 1883 -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
+mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v
+
+sudo apt install mosquitto-clients
+
+mosquitto -c /etc/mosquitto/mosquitto.conf
+
+commande driver : 
+    sudo apt install --reinstall linux-modules-extra-$(uname -r)
 
