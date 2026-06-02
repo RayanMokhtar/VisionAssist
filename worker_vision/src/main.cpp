@@ -12,6 +12,7 @@ using namespace cv;
 #define runOnGPU JETSON==1
 #define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
 #define FALLBACK_AVEC_CHEMIN_VIDEO "../../data/vid3.mp4"
+#define MODE_REMOTE 0
 #define MAXDISTANCE 100
 #define MAX_PERSISTANCE 10
 #define RAYON_DETECTION 150
@@ -174,6 +175,51 @@ std::vector<ObjectDetected> mapping(Mat frame, Mat deplacement,  const std::vect
     }
 
     return objectsNew;
+}
+
+Mat drawOpticalFlow(Mat matDepl)
+{
+    cv::Mat matOpticalFlow(matDepl.rows, matDepl.cols, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    int step = 3;
+    float scale = 1;
+
+    for (int y = step; y < matDepl.rows - step; y += step)
+    {
+        for (int x = step; x < matDepl.cols - step; x += step)
+        {
+            float sum_u = 0, sum_v = 0;
+            int count = 0;
+
+            for (int j = y - step/2; j < y + step/2; j++)
+            {
+                for (int i = x - step/2; i < x + step/2; i++)
+                {
+                    cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
+                    sum_u += p[0];
+                    sum_v += p[1];
+                    count++;
+                }
+            }
+
+            float u = sum_u / count;
+            float v = sum_v / count;
+
+            // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
+            // float u = p[0];
+            // float v = p[1];
+
+            //float norm = sqrt(u*u + v*v);
+            //if (norm < 1) continue;
+
+            cv::Point p1(x, y);
+            cv::Point p2(x + u * scale, y + v * scale);
+
+            cv::arrowedLine(matOpticalFlow, p1, p2, cv::Scalar(0, 0, 255), 1);
+        }
+    }
+
+    return matOpticalFlow;
 }
 
 Mat drawSparseFlow(Mat deplacement, const std::vector<ObjectDetected> objects)
@@ -399,6 +445,8 @@ void beep(int secondes)
     gpiod_chip_close(chip);
 }
 
+// void streamImages()
+
 int main(int argc, char** argv)
 {
     OpticalFlow opticalFlow;
@@ -406,9 +454,53 @@ int main(int argc, char** argv)
     Mat frameOld;
     Mat frame;
 
-    VideoCapture cap;   
+    VideoCapture cap; 
+    
+    beep(1);
+    
+#if MODE_REMOTE == 1
+    VideoWriter streamYolo, streamOptFlow, streamSparse, streamMean;  
+    streamYolo.open(
+        "appsrc ! videoconvert ! x264enc tune=zerolatency ! "
+        "rtph264pay pt=96 ! "
+        "udpsink host=172.30.137.234 port=5000 sync=false", cv::CAP_GSTREAMER, 0, 30, cv::Size(640, 640), true);
 
-    beep(10);
+    if (!streamYolo.isOpened()) {
+        std::cerr << "Erreur ouverture stream yolo réseau\n";
+        return -1;
+    }
+
+    streamOptFlow.open(
+        "appsrc ! videoconvert ! x264enc tune=zerolatency bitrate=200000 speed-preset=veryfast key-int-max=15 ! "
+        "rtph264pay pt=96 ! "
+        "udpsink host=172.30.137.234 port=5001 sync=false", cv::CAP_GSTREAMER, 0, 30, cv::Size(640, 640), true);
+    
+    if (!streamOptFlow.isOpened()) {
+        std::cerr << "Erreur ouverture stream opt flow réseau\n";
+        return -1;
+    }
+
+    streamSparse.open(
+    "appsrc ! videoconvert ! x264enc tune=zerolatency ! "
+    "rtph264pay pt=96 ! "
+    "udpsink host=172.30.137.234 port=5002 sync=false", cv::CAP_GSTREAMER, 0, 30, cv::Size(640, 640), true);
+
+    if (!streamSparse.isOpened()) {
+        std::cerr << "Erreur ouverture stream sparse par objet réseau\n";
+        return -1;
+    }
+
+    streamMean.open(
+        "appsrc ! videoconvert ! x264enc tune=zerolatency ! "
+        "rtph264pay pt=96 ! "
+        "udpsink host=172.30.137.234 port=5003 sync=false", cv::CAP_GSTREAMER, 0, 30, cv::Size(640, 640), true);
+    
+    if (!streamMean.isOpened()) {
+        std::cerr << "Erreur ouverture stream moyen flow réseau\n";
+        return -1;
+    }
+
+#endif
 
 #if USE_WEBCAM_FALLBACK
     // TODO : à déplacer peut être dans un meilleur endroit ? où à injecter directement dnas le cap selon choix config
@@ -479,6 +571,8 @@ int main(int argc, char** argv)
         objects = persistanceBetweenFrame(objectsNew, objects);
         //}
 
+        Mat matOpticalFlow = drawOpticalFlow(deplacement);
+
         // // for (const ObjectDetected& objectOld : objects)
         // // {
         // //     std::cout << "+++++++++++++++++++ après persistance objectOld id: " << objectOld.id << " class: " << objectOld.className << std::endl;
@@ -520,9 +614,19 @@ int main(int argc, char** argv)
 
         //cv::imshow("capture", frame);
 
+#if MODE_REMOTE
+
+
+        streamYolo.write(yoloDraw);
+        streamOptFlow.write(matOpticalFlow);
+        streamSparse.write(sparseFlowDraw);
+        streamMean.write(meanFlowDraw);
+#else
         cv::imshow("yolo", yoloDraw);
+        cv::imshow("flux optique", matOpticalFlow);
         cv::imshow("sparse", sparseFlowDraw);
         cv::imshow("deplacement", meanFlowDraw);
+#endif
 
         frame.copyTo(frameOld);
 
