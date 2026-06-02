@@ -36,20 +36,19 @@ def generer_card_id():
 
 def verify_card(card_id):
     carte = REPOSITORIES.cartes.get(card_id=card_id)
-    user_id = carte.get("user_id") if carte else None
+    print("carte :",carte)
+    user_id = carte.user_id if carte else None
     user = REPOSITORIES.users.get(user_id=user_id) if user_id else None
     print("user_id",user_id,"user",user)
     if not user:
         return {"success": False,"error": "card_id inconnu"}
 
-    if carte.get("statut") != "active":
+    if carte.statut.value != "active":
         return {
             "success": False,
-            "error": f"carte {carte['statut']}",
+            "error": carte.statut.value,
             "card_id": card_id,
-            "user_id": user["user_id"],
-            "role": user["role"],
-            "status": user["status"],
+            "user_id": user.id
         }
 
     user = REPOSITORIES.users.update(user, derniere_connexion=datetime.now())
@@ -57,9 +56,9 @@ def verify_card(card_id):
     dictionnaire_sortie = {
         "success": True,
         "card_id": card_id,
-        "user_id": user["user_id"],
-        "status": carte["statut"],
-        "derniere_connexion": user["derniere_connexion"],
+        "user_id": user.id,
+        "status": carte.statut.value,
+        "derniere_connexion": str(user.derniere_connexion),
     }
     return dictionnaire_sortie
 
@@ -73,6 +72,7 @@ def handle_verify_card(broker, _topic, request):
         publish_response_securite(broker, request, {"success": False, "error": "card_id manquant"})
         return
     verification_de_la_carte : dict = verify_card(card_id)
+    print("verification_de_la_carte",verification_de_la_carte)
     publish_response_securite(broker, request, verification_de_la_carte)
 
 
