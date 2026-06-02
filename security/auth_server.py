@@ -147,7 +147,7 @@ def main():
     broker.sabonner(AUTH_CLIENT_REQUEST_SECURITY, lambda topic, payload: traitement_securite_requete(broker, topic, payload))
     broker.sabonner(AUTH_ADMIN_REQUEST_SECURITY, lambda topic, payload: traitement_securite_requete(broker, topic, payload))
     print("Auth server MQTT lance")
-    print(f"Topics ecoutes: {AUTH_CLIENT_REQUEST_SECURITY}, {AUTH_ADMIN_REQUEST_SECURITY}")
+    print(f"Topics ecoutess: {AUTH_CLIENT_REQUEST_SECURITY}, {AUTH_ADMIN_REQUEST_SECURITY}")
     print(f"Topic reponse: {AUTH_RESPONSE_SECURITY}")
     try:
         while True:
