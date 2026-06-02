@@ -43,7 +43,10 @@ class TopicConfig(BaseModel):
     llm_topic_ecoute_stt : str = "results/stt"
     llm_topic_ecoute_vision : str = "results/vision"
     llm_topic_publication : str = "results/tts"
-
+    #partie sécurité
+    security_client_request_topic : str = "results/security/client/request" # pour authentification
+    security_admin_request_topic : str = "results/security/admin/request" # pour l'enrollement de la carte ( génération workflow card_id)
+    security_response_topic : str = "results/security/response" # réponses des deux cas ... 
 
 
 class BrokerConfig(BaseModel):
@@ -72,6 +75,19 @@ class PathConfig(BaseModel):
     log_backup_count: int = 3
 
 
+class DBConfig(BaseModel):
+    url  : Optional[str] = Field(None, description="URL de connexion à la base de données")
+    host : str = Field("localhost", description="Adresse du serveur de base de données")
+    port : int = Field(5432, description="Port de connexion à la base de données")
+    username : str = Field("qlq chose", description="Nom d'utilisateur pour la base de données")
+    password : str = Field("password", description="Mot de passe pour la base de données")
+    echo : bool = Field(False, description="Afficher les requêtes SQL dans les logs (True/False)")
+    pool_size : int = Field(5, description="Nombre de connexions dans le pool de la base de données")
+    dialecte : str = Field("sqlite", description="Dialecte de la base de données (ex: postgresql, mysql, sqlite)")
+    db_file : Optional[str] = Field("db_file.db", description="Chemin du fichier de base de données SQLite (si dialecte sqlite)")
+    db_name : str = Field("visionassist_db", description="Nom de la base de données (si dialecte postgresql ou mysql)")
+
+
 class Configuration(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -83,7 +99,7 @@ class Configuration(BaseSettings):
     audio:AudioConfig=Field(default_factory=AudioConfig,description="configuration modele audio")
     broker:BrokerConfig=Field(default_factory=BrokerConfig,description="configuration broker")
     paths: PathConfig=Field(default_factory=PathConfig,description="conf paths chemin fichiers")
-    
+    db : DBConfig = Field(default_factory=DBConfig,description="configuration base de données")
 
 def get_configuration():
     return Configuration()

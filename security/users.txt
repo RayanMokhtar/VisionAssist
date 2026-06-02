@@ -1,1 +1,1 @@
-card_id | user_id | role | status | last_auth
+VA-001 | 1 | user | active | 2026-06-02T17:00:34
