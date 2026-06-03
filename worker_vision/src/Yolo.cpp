@@ -121,6 +121,9 @@ std::vector<YOLO::Detection> YOLO::runYOLO(const cv::Mat &input)
     std::vector<int> nms_result;
     cv::dnn::NMSBoxes(boxes, confidences, modelScoreThreshold, modelNMSThreshold, nms_result);
 
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
     std::vector<YOLO::Detection> detections{};
     for (unsigned long i = 0; i < nms_result.size(); ++i)
     {
@@ -130,8 +133,6 @@ std::vector<YOLO::Detection> YOLO::runYOLO(const cv::Mat &input)
         result.class_id = class_ids[idx];
         result.confidence = confidences[idx];
 
-        std::random_device rd;
-        std::mt19937 gen(rd());
         std::uniform_int_distribution<int> dis(100, 255);
         result.color = cv::Scalar(dis(gen),
                                   dis(gen),

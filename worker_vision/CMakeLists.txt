@@ -27,6 +27,7 @@ target_compile_options(main
     PRIVATE
         -g
         -Wall
+        -O3
 )
 
 target_include_directories(main

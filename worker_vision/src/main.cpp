@@ -117,11 +117,11 @@ void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDe
 
 }
 
-std::vector<ObjectDetected> mapping(Mat frame, Mat deplacement,  const std::vector<YOLO::Detection> yoloDetection)
+std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vector<YOLO::Detection>& yoloDetection)
 {
     std::vector<ObjectDetected> objectsNew;
 
-    for (YOLO::Detection detect : yoloDetection)
+    for (const YOLO::Detection& detect : yoloDetection)
     {
         // if (detect.className == "person")
         //     continue;
@@ -139,7 +139,7 @@ std::vector<ObjectDetected> mapping(Mat frame, Mat deplacement,  const std::vect
                 // TODO: Yolo out of box
                 if (j >= 0 && j < deplacement.rows && i >= 0 && i < deplacement.cols)
                 {
-                    cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
+                    const cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
 
                     sum_u += p[0];
                     sum_v += p[1];
@@ -160,8 +160,8 @@ std::vector<ObjectDetected> mapping(Mat frame, Mat deplacement,  const std::vect
         float u = sum_u / count;
         float v = sum_v / count;
 
-        float norm = sqrt(u*u + v*v);
-        if (norm < 0.1) continue;
+        // float norm = sqrt(u*u + v*v);
+        // if (norm < 0.1) continue;
 
         int xGravity = detect.box.x + (detect.box.width) / 2;
         int yGravity = detect.box.y + (detect.box.height) / 2;
@@ -176,14 +176,59 @@ std::vector<ObjectDetected> mapping(Mat frame, Mat deplacement,  const std::vect
     return objectsNew;
 }
 
-Mat drawSparseFlow(Mat deplacement, const std::vector<ObjectDetected> objects)
+Mat drawOpticalFlow(const Mat& matDepl)
+{
+    cv::Mat matOpticalFlow(matDepl.rows, matDepl.cols, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    int step = 3;
+    float scale = 1;
+
+    for (int y = step; y < matDepl.rows - step; y += step)
+    {
+        for (int x = step; x < matDepl.cols - step; x += step)
+        {
+            float sum_u = 0, sum_v = 0;
+            int count = 0;
+
+            for (int j = y - step/2; j <= y + step/2; j++)
+            {
+                for (int i = x - step/2; i <= x + step/2; i++)
+                {
+                    const cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
+                    sum_u += p[0];
+                    sum_v += p[1];
+                    count++;
+                }
+            }
+
+            float u = sum_u / count;
+            float v = sum_v / count;
+
+            // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
+            // float u = p[0];
+            // float v = p[1];
+
+            //float norm = sqrt(u*u + v*v);
+            //if (norm < 1) continue;
+
+            cv::Point p1(x, y);
+            cv::Point p2(x + u * scale, y + v * scale);
+
+            cv::arrowedLine(matOpticalFlow, p1, p2, cv::Scalar(0, 0, 255), 1);
+        }
+    }
+
+    return matOpticalFlow;
+}
+
+Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& objects)
 {
     cv::Mat sparseFlowDraw(deplacement.rows, deplacement.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
     int step = 3;
     float scale = 1;
 
-    for (ObjectDetected object : objects)
+    for (const ObjectDetected& object : objects)
     {
         float total_u = 0.0;
         float total_v = 0.0;
@@ -200,7 +245,7 @@ Mat drawSparseFlow(Mat deplacement, const std::vector<ObjectDetected> objects)
                 {
                     for (int i = x - step/2; i < x + step/2; i++)
                     {
-                        cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
+                        const cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
                         sum_u += p[0];
                         sum_v += p[1];
                         count++;
@@ -226,19 +271,19 @@ Mat drawSparseFlow(Mat deplacement, const std::vector<ObjectDetected> objects)
 
         float normeFlow = sqrt((mean_u * mean_u) + (mean_v * mean_v));
 
-        std::cout << "Norme du flux optique: " << normeFlow << " moyenne u: " << mean_u << " moyenne v: " << mean_v << std::endl;
+        //std::cout << "Norme du flux optique: " << normeFlow << " moyenne u: " << mean_u << " moyenne v: " << mean_v << std::endl;
     }
 
     return sparseFlowDraw;
 }
 
-Mat drawMeanFlow(const Mat frame, const std::vector<ObjectDetected> objects)
+Mat drawMeanFlow(const Mat& frame, const std::vector<ObjectDetected>& objects)
 {
     cv::Mat meanFlowDraw(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
     float scale = 20;
 
-    for (ObjectDetected object : objects)
+    for (const ObjectDetected& object : objects)
     {
         cv::Point p1(object.centreGravity.x, object.centreGravity.y);
         cv::Point p2(object.centreGravity.x + object.vect[0] * scale, object.centreGravity.y + object.vect[1] * scale);
@@ -249,7 +294,8 @@ Mat drawMeanFlow(const Mat frame, const std::vector<ObjectDetected> objects)
     return meanFlowDraw;
 }
 
-Mat drawTrackingYolo(const Mat frame, const std::vector<ObjectDetected> objects)
+
+Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& objects, double fps)
 {
     Mat yoloDraw;
     frame.copyTo(yoloDraw);
@@ -279,6 +325,10 @@ Mat drawTrackingYolo(const Mat frame, const std::vector<ObjectDetected> objects)
         cv::Point p2(object.centreGravity.x + object.vect[0] * scale, object.centreGravity.y + object.vect[1] * scale);
 
         cv::arrowedLine(yoloDraw, p1, p2, cv::Scalar(0, 0, 255), 2);
+
+        std::string fpsText = "FPS: " + std::to_string(fps).substr(0, 5);
+
+        cv::putText(yoloDraw, fpsText, cv::Point(20, 40), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
     }
 
     int x1 = yoloDraw.cols / 3;
@@ -337,9 +387,8 @@ std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDete
     return objectsPersistant;
 }
 
-
-void decisionMaking(Mat frame, Point centre, const std::vector<ObjectDetected> objectsNew) {
-
+void decisionMaking(Mat& frame, const Point& centre, const std::vector<ObjectDetected>& objectsNew)
+{
     for (const ObjectDetected& object : objectsNew)
     {   
         cv::arrowedLine(frame, object.centreGravity, centre, cv::Scalar(0, 0, 255), 2);
@@ -399,16 +448,32 @@ void beep(int secondes)
     gpiod_chip_close(chip);
 }
 
+int diff_ms(timeval t1, timeval t2)
+{
+    return (((t1.tv_sec - t2.tv_sec) * 1000000) +
+            (t1.tv_usec - t2.tv_usec))/1000;
+}
+
+using Clock = std::chrono::high_resolution_clock;
+
+static double elapsedMs(
+    const Clock::time_point& start,
+    const Clock::time_point& end)
+{
+    return std::chrono::duration<double, std::milli>(end - start).count();
+}
+
 int main(int argc, char** argv)
 {
     OpticalFlow opticalFlow;
-    YOLO yolo("../YoloUtils/yolov8n.onnx", cv::Size(640, 640), "classes.txt", false);
+    YOLO yolo("../YoloUtils/yolov8n.onnx", cv::Size(640, 640), "classes.txt", true);
     Mat frameOld;
     Mat frame;
+    timeval start, end;
 
     VideoCapture cap;   
 
-    beep(10);
+    beep(1);
 
 #if USE_WEBCAM_FALLBACK
     // TODO : à déplacer peut être dans un meilleur endroit ? où à injecter directement dnas le cap selon choix config
@@ -448,86 +513,106 @@ int main(int argc, char** argv)
         }
     }
 
-
     cap >> frameOld;
+
+    if(frameOld.empty())
+    {
+        std::cerr << "Impossible de lire la premiere frame" << std::endl;
+        return -1;
+    }
+
     cv::cvtColor(frameOld, frameOld, cv::COLOR_BGRA2BGR);
     std::vector<ObjectDetected> objects;
     std::vector<ObjectDetected> objectsNew;
 
 
-    for(;;){
-        //std::cout << "------------------ Nouvelle frame ------------------" << std::endl;
+    for(;;)
+    {
+        auto tGlobalStart = Clock::now();
+
         cap >> frame;
 
-        //frame.resize(640, 640);
-        
+        if(frame.empty())
+        {
+            std::cerr << "Frame vide" << std::endl;
+            break;
+        }
+
         cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
-        //cv::circle(frame, cv::Point(frame.cols / 2, frame.rows / 2), 5, cv::Scalar(255, 0, 0), -1);
-        //cv::circle(frame, cv::Point(frame.cols / 2, frame.rows / 2), RAYON_DETECTION, cv::Scalar(255, 0, 0), 2);
+
+        Mat deplacement;
+        Mat matOpticalFlow;
+
+        auto tFlowStart = Clock::now();
+        std::thread threadFlow([&]() {
+            deplacement = opticalFlow.exec(frame, frameOld); 
+            matOpticalFlow = drawOpticalFlow(deplacement);
+        });
         
-        Mat deplacement = opticalFlow.exec(frame, frameOld);
-        std::vector<YOLO::Detection> yoloDetection = yolo.exec(frame);
+        std::vector<YOLO::Detection> yoloDetection;
         
-        // // for (const ObjectDetected& objectOld : objects)
-        // // {
-        // //     std::cout << "-------------------- avant objectOld id: " << objectOld.id << " class: " << objectOld.className << std::endl;
-        // // }
+        std::thread threadYolo([&]() {
+            yoloDetection = yolo.exec(frame);
+            objects = persistanceBetweenFrame(objectsNew, objects);
+        });
 
-        //if(!objectsNew.empty()) 
-        //{
-            // objects = objectsNew;
-        objects = persistanceBetweenFrame(objectsNew, objects);
-        //}
+        threadFlow.join();
+        threadYolo.join();
+        auto tFlowEnd = Clock::now();
 
-        // // for (const ObjectDetected& objectOld : objects)
-        // // {
-        // //     std::cout << "+++++++++++++++++++ après persistance objectOld id: " << objectOld.id << " class: " << objectOld.className << std::endl;
-        // // }
+        auto tMappingStart = Clock::now();
+        objectsNew = mapping(deplacement, yoloDetection);
+        auto tMappingEnd = Clock::now();
 
-        objectsNew = mapping(frame, deplacement, yoloDetection);
-
-        // //std::cout << "Avant Nbr objets YOLO : " << objectsNew.size() << std::endl;
-
-        // // for (ObjectDetected& objectNew : objectsNew)
-        // // {
-        // //     std::cout << "Avant classe : " << objectNew.className << std::endl;
-        // // }
-
-        // // for (ObjectDetected& objectNew : objectsNew)
-        // // {
-        // //     std::cout << "YOLO AVANT_SET_ID : " << objectNew.id << " class: " << objectNew.className << std::endl;
-        // // }
-
+        auto tTrackerStart = Clock::now();
         tracker(objectsNew, objects);
+        auto tTrackerEnd = Clock::now();
 
-        // //std::cout << "Après Nbr objets YOLO : " << objectsNew.size() << std::endl;
-
-        // // for (ObjectDetected& objectNew : objectsNew)
-        // // {
-        // //     std::cout << "Après classe : " << objectNew.className << std::endl;
-        // // }
-
-        // // for (ObjectDetected& objectNew : objectsNew)
-        // // {
-        // //     std::cout << "YOLO Apreees_SET_ID :  " << objectNew.id << " class: " << objectNew.className << std::endl;
-        // // }
-
+        auto tDrawStart = Clock::now();
         Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
-        Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
-        Mat yoloDraw = drawTrackingYolo(frame, objectsNew);
+        //Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
+        auto tBeforeYoloDraw = Clock::now();
 
-        // decisionMaking(frame, cv::Point(frame.cols / 2, frame.rows / 2), objectsNew);
+        double globalMsTemp = elapsedMs(tGlobalStart, tBeforeYoloDraw);
+        double fps = 1000.0 / std::max(globalMsTemp, 1.0);
 
-        //cv::imshow("capture", frame);
+        Mat yoloDraw = drawTrackingYolo(frame, objectsNew, fps);
+        auto tDrawEnd = Clock::now();
 
+        auto tImshowStart = Clock::now();
         cv::imshow("yolo", yoloDraw);
-        cv::imshow("sparse", sparseFlowDraw);
+        cv::imshow("flux optique", matOpticalFlow);
+        //cv::imshow("sparse", sparseFlowDraw);
         cv::imshow("deplacement", meanFlowDraw);
+        auto tImshowEnd = Clock::now();
 
+        auto tCopyStart = Clock::now();
         frame.copyTo(frameOld);
+        auto tCopyEnd = Clock::now();
 
-        sleep(0.1);
+        auto tGlobalEnd = Clock::now();
 
-        if(waitKey(1) == 27) break;
+        double flowMs = elapsedMs(tFlowStart, tFlowEnd);
+        double mappingMs = elapsedMs(tMappingStart, tMappingEnd);
+        double trackerMs = elapsedMs(tTrackerStart, tTrackerEnd);
+        double drawMs = elapsedMs(tDrawStart, tDrawEnd);
+        double imshowMs = elapsedMs(tImshowStart, tImshowEnd);
+        double copyMs = elapsedMs(tCopyStart, tCopyEnd);
+        double globalMs = elapsedMs(tGlobalStart, tGlobalEnd);
+
+        std::cout << "\n========== PROFILING ==========\n";
+        std::cout << "GLOBAL        : " << globalMs << " ms | FPS: " << 1000.0 / globalMs << "\n";
+        std::cout << "Optical flow et YOLO et draw flow : " << flowMs << " ms\n";
+        std::cout << "Mapping       : " << mappingMs << " ms\n";
+        std::cout << "Tracker       : " << trackerMs << " ms\n";
+        std::cout << "Draw all      : " << drawMs << " ms\n";
+        std::cout << "Imshow        : " << imshowMs << " ms\n";
+        std::cout << "Copy frame    : " << copyMs << " ms\n";
+        std::cout << "===============================\n";
+
+        //sleep(0.067);
+
+        if(waitKey(1) == 27)
+            break;
     }
 }
