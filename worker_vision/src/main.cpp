@@ -5,6 +5,7 @@
 #include <gpiod.h>
 #include <chrono>
 #include <thread>
+#include <atomic>
 
 using namespace cv;
 
@@ -15,6 +16,7 @@ using namespace cv;
 #define MAXDISTANCE 100
 #define MAX_PERSISTANCE 10
 #define RAYON_DETECTION 150
+#define PI 3.14159265
 
 struct ObjectDetected
 {
@@ -132,6 +134,8 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
         // std::vector<float> us;
         // std::vector<float> vs;
 
+        //std::vector<cv::Vec2f> flows;
+
         for (int j = detect.box.y; j < detect.box.y + detect.box.height; j++)
         {
             for (int i = detect.box.x; i < detect.box.x + detect.box.width; i++)
@@ -147,9 +151,25 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
 
                     // us.push_back(p[0]);
                     // vs.push_back(p[1]);
+
+                    //flows.push_back(p);
                 }
             }
         }
+
+        // std::sort(flows.begin(), flows.end(),
+        //     [](const cv::Vec2f& a, const cv::Vec2f& b)
+        //     {
+        //         float angleA = atan((float)a[1]/a[0])*180.0/PI;
+        //         float angleB = atan((float)b[1]/b[0])*180.0/PI;
+        //         //std::cout << "a0: " << a[0] << " a1: " << a[1] << "angle : " << atan((float)a[1]/a[0])*180.0/PI <<std::endl;
+        //         return angleA < angleB;
+        //     });
+
+        // cv::Vec2f medianFlow = flows[flows.size() / 2];
+
+        // float u = medianFlow[0];
+        // float v = medianFlow[1];
 
         // std::sort(us.begin(), us.end());
         // std::sort(vs.begin(), vs.end());
@@ -387,41 +407,6 @@ std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDete
     return objectsPersistant;
 }
 
-void decisionMaking(Mat& frame, const Point& centre, const std::vector<ObjectDetected>& objectsNew)
-{
-    for (const ObjectDetected& object : objectsNew)
-    {   
-        cv::arrowedLine(frame, object.centreGravity, centre, cv::Scalar(0, 0, 255), 2);
-
-        float dx = object.centreGravity.x - centre.x;
-        float dy = object.centreGravity.y - centre.y;
-
-        float dist = std::sqrt(dx * dx + dy * dy);
-
-        Vec2f versCentre(centre.x - object.centreGravity.x, centre.y - object.centreGravity.y);
-
-        float dot = object.vect[0] * versCentre[0] + object.vect[1] * versCentre[1];
-        float normVect = std::sqrt(object.vect[0] * object.vect[0] + object.vect[1] * object.vect[1]);
-        float normVersCentre = std::sqrt(versCentre[0] * versCentre[0] + versCentre[1] * versCentre[1]);
-        float cosTetha = dot / (normVect * normVersCentre);
-
-        // std::cout << "object id: " << object.id << " x : " << object.centreGravity.x  << " y : " << object.centreGravity.y << " class: " << object.className << " distance from center: " << dist << " cos: " << cosTetha << "angle: " << std::acos(cosTetha) * 180 / CV_PI << std::endl;
-
-        // if(dist < RAYON_DETECTION && cosTetha > 0.8f) {
-        //     std::cout << "ALEEEEEEEEEEEEEEERRRRRRRRRRRTTTTTTTTTT: object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
-        // }
-        // else if(dist < RAYON_DETECTION && cosTetha < 0.8f && cosTetha > 0.5f) {
-        //     std::cout << "WARNING QUAND MEME: object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
-        // }
-        // else if(dist < RAYON_DETECTION) {
-        //     std::cout << "OBJET AU CENTRE MAIS ANGLE PAS DETECTE" << " object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
-        // }
-        // else {
-        //     std::cout << "Pas de danger immédiat: object id: " << object.id << " class: " << object.className << " distance: " << dist << std::endl;
-        // }
-    }
-}
-
 void beep(int secondes)
 {
     gpiod_chip* chip = gpiod_chip_open_by_name("gpiochip0");
@@ -448,6 +433,59 @@ void beep(int secondes)
     gpiod_chip_close(chip);
 }
 
+std::atomic<bool> beepRunning(false);
+
+void startBeepAsync(int secondes)
+{
+    if (beepRunning)
+        return;
+
+    beepRunning = true;
+
+    std::thread([secondes]() {
+        beep(secondes);
+        beepRunning = false;
+    }).detach();
+}
+
+void decisionMaking(const std::vector<ObjectDetected>& objectsNew, Point pointRef)
+{
+    for (const ObjectDetected& object : objectsNew)
+    {   
+        float dx = object.centreGravity.x - pointRef.x;
+        float dy = object.centreGravity.y - pointRef.y;
+ 
+        float r = sqrt(dx*dx + dy*dy);
+        float v = sqrt((object.vect[0]*object.vect[0]) + (object.vect[1]*object.vect[1]));
+
+        //float vr = (dx*object.vect[0] + dy*object.vect[1]) / r;
+
+        float ttc = -r / v;
+
+        if (ttc > - 500){
+            std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER"<< std::endl;
+        }
+
+        // if (ttc < 500)
+        // {
+        //     std::cout << "LOOOOOOOOOOOOOOOOOL1" << std::endl;
+        //     startBeepAsync(3);
+        // } else if (ttc < 0)
+        // {
+        //     std::cout << "LOOOOOOOOOOOOOOOOOL2" << std::endl;
+        //     startBeepAsync(6);
+        // } else if (ttc < -500)
+        // {
+        //     std::cout << "LOOOOOOOOOOOOOOOOOL3" << std::endl;
+        //     startBeepAsync(9);
+        // }
+
+        //std::cout << "class: " << object.className << " class id: " << object.id << " r: " << r << std::endl;
+
+        std::cout << "class: " << object.className << " class id: " << object.id << " ttc: " << ttc << " r: " << r << " v: " << v << std::endl;
+    }
+}
+
 int diff_ms(timeval t1, timeval t2)
 {
     return (((t1.tv_sec - t2.tv_sec) * 1000000) +
@@ -470,9 +508,9 @@ int main(int argc, char** argv)
     Mat frameOld;
     Mat frame;
     timeval start, end;
-
+    
     VideoCapture cap;   
-
+    
     beep(1);
 
 #if USE_WEBCAM_FALLBACK
@@ -487,8 +525,8 @@ int main(int argc, char** argv)
         "appsink drop=true max-buffers=1 sync=false";
 
     cap.open(pipeline, CAP_GSTREAMER);
-#endif
-
+    #endif
+    
     // si problème récupérationl video ? on teste avec webcam classqieu (marche avec linux , sinon test video dans le capture ... )
     if (!cap.isOpened()) {
         std::cerr << "Pipeline GStreamer nvidia failed test avec webcam...\n";
@@ -525,21 +563,22 @@ int main(int argc, char** argv)
     std::vector<ObjectDetected> objects;
     std::vector<ObjectDetected> objectsNew;
 
-
+    Point pointRef(frameOld.cols/2, frameOld.rows);
+    
     for(;;)
     {
         auto tGlobalStart = Clock::now();
-
+        
         cap >> frame;
-
+        
         if(frame.empty())
         {
             std::cerr << "Frame vide" << std::endl;
             break;
         }
-
+        
         cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
-
+        
         Mat deplacement;
         Mat matOpticalFlow;
 
@@ -567,6 +606,8 @@ int main(int argc, char** argv)
         auto tTrackerStart = Clock::now();
         tracker(objectsNew, objects);
         auto tTrackerEnd = Clock::now();
+
+        decisionMaking(objectsNew, pointRef);
 
         auto tDrawStart = Clock::now();
         Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
@@ -600,15 +641,15 @@ int main(int argc, char** argv)
         double copyMs = elapsedMs(tCopyStart, tCopyEnd);
         double globalMs = elapsedMs(tGlobalStart, tGlobalEnd);
 
-        std::cout << "\n========== PROFILING ==========\n";
-        std::cout << "GLOBAL        : " << globalMs << " ms | FPS: " << 1000.0 / globalMs << "\n";
-        std::cout << "Optical flow et YOLO et draw flow : " << flowMs << " ms\n";
-        std::cout << "Mapping       : " << mappingMs << " ms\n";
-        std::cout << "Tracker       : " << trackerMs << " ms\n";
-        std::cout << "Draw all      : " << drawMs << " ms\n";
-        std::cout << "Imshow        : " << imshowMs << " ms\n";
-        std::cout << "Copy frame    : " << copyMs << " ms\n";
-        std::cout << "===============================\n";
+        // std::cout << "\n========== PROFILING ==========\n";
+        // std::cout << "GLOBAL        : " << globalMs << " ms | FPS: " << 1000.0 / globalMs << "\n";
+        // std::cout << "Optical flow et YOLO et draw flow : " << flowMs << " ms\n";
+        // std::cout << "Mapping       : " << mappingMs << " ms\n";
+        // std::cout << "Tracker       : " << trackerMs << " ms\n";
+        // std::cout << "Draw all      : " << drawMs << " ms\n";
+        // std::cout << "Imshow        : " << imshowMs << " ms\n";
+        // std::cout << "Copy frame    : " << copyMs << " ms\n";
+        // std::cout << "===============================\n";
 
         //sleep(0.067);
 
