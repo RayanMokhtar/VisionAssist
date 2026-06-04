@@ -130,7 +130,8 @@ class TextToSpeech:
     
     def fonction_trigger(self , topic , message_recu : str):
         MESSAGE_AVERTISSEMENT = "erreur potentielle dans la récupération du message faites attention"
-        texte = message_recu.get("resultat_llm","")
+        texte = message_recu.get("response","")
+        print("message recu en tts :",message_recu)
         if texte : 
             LOGGER.info(f"tts demandé pour synthetiser ce texte : {texte}")
             resultat = self.pipeline(texte)
@@ -141,7 +142,7 @@ class TextToSpeech:
 
 
 #à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
-def lancement_service_tts(client_id : str = "tts", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
+def lancement_service_tts(client_id : str = "tts-jetson", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
     broker = get_broker_client(client_id) # à vori si singelton ou pas 
     TTS = TextToSpeech()
     broker.connexion()
@@ -150,7 +151,7 @@ def lancement_service_tts(client_id : str = "tts", topic_sur_ecoute : str = CONF
     LOGGER.info("TTS en écoute sur topic %s...",topic_sur_ecoute)
     try:
         while True:
-            time.sleep(1)
+            time.sleep(5)
     except KeyboardInterrupt:
         broker.deconnexion()
         LOGGER.info("TTS arrêté.")

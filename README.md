@@ -15,7 +15,7 @@ https://medium.com/@pinaki.brahma/improve-llm-based-response-through-parent-chil
 
 
 
-
+python3 -m piper.download_voices fr_FR-siwis-medium INSTALLER PIPER 
 ## docs tts : 
 
 
@@ -31,6 +31,7 @@ https://arxiv.org/pdf/2106.06103
 lien vers la démo : https://rhasspy.github.io/piper-samples/demo.html
 
 
+python3 -m piper.download_voices fr_FR-siwis-medium INSTALLER PIPER 
 
 
 entrainement : finetuning modele : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/TRAINING.md
@@ -76,6 +77,26 @@ installer le broker mosquitto via l'installer https://mosquitto.org/download/ : 
 
  mosquitto_pub -h 127.0.0.1 -p 1883 -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
  mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v
+ ajouter allow_anonymous dans broker
+ listener 1883 0.0.0.0 dans etc config
+
+
+ ### Carte Gemalto  : 
+ sudo apt install pcscd pcsc-tools swig python3-dev libpcsclite-dev
+ 
+ pip install pyscard (Dans un venv)
+
+Vérifier que le lecteur est détecté :
+pcsc_scan
+mosquitto_pub -h 127.0.0.1 -p 1883 -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
+mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v
+
+sudo apt install mosquitto-clients
+
+mosquitto -c /etc/mosquitto/mosquitto.conf
+
+commande driver : 
+    sudo apt install --reinstall linux-modules-extra-$(uname -r)
 
 sudo apt install -y nvidia-driver-550# maj driver 
 

@@ -10,9 +10,14 @@ dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings[toml]>=2.0.0",
     "numpy>=1.21.0",
+    "sqlalchemy",
+    "python-dotenv>=0.21.0",
+    "pymysql",
 ]
 
 #à séparer après avec les commandes les dépendances de chaque module dans le projet 
+#python3 -m piper.download_voices fr_FR-siwis-medium
+
 [project.optional-dependencies]
 jetson = [
     "faster-whisper>=1.0.0",
@@ -22,7 +27,6 @@ jetson = [
     "torch",
     "transformers"
 ]
-
 server = [
     "fastapi>=0.136.1",
     "uvicorn>=0.47.0",
@@ -46,7 +50,7 @@ server = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["speech*", "broker*", "repository*","langage*"]
+include = ["speech*", "broker*", "repository*","langage*","persistance*","security*"]
 
 [project.scripts]
 visionassist = "main:main"

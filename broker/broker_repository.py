@@ -30,6 +30,7 @@ class MqttClientBroker(IBroker):
         self.abonnement_topic_callback : dict[str, Callable] = {}
     
     def connexion(self):
+        print("configuration broker : ", self.conf)
         self.client.on_connect = self._wrapper_connexion_personnalisee
         self.client.on_message = self._wrapper_lors_envoi_message
         
