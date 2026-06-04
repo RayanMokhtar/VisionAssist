@@ -62,7 +62,7 @@ bool MqttClient::sabonner(const std::string& topic , const int qos) {
         std::cout << "abonnement réussi au topic :  " << topic << std::endl;
         return true;
     } catch (const mqtt::exception& exc) {
-        std::cerr << "MQTT abonnement échoué => cause => : " << exc.what() << std::endl;
+        std::cerr << "MQaTT abonnement échoué => cause => : " << exc.what() << std::endl;
         return false;
     }
 }
