@@ -729,7 +729,7 @@ void startBeepAsync(int secondes)
 
 void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 {
-    std::vector<ObjectDetected>& decisions;
+    std::vector<ObjectDetected> decisions;
 
     for (ObjectDetected& object : objectsNew)
     {   
