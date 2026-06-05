@@ -127,17 +127,6 @@ class SpeechToText:
 
         nb_chunks_obtenus = int((self.audio_config.taux_echantillonnage_hz / self.audio_config.taille_chunk) * duree_record) #combien de chunk : sur un seconde * nbr seconde
 
-<<<<<<< HEAD
-        #lire flux audio  nb_chunks fois , si buffer plain continue quand meme 
-        frames = [stream.read(self.audio_config.taille_chunk, exception_on_overflow=False) for _ in range(nb_chunks_obtenus)]
-
-        stream.stop_stream()
-        stream.close()
-        audio.terminate()
-        print("enregistrement fini ")
-        #écriture dans un fichier temporaire
-        fichier_temporaire_stockage = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)#suppression après via le unlink
-=======
         pre_buffer = collections.deque(maxlen=pre_roll_chunks)
         frames = []
         
@@ -190,7 +179,6 @@ class SpeechToText:
             os.unlink(fichier_temporaire_stockage.name)
             return None
 
->>>>>>> b083dbb (:art: ajout pipeline authentification)
         with wave.open(fichier_temporaire_stockage.name, "wb") as f:
             #écriture entête pour fastWhisper
             f.setnchannels(self.audio_config.canaux_ecoute)
@@ -199,8 +187,6 @@ class SpeechToText:
             f.writeframes(b"".join(frames))#écritures des frames
 
         return fichier_temporaire_stockage.name
-<<<<<<< HEAD
-=======
     
     #après authentification on l'active, quand il a rentré le pin ...sinon enregistrer_audio_microphone_apres_activation
     def ecouter_en_continu_avec_mot_activation(self) -> None : 
@@ -227,7 +213,6 @@ class SpeechToText:
                 print("erreur inattenue dans ecoute continue stt",str(e))
             finally : 
                 os.unlink(chemin_audio)
->>>>>>> b083dbb (:art: ajout pipeline authentification)
 
     def pipeline(self, type: Literal["micro", "fichier"] = "micro", duree_record: Optional[int] = 5, chemin_fichier_audio: Optional[str] = None) -> STTResult:
         if type == "micro":

@@ -93,16 +93,24 @@ class DBConfig(BaseModel):
     db_name : str = Field("visionassist_db", description="Nom de la base de données (si dialecte postgresql ou mysql)")
 
 
+class JWTConfig(BaseModel):
+    secret_key: str = Field(..., description="Clé secrète pour signer les JWT")
+    algorithm: str = Field("HS256", description="Algorithme de signature des JWT")
+    access_token_expire_minutes: int = Field(30, description="Durée de validité des tokens d'accès en minutes")
+    refresh_token_expire_minutes: int = Field(1440, description="Durée de validité des tokens de rafraîchissement en minutes")
+
 class SecurityConfig(BaseModel):
-    # cle_chiffrement_cartes: str = Field(
-    #     "",
-    #     description="Cle Fernet pour chiffrer les secrets des cartes en base"
-    # )
-    # duree_challenge_secondes: int = Field(
-    #     60,
-    #     description="Duree de validite d'un challenge HMAC"
-    # )
-    pass
+    jwtConfig : JWTConfig = Field(default_factory=JWTConfig,description="jwt config ")
+    max_tentatives_avant_blocage_carte_gemalto : int = 3
+    cle_chiffrement_cartes: str = Field(
+        "",
+        description="Cle Fernet pour chiffrer les secrets des cartes en base"
+    )
+    duree_challenge_secondes: int = Field(
+        60,
+        description="Duree de validite d'un challenge HMAC")
+
+
 
 class Configuration(BaseSettings):
     model_config = SettingsConfigDict(
