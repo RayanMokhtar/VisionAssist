@@ -102,6 +102,14 @@ class JWTConfig(BaseModel):
 class SecurityConfig(BaseModel):
     jwtConfig : JWTConfig = Field(default_factory=JWTConfig,description="jwt config ")
     max_tentatives_avant_blocage_carte_gemalto : int = 3
+    cle_chiffrement_cartes: str = Field(
+        "",
+        description="Cle Fernet pour chiffrer les secrets des cartes en base"
+    )
+    duree_challenge_secondes: int = Field(
+        60,
+        description="Duree de validite d'un challenge HMAC")
+
 
 
 class Configuration(BaseSettings):

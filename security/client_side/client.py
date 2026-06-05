@@ -16,9 +16,10 @@ os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env"))
 os.environ.setdefault("BROKER_CREDENTIAL_PROFILE", "CLIENT")
 os.chdir(CLIENT_DIR)
 
-from broker.service import get_broker_client  # noqa: E402
-from configuration import CONFIGURATION  # noqa: E402
-from common.reader import connect_card, is_sw_ok, read_word_bytes, verify_csc1  # noqa: E402
+from broker.service import get_broker_client  
+from configuration import CONFIGURATION  
+from common.utils_client import (calculer_signature, connect_card, is_sw_ok, lire_secret_carte, read_word_bytes, verify_csc1, emuler_mode_utilisateur,
+verify_csc0,verifier_mode_emule_par_lecture_secret,)  
 
 
 TOPICS = CONFIGURATION.broker.topics
@@ -33,6 +34,8 @@ FORBIDDEN_CSC_VALUES = {
     bytes.fromhex("FF FF FF FF"),
 }
 
+# CSC0 hardcode uniquement pour simulation du user mode.
+CSC0_SIMULATION = bytes.fromhex("AAAAAAAA")
 
 def pin_to_csc1_bytes(pin):
     return int(pin).to_bytes(4, byteorder="little")
@@ -68,35 +71,61 @@ def mqtt_request(action, payload, timeout=10):
 
     broker = get_broker_client(client_id)
     broker.connexion()
-    time.sleep(0.5)
+    try:
+        time.sleep(0.5)
 
-    def on_response(_topic, message):
-        if isinstance(message, str):
-            try:
-                message = json.loads(message)
-            except Exception:
-                return
-        if message.get("request_id") == request_id and message.get("client_id") == client_id:
-            response_holder["response"] = message
+        def on_response(_topic, message):
+            if isinstance(message, str):
+                try:
+                    message = json.loads(message)
+                except Exception:
+                    return
+            if message.get("request_id") == request_id and message.get("client_id") == client_id:
+                response_holder["response"] = message
 
-    broker.sabonner(AUTH_RESPONSE_SECURITY, on_response)
-    request = dict(payload)
-    request["action"] = action
-    request["request_id"] = request_id
-    request["client_id"] = client_id
-    if not broker.publier(AUTH_CLIENT_REQUEST_SECURITY, request):
+        broker.sabonner(AUTH_RESPONSE_SECURITY, on_response)
+        request = dict(payload)
+        request["action"] = action
+        request["request_id"] = request_id
+        request["client_id"] = client_id
+
+        if not broker.publier(AUTH_CLIENT_REQUEST_SECURITY, request):
+            raise RuntimeError("publication MQTT impossible")
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if "response" in response_holder:
+                return response_holder["response"]
+            time.sleep(0.1)
+
+        raise TimeoutError("timeout reponse MQTT auth")
+    finally:
         broker.deconnexion()
-        raise RuntimeError("publication MQTT impossible")
 
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if "response" in response_holder:
-            broker.deconnexion()
-            return response_holder["response"]
-        time.sleep(0.1)
 
-    broker.deconnexion()
-    raise TimeoutError("timeout reponse MQTT auth")
+def demander_challenge(card_id):
+    response = mqtt_request("request-challenge", {"card_id": card_id})
+    if not response.get("success"):
+        raise RuntimeError(response.get("error", "challenge refuse"))
+
+    challenge_id = response.get("challenge_id")
+    challenge = response.get("challenge")
+
+    if not challenge_id or not challenge:
+        raise RuntimeError("challenge invalide")
+
+    return challenge_id, challenge
+
+def verifier_carte_hmac(card_id, challenge_id, challenge, signature):
+    response = mqtt_request(
+        "verify-card-hmac",
+        {
+            "card_id": card_id,
+            "challenge_id": challenge_id,
+            "signature": signature,
+        },
+    )
+    return response
 
 
 def authenticate():
@@ -105,6 +134,21 @@ def authenticate():
         conn = connect_card()
     except Exception as exc:
         print(f"Erreur connexion carte: {exc}")
+        return False
+    
+    sw1, sw2 = verify_csc0(conn, CSC0_SIMULATION)
+    if not is_sw_ok(sw1, sw2):
+        print(f"Erreur simulation: CSC0 refuse SW={sw1:02X}{sw2:02X}")
+        return False
+
+    sw1, sw2 = emuler_mode_utilisateur(conn)
+    if not is_sw_ok(sw1, sw2):
+        print(f"Erreur simulation: user mode emule refuse SW={sw1:02X}{sw2:02X}")
+        return False
+
+    print("Mode utilisateur emule active")
+
+    if not verifier_mode_emule_par_lecture_secret(conn):
         return False
 
     card_id, message = read_public_card_id(conn)
@@ -127,7 +171,20 @@ def authenticate():
     print("VERIFY CSC1: 90 00")
 
     try:
-        response = mqtt_request("verify-card", {"card_id": card_id})
+        challenge_id, challenge = demander_challenge(card_id)
+    except Exception as exc:
+        print(f"Erreur challenge serveur: {exc}")
+        return False
+
+    secret, message = lire_secret_carte(conn)
+    if secret is None:
+        print(f"Acces refuse: {message}")
+        return False
+
+    signature = calculer_signature(secret, card_id, challenge_id, challenge)
+
+    try:
+        response = verifier_carte_hmac(card_id, challenge_id, challenge, signature)
     except Exception as exc:
         print(f"Erreur serveur auth via MQTT: {exc}")
         return False
@@ -138,12 +195,13 @@ def authenticate():
     
     print("Acces autorise")
     print(f"user_id: {response.get('user_id')}")
-    print(f"role   : {response.get('role')}")
     print(f"status : {response.get('status')}")
     
     
     return True
 
-
 if __name__ == "__main__":
-    authenticate()
+    try:
+        authenticate()
+    except KeyboardInterrupt:
+        print("\n[*] Interruption (Ctrl+C) - Fermeture...")

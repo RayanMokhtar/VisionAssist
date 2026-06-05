@@ -46,7 +46,7 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav"):
     
     #vérificaiton validité de la carte // envoi dans broker etc ...
     is_carte_valide = True
-    prenom_utilisateur = "LAZIB"
+    prenom_utilisateur = "LAZIBs"
     access_token , refresh_token = "a" , "b" # à voir où ils seront stocké côté embarqué
     if is_carte_valide : 
         #initialisation du worker vision avec os.subprocess ... dans un autre terminal , et script python INSTANCE_STT.ecouter_en_continue_avec_mot_cle_activation et le TTS_service en écoute que du broker ...
