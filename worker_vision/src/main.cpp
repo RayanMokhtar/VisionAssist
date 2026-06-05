@@ -6,6 +6,8 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
+#include <cmath>
+#include <numeric>
 
 using namespace cv;
 
@@ -17,6 +19,20 @@ using namespace cv;
 #define MAX_PERSISTANCE 10
 #define RAYON_DETECTION 150
 #define PI 3.14159265
+
+#define SEUIL_FILTRAGE 1.2
+#define SEUIL_DECISION_BRUIT 10
+#define SEUIL_DECISION_AVANT_ARRIERE 30
+#define MAX_FRAMES_DECISION 1
+
+enum Decisions {
+    RIEN,
+    AVANT,
+    ARRIERE,
+    GAUCHE,
+    DROITE,
+    NB_DECISIONS
+};
 
 struct ObjectDetected
 {
@@ -31,7 +47,10 @@ struct ObjectDetected
     int counterDetectionFailed = 0;
     std::vector<cv::Point> trajectory;
     std::vector<cv::Vec2f> velocity;
+    std::array<int,360> histo;
+    std::vector<Decisions> decisions;
 };
+
 
 int globalId = 0;
 
@@ -97,6 +116,8 @@ void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDe
             objectNew.velocity = objectOldRef->velocity;
             objectNew.velocity.push_back(objectNew.vect);
 
+            objectNew.decisions = objectOldRef->decisions;
+
             // if (objectNew.id == 0) {
             //     cv::Mat vis(620, 620, CV_8UC3, cv::Scalar(255, 255, 255));
             //     for(const Point& p : objectNew.trajectory) {
@@ -130,6 +151,8 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
 
         float sum_u = 0, sum_v = 0;
         int count = 0;
+        int compteurVecteursFiltresParSeuil = 0 ; 
+        std::array<int,360> histo{};
 
         // std::vector<float> us;
         // std::vector<float> vs;
@@ -145,9 +168,26 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
                 {
                     const cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
 
+                    float norme = sqrt(p[0]*p[0] + p[1]*p[1]);
+                    
+                    if (norme < SEUIL_FILTRAGE){
+                        compteurVecteursFiltresParSeuil++;
+                        continue;
+                    }
+                    
                     sum_u += p[0];
                     sum_v += p[1];
                     count++;
+
+                    int angle = (int)std::round(std::atan2(p[1], p[0]) * 180.0 / PI);
+
+                    if (angle < 0)
+                        angle += 360;
+
+                    if (angle >= 360)
+                        std::cout << "angle: " << angle << std::endl;
+
+                    histo[angle]++;
 
                     // us.push_back(p[0]);
                     // vs.push_back(p[1]);
@@ -156,6 +196,7 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
                 }
             }
         }
+        //std::cout << "nombre de vecteurs filtres par la norme : => " << compteurVecteursFiltresParSeuil << " => ratio ==> " << (float)((float)(100*compteurVecteursFiltresParSeuil) / (float)((detect.box.height* detect.box.width)))<< std::endl;
 
         // std::sort(flows.begin(), flows.end(),
         //     [](const cv::Vec2f& a, const cv::Vec2f& b)
@@ -188,7 +229,7 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
 
         globalId = globalId % 100000;
 
-        ObjectDetected object{globalId++, detect.class_id, detect.confidence, detect.box, {u, v}, Point(xGravity, yGravity), detect.color, detect.className, 0, {Point(xGravity, yGravity)}, {{u, v}}};
+        ObjectDetected object{globalId++, detect.class_id, detect.confidence, detect.box, {u, v}, Point(xGravity, yGravity), detect.color, detect.className, 0, {Point(xGravity, yGravity)}, {{u, v}}, histo};
 
         objectsNew.push_back(object);
     }
@@ -241,6 +282,57 @@ Mat drawOpticalFlow(const Mat& matDepl)
     return matOpticalFlow;
 }
 
+Mat drawOpticalFlowFiltered(const Mat& matDepl)
+{
+    cv::Mat matOpticalFlow(matDepl.rows, matDepl.cols, CV_8UC3, cv::Scalar(255, 255, 255));
+
+    int step = 3;
+    float scale = 1;
+
+    for (int y = step; y < matDepl.rows - step; y += step)
+    {
+        for (int x = step; x < matDepl.cols - step; x += step)
+        {
+            float sum_u = 0, sum_v = 0;
+            int count = 0;
+
+            for (int j = y - step/2; j <= y + step/2; j++)
+            {
+                for (int i = x - step/2; i <= x + step/2; i++)
+                {
+                    const cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
+                    sum_u += p[0];
+                    sum_v += p[1];
+                    count++;
+                }
+            }
+
+            float u = sum_u / count;
+            float v = sum_v / count;
+
+            float norme = sqrt(u*u + v*v);
+
+            if (norme < SEUIL_FILTRAGE){
+                continue;
+            }
+
+            // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
+            // float u = p[0];
+            // float v = p[1];
+
+            //float norm = sqrt(u*u + v*v);
+            //if (norm < 1) continue;
+
+            cv::Point p1(x, y);
+            cv::Point p2(x + u * scale, y + v * scale);
+
+            cv::arrowedLine(matOpticalFlow, p1, p2, cv::Scalar(0, 0, 255), 1);
+        }
+    }
+
+    return matOpticalFlow;
+}
+
 Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& objects)
 {
     cv::Mat sparseFlowDraw(deplacement.rows, deplacement.cols, CV_8UC3, cv::Scalar(255, 255, 255));
@@ -261,9 +353,9 @@ Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& ob
                 float sum_u = 0, sum_v = 0;
                 int count = 0;
 
-                for (int j = y - step/2; j < y + step/2; j++)
+                for (int j = y - step/2; j <= y + step/2; j++)
                 {
-                    for (int i = x - step/2; i < x + step/2; i++)
+                    for (int i = x - step/2; i <= x + step/2; i++)
                     {
                         const cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
                         sum_u += p[0];
@@ -278,6 +370,12 @@ Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& ob
 
                 float u = sum_u / count;
                 float v = sum_v / count;
+
+                float norme = sqrt(u*u + v*v);
+
+                if (norme < SEUIL_FILTRAGE){
+                    continue;
+                }
 
                 cv::Point p1(x, y);
                 cv::Point p2(x + u * scale, y + v * scale);
@@ -375,6 +473,187 @@ Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& object
     return yoloDraw;
 }
 
+// void drawHistogram(const std::vector<ObjectDetected>& objects)
+// {
+//     int width = 1800;
+//     int height = 640;
+//     int margin = 20;
+
+//     for (const ObjectDetected& object : objects)
+//     {
+//         cv::Mat img(height, width, CV_8UC3, cv::Scalar(255, 255, 255));
+
+//         int maxVal = 1;
+//         for (int i = 0; i < 360; i++)
+//             maxVal = std::max(maxVal, object.histo[i]);
+
+//         float binWidth = (float)(width - 2 * margin) / 360.0f;
+
+//         for (int i = 0; i < 360; i++)
+//         {
+//             int x1 = margin + (int)(i * binWidth);
+//             int x2 = margin + (int)((i + 1) * binWidth);
+
+//             int barHeight = (int)((float)object.histo[i] / maxVal * (height - 2 * margin));
+
+//             cv::Point p1(x1, height - margin);
+//             cv::Point p2(x2, height - margin - barHeight);
+
+//             cv::rectangle(img, p1, p2, cv::Scalar(0, 0, 0), cv::FILLED);
+//         }
+
+//         cv::line(img, cv::Point(margin, height - margin),
+//                 cv::Point(width - margin, height - margin),
+//                 cv::Scalar(0, 0, 255), 1);
+
+//         std::string fpsText = "class name: " + object.className;
+
+//         cv::putText(img, fpsText, cv::Point(20, 40), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
+
+//         cv::imshow("histogramme", img);
+//     }
+// }
+
+
+void drawHistogram(const std::vector<ObjectDetected>& objects)
+{
+    int width = 1800;
+    int height = 640;
+    int margin = 50;
+
+    for (const ObjectDetected& object : objects)
+    {
+        // for (int i = 0; i < 360; i++)
+        // {
+        //     std::cout << "[" << i << "]=" << object.histo[i] << " ";
+        // }
+        // std::cout << std::endl;
+
+        cv::Mat img(height, width, CV_8UC3, cv::Scalar(255, 255, 255));
+
+        int maxVal = 400;
+        // for (int i = 0; i < 360; i++)
+        //     maxVal = std::max(maxVal, object.histo[i]);
+
+        float binWidth = (float)(width - 2 * margin) / 360.0f;
+
+        // Grille Y + labels
+        for (int k = 0; k <= 4; k++)
+        {
+            int value = (maxVal * k) / 4;
+
+            int y = height - margin -
+                    (int)((float)value / maxVal * (height - 2 * margin));
+
+            cv::line(img,
+                     cv::Point(margin, y),
+                     cv::Point(width - margin, y),
+                     cv::Scalar(220, 220, 220),
+                     1);
+
+            cv::putText(img,
+                        std::to_string(value),
+                        cv::Point(5, y + 5),
+                        cv::FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        cv::Scalar(0, 0, 0),
+                        1);
+        }
+
+        // Histogramme
+        for (int i = 0; i < 360; i++)
+        {
+            int x1 = margin + (int)(i * binWidth);
+            int x2 = margin + (int)((i + 1) * binWidth);
+
+            int barHeight =
+                (int)((float)object.histo[i] / maxVal *
+                (height - 2 * margin));
+
+            cv::rectangle(img,
+                          cv::Point(x1, height - margin),
+                          cv::Point(x2, height - margin - barHeight),
+                          cv::Scalar(0, 0, 0),
+                          cv::FILLED);
+        }
+
+        // Axe X + graduations
+        for (int angle = 0; angle <= 360; angle += 30)
+        {
+            int x = margin + (int)(angle * binWidth);
+
+            cv::line(img,
+                     cv::Point(x, height - margin),
+                     cv::Point(x, height - margin + 8),
+                     cv::Scalar(0, 0, 0),
+                     1);
+
+            cv::putText(img,
+                        std::to_string(angle),
+                        cv::Point(x - 12, height - margin + 25),
+                        cv::FONT_HERSHEY_SIMPLEX,
+                        0.45,
+                        cv::Scalar(0, 0, 0),
+                        1);
+        }
+
+        // Lignes principales 0° 90° 180° 270°
+        for (int angle : {0, 90, 180, 270})
+        {
+            int x = margin + (int)(angle * binWidth);
+
+            cv::line(img,
+                     cv::Point(x, margin),
+                     cv::Point(x, height - margin),
+                     cv::Scalar(0, 0, 255),
+                     1);
+        }
+
+        // Axes
+        cv::line(img,
+                 cv::Point(margin, height - margin),
+                 cv::Point(width - margin, height - margin),
+                 cv::Scalar(0, 0, 0),
+                 2);
+
+        cv::line(img,
+                 cv::Point(margin, margin),
+                 cv::Point(margin, height - margin),
+                 cv::Scalar(0, 0, 0),
+                 2);
+
+        // Titre
+        cv::putText(img,
+                    "Histogramme des directions du flux optique - " + object.className,
+                    cv::Point(20, 30),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.8,
+                    cv::Scalar(0, 100, 0),
+                    2);
+
+        // Label axe X
+        cv::putText(img,
+                    "Angle (degres)",
+                    cv::Point(width / 2 - 80, height - 5),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    cv::Scalar(255, 0, 0),
+                    2);
+
+        // Label axe Y
+        cv::putText(img,
+                    "Occurrences",
+                    cv::Point(10, margin - 10),
+                    cv::FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    cv::Scalar(255, 0, 0),
+                    2);
+
+        cv::imshow("histogramme", img);
+    }
+}
+
+
 std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDetected> objectsNew, std::vector<ObjectDetected> objectsCopy)
 {
     std::vector<ObjectDetected> objectsPersistant;
@@ -448,9 +727,11 @@ void startBeepAsync(int secondes)
     }).detach();
 }
 
-void decisionMaking(const std::vector<ObjectDetected>& objectsNew, Point pointRef)
+void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 {
-    for (const ObjectDetected& object : objectsNew)
+    std::vector<ObjectDetected>& decisions;
+
+    for (ObjectDetected& object : objectsNew)
     {   
         float dx = object.centreGravity.x - pointRef.x;
         float dy = object.centreGravity.y - pointRef.y;
@@ -458,13 +739,15 @@ void decisionMaking(const std::vector<ObjectDetected>& objectsNew, Point pointRe
         float r = sqrt(dx*dx + dy*dy);
         float v = sqrt((object.vect[0]*object.vect[0]) + (object.vect[1]*object.vect[1]));
 
+        //std::cout << "Norme flux optique ===> " << v << std::endl;
+
         //float vr = (dx*object.vect[0] + dy*object.vect[1]) / r;
 
         float ttc = -r / v;
 
-        if (ttc > - 500){
-            std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER"<< std::endl;
-        }
+        // if (ttc > - 500){
+        //     std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER"<< std::endl;
+        // }
 
         // if (ttc < 500)
         // {
@@ -482,14 +765,142 @@ void decisionMaking(const std::vector<ObjectDetected>& objectsNew, Point pointRe
 
         //std::cout << "class: " << object.className << " class id: " << object.id << " r: " << r << std::endl;
 
-        std::cout << "class: " << object.className << " class id: " << object.id << " ttc: " << ttc << " r: " << r << " v: " << v << std::endl;
-    }
-}
+        // std::cout << "class: " << object.className << " class id: " << object.id << " ttc: " << ttc << " r: " << r << " v: " << v << std::endl;
 
-int diff_ms(timeval t1, timeval t2)
-{
-    return (((t1.tv_sec - t2.tv_sec) * 1000000) +
-            (t1.tv_usec - t2.tv_usec))/1000;
+        float somme =  0.0;
+
+        float taux_haut_bas = 0.0;
+        float taux_droite = 0.0;
+        float taux_gauche = 0.0;
+        float taux_null_droite = 0.0;
+        float taux_null_gauche = 0.0;
+
+        // Histogramme
+        for (int i = 0; i < 360; i++)
+        {
+            somme += object.histo[i];
+
+            if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
+                taux_haut_bas += object.histo[i];
+            } else if (i > 135 && i <= 225) {
+                taux_gauche += object.histo[i];
+            } else {
+                taux_droite += object.histo[i];
+            }
+
+            if (i < 90 || i > 270) {
+                taux_null_droite += object.histo[i];
+            } else {
+                taux_null_gauche += object.histo[i];
+            }
+        }
+
+        taux_haut_bas /= somme;
+        taux_droite /= somme;
+        taux_gauche /= somme;
+        taux_null_droite /= somme;
+        taux_null_gauche /= somme;
+
+        taux_haut_bas *= 100;
+        taux_droite *= 100;
+        taux_gauche *= 100;
+        taux_null_droite *= 100;
+        taux_null_gauche *= 100;
+
+        float norme_histo = somme / 360.0;
+
+        //std::cout << "Taux droite ==> " << taux_droite << " taux gauche ==> " << taux_gauche << " norme histogramme ==> " << norme_histo << std::endl;
+
+        taux_haut_bas /= 2;
+        
+        float maxTaux = taux_haut_bas;
+        Decisions directionMax;
+        
+        if (abs(taux_null_gauche - taux_null_droite) <= SEUIL_DECISION_BRUIT) {
+            directionMax = RIEN;
+        } else {
+            directionMax = ARRIERE;
+
+            if (taux_haut_bas > maxTaux) {
+                maxTaux = taux_haut_bas;
+                directionMax = AVANT;
+            }
+
+            if (taux_droite > maxTaux) {
+                maxTaux = taux_droite;
+                directionMax = DROITE;
+            }
+
+            if (taux_gauche > maxTaux) {
+                maxTaux = taux_gauche;
+                directionMax = GAUCHE;
+            }
+
+            if(directionMax == ARRIERE || directionMax == AVANT)
+            {
+                if (norme_histo < 60){
+                    directionMax = ARRIERE;
+                }else{
+                    directionMax = AVANT;
+                }
+            }
+        }
+
+        object.decisions.push_back(directionMax);
+
+        // if (abs(taux_gauche - taux_droite) <= SEUIL_DECISION_BRUIT) {
+        //     //std::cout << "walou" << std::endl;
+        //     object.decisions.push_back(RIEN);
+        // }
+        // else if (abs(taux_gauche - taux_droite) <= SEUIL_DECISION_AVANT_ARRIERE) {
+        //     //std::cout << "ça avance ou ça recule" << std::endl;
+        //     if (norme_histo > 100) {
+        //         //std::cout << "ça avance" << std::endl;
+        //         object.decisions.push_back(AVANT);
+        //     } else {
+        //         //std::cout << "ça recule" << std::endl;
+        //         object.decisions.push_back(ARRIERE);
+        //     }
+        // }
+        // else if (taux_gauche > taux_droite) {
+        //     //std::cout << "ça part vers la gauche" << std::endl;
+        //     object.decisions.push_back(GAUCHE);
+        // } else {
+        //     //std::cout << "ça part vers la droite" << std::endl;
+        //     object.decisions.push_back(DROITE);
+        // }
+
+        if (object.decisions.size() == MAX_FRAMES_DECISION) {
+            std::array<int,NB_DECISIONS> votes{};
+
+            int max = -1;
+            Decisions finalDecision = RIEN;
+
+            for (Decisions& decision : object.decisions) {
+                votes[decision]++;
+
+                if (votes[decision] > max) {
+                    max = votes[decision];
+                    finalDecision = decision;
+                }
+            }
+
+            if (finalDecision == RIEN)
+                std::cout << "DECISION FINAL ==> walou" << std::endl;
+            else if (finalDecision == AVANT)
+                std::cout << "DECISION FINAL ==> ça avance" << std::endl;
+            else if (finalDecision == ARRIERE)
+                std::cout << "DECISION FINAL ==> ça recule" << std::endl;
+            else if (finalDecision == GAUCHE)
+                std::cout << "DECISION FINAL ==> ça part vers la gauche" << std::endl;
+            else if (finalDecision == DROITE)
+                std::cout << "DECISION FINAL ==> ça part vers la droite" << std::endl;
+
+            object.decisions.clear();
+        }
+
+        std::cout << "----------------------" << std::endl;
+    }
 }
 
 using Clock = std::chrono::high_resolution_clock;
@@ -581,11 +992,13 @@ int main(int argc, char** argv)
         
         Mat deplacement;
         Mat matOpticalFlow;
+        Mat filtredFlow;
 
         auto tFlowStart = Clock::now();
         std::thread threadFlow([&]() {
             deplacement = opticalFlow.exec(frame, frameOld); 
             matOpticalFlow = drawOpticalFlow(deplacement);
+            filtredFlow = drawOpticalFlowFiltered(deplacement);
         });
         
         std::vector<YOLO::Detection> yoloDetection;
@@ -618,11 +1031,14 @@ int main(int argc, char** argv)
         double fps = 1000.0 / std::max(globalMsTemp, 1.0);
 
         Mat yoloDraw = drawTrackingYolo(frame, objectsNew, fps);
-        auto tDrawEnd = Clock::now();
 
+        drawHistogram(objectsNew);
+        auto tDrawEnd = Clock::now();
+        
         auto tImshowStart = Clock::now();
         cv::imshow("yolo", yoloDraw);
         cv::imshow("flux optique", matOpticalFlow);
+        cv::imshow("flux optique filtrés", filtredFlow);
         //cv::imshow("sparse", sparseFlowDraw);
         cv::imshow("deplacement", meanFlowDraw);
         auto tImshowEnd = Clock::now();
