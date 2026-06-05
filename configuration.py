@@ -92,10 +92,13 @@ class DBConfig(BaseModel):
     db_file : Optional[str] = Field("db_file.db", description="Chemin du fichier de base de données SQLite (si dialecte sqlite)")
     db_name : str = Field("visionassist_db", description="Nom de la base de données (si dialecte postgresql ou mysql)")
 
-#TODO récupérer ça depuis la machine pour tester 
+
 class JWTConfig(BaseModel):
-    pass
- 
+    secret_key: str = Field(..., description="Clé secrète pour signer les JWT")
+    algorithm: str = Field("HS256", description="Algorithme de signature des JWT")
+    access_token_expire_minutes: int = Field(30, description="Durée de validité des tokens d'accès en minutes")
+    refresh_token_expire_minutes: int = Field(1440, description="Durée de validité des tokens de rafraîchissement en minutes")
+
 class SecurityConfig(BaseModel):
     jwtConfig : JWTConfig = Field(default_factory=JWTConfig,description="jwt config ")
     max_tentatives_avant_blocage_carte_gemalto : int = 3

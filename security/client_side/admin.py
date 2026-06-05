@@ -530,7 +530,7 @@ def reset_complet_resilient(conn, csc0):
     if is_sw_ok(sw1, sw2):
         print(f"    [+] 0x{ADDR_ACCESS_CONDITIONS:02X} -> 00 00 00 00")
     else:
-        print(f"    [-] 0x{ADDR_ACCESS_CONDITIONS:02X} echoue (SW={sw1:02X}{sw2:02X})")
+        print(f"    [-] 0x{ADDR_ACCESS_CONDITIONS:02X} read_public_card_idechoue (SW={sw1:02X}{sw2:02X})")
         errors += 1
 
     print("\n" + "="*70)

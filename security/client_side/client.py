@@ -135,11 +135,13 @@ def authenticate():
     if not response.get("success"):
         print(f"Acces refuse serveur: {response.get('error', 'erreur inconnue')}")
         return False
-
+    
     print("Acces autorise")
     print(f"user_id: {response.get('user_id')}")
     print(f"role   : {response.get('role')}")
     print(f"status : {response.get('status')}")
+    
+    
     return True
 
 
