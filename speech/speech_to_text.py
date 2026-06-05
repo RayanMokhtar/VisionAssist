@@ -127,6 +127,7 @@ class SpeechToText:
 
         nb_chunks_obtenus = int((self.audio_config.taux_echantillonnage_hz / self.audio_config.taille_chunk) * duree_record) #combien de chunk : sur un seconde * nbr seconde
 
+<<<<<<< HEAD
         #lire flux audio  nb_chunks fois , si buffer plain continue quand meme 
         frames = [stream.read(self.audio_config.taille_chunk, exception_on_overflow=False) for _ in range(nb_chunks_obtenus)]
 
@@ -136,6 +137,60 @@ class SpeechToText:
         print("enregistrement fini ")
         #écriture dans un fichier temporaire
         fichier_temporaire_stockage = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)#suppression après via le unlink
+=======
+        pre_buffer = collections.deque(maxlen=pre_roll_chunks)
+        frames = []
+        
+        print(" taille file buffer : ",pre_buffer)
+        print("silence chunks ",silence_chunks_max)
+        parole_detectee = False
+        silence_chunks = 0
+
+        try:
+            for _ in range(max_chunks):
+                data = stream.read(
+                    self.audio_config.taille_chunk,
+                    exception_on_overflow=False
+                )
+
+                energie = audioop.rms(data, 2)  # 2 octets
+                print("energie :", energie)  # Debug: affiche l'énergie mesurée
+                if not parole_detectee:
+                    pre_buffer.append(data)
+                    if energie > self.audio_config.seuil_energie:
+                        print("parole détectée")
+                        parole_detectee = True
+                        frames.extend(pre_buffer) #ajout du début (taille fixe de la file car les nouveaux éléments se poussent)
+                        frames.append(data)
+                    continue
+
+                frames.append(data)
+
+                if energie < self.audio_config.seuil_energie:
+                    silence_chunks += 1
+                else:
+                    silence_chunks = 0 #reprise de parole
+
+                if silence_chunks >= silence_chunks_max:
+                    print("fin de parole détectée")
+                    break
+        finally:
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+
+        fichier_temporaire_stockage = tempfile.NamedTemporaryFile(
+            suffix=".wav",
+            delete=False
+        )
+
+        # Vérifier si des frames ont été enregistrées
+        if not frames or len(frames) < 10:  # Au moins quelques frames
+            print("Aucune parole détectée - fichier vide non retourné")
+            os.unlink(fichier_temporaire_stockage.name)
+            return None
+
+>>>>>>> b083dbb (:art: ajout pipeline authentification)
         with wave.open(fichier_temporaire_stockage.name, "wb") as f:
             #écriture entête pour fastWhisper
             f.setnchannels(self.audio_config.canaux_ecoute)
@@ -144,6 +199,35 @@ class SpeechToText:
             f.writeframes(b"".join(frames))#écritures des frames
 
         return fichier_temporaire_stockage.name
+<<<<<<< HEAD
+=======
+    
+    #après authentification on l'active, quand il a rentré le pin ...sinon enregistrer_audio_microphone_apres_activation
+    def ecouter_en_continu_avec_mot_activation(self) -> None : 
+        print("mode écoute active en cours ...")
+        actif = False
+        while True : 
+            chemin_audio = self.enregistrer_audio_microphone_apres_activation()
+            if chemin_audio is None : 
+                continue
+            try : 
+                resultat = self.transcrire_fichier_audio(chemin_fichier_audio=chemin_audio)
+                texte = resultat.texte.lower().strip()
+                print("texte renvoyé par écoute : ",texte)
+                if not texte : 
+                    continue
+                if not actif :  
+                    if CONFIGURATION.nom_assistant.lower() in texte:
+                        actif = True
+                        print("assistant activé car présent dans texte : ",texte)
+                        message_payload = {"resultat_stt":{"texte":texte.replace(CONFIGURATION.nom_assistant.lower(),"")}}
+                        # CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
+                        actif = False
+            except Exception as e : 
+                print("erreur inattenue dans ecoute continue stt",str(e))
+            finally : 
+                os.unlink(chemin_audio)
+>>>>>>> b083dbb (:art: ajout pipeline authentification)
 
     def pipeline(self, type: Literal["micro", "fichier"] = "micro", duree_record: Optional[int] = 5, chemin_fichier_audio: Optional[str] = None) -> STTResult:
         if type == "micro":
@@ -160,6 +244,8 @@ class SpeechToText:
             if type == "micro":
                 os.unlink(chemin_fichier)
 
+INSTANCE_STT = SpeechToText()
+# resultat = INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
 
 def lancement_service_stt(client_id: str = "stt", topic_publie: str = CONFIGURATION.broker.topics.stt_topic):
     broker = get_broker_client(client_id)

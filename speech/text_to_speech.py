@@ -77,7 +77,8 @@ class TextToSpeech:
         self.dossier_sortie = self.configuration_tts.dossier_sortie
 
     def synthetiser(self, texte: str , nom_fichier_sortie : str) -> TTSResult:
-    
+        
+        print("synthese du texte en cours")
         if not texte.strip():
             raise ValueError("Texte vide — rien à synthétiser.")
 
@@ -141,6 +142,10 @@ class TextToSpeech:
             resultat = self.pipeline(MESSAGE_AVERTISSEMENT)
 
 
+INSTANCE_TTS = TextToSpeech()
+
+
+
 #à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
 def lancement_service_tts(client_id : str = "tts", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
     broker = get_broker_client(client_id) # à vori si singelton ou pas 
@@ -157,4 +162,4 @@ def lancement_service_tts(client_id : str = "tts", topic_sur_ecoute : str = CONF
         LOGGER.info("TTS arrêté.")
 
 
-lancement_service_tts()
+# lancement_service_tts()
