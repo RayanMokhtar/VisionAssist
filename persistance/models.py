@@ -83,6 +83,7 @@ class Carte(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     statut = Column(SAEnum(CardStatus, name="card_status_enum"), nullable=False, default=CardStatus.active)
 
+    secret_chiffre = Column(Text, nullable=False)
     user = relationship("User", back_populates="cartes")
     sessions = relationship("Session", back_populates="carte", cascade="all, delete-orphan")
 
@@ -93,7 +94,9 @@ class Carte(Base):
         return {
             "card_id": self.card_id,
             "user_id": self.user_id,
-            "statut": self.statut.value if self.statut else None
+            "statut": self.statut.value if self.statut else None,
+            "secret_configure": self.secret_chiffre is not None
+
         }
 
 #session_id en uuid

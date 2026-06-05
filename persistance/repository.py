@@ -47,8 +47,8 @@ class CarteRepository(BaseRepository):
     def list_for_user(self, user_id: int) -> List[Carte]:
         return self.db.query(Carte).filter_by(user_id=user_id).all()
 
-    def create(self, *, card_id: str, user_id: int, statut: CardStatus = CardStatus.active) -> Carte:
-        carte = Carte(card_id=card_id, user_id=user_id, statut=statut)
+    def create(self, *, card_id: str, user_id: int, statut: CardStatus = CardStatus.active, secret_chiffre: Optional[str] = None,) -> Carte:
+        carte = Carte(card_id=card_id, user_id=user_id, statut=statut, secret_chiffre=secret_chiffre) #création du secret au début de l'enrollement ... 
         self.db.add(carte)
         self.db.commit()
         return carte
