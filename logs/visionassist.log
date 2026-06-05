@@ -673,3 +673,22 @@ Pourriez-vous prÃ©ciser ce que vous souhaitez que je fasse ou ce que vous voulez
 2026-05-22 19:20:23,619 - faster_whisper - INFO - VAD filter removed 00:05.248 of audio
 2026-05-22 19:20:24,690 - __main__ - INFO - RÃ©sultat STT publiÃ©: Le bouchon, le bouchon, le technologie.
 2026-05-22 19:20:31,241 - __main__ - INFO - tts demandÃ© pour synthetiser ce texte : Le bouchon ferme la bouteille. La technologie l'amÃ©liore.
+2026-06-05 10:40:06,320 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:41:36,713 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:43:21,169 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:43:39,036 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:44:02,977 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:44:23,841 - faster_whisper - INFO - Processing audio with duration 00:00.000
+2026-06-05 10:44:23,848 - faster_whisper - INFO - VAD filter removed 00:00.000 of audio
+2026-06-05 10:47:49,579 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:47:58,605 - faster_whisper - INFO - Processing audio with duration 00:03.712
+2026-06-05 10:47:58,619 - faster_whisper - INFO - VAD filter removed 00:00.336 of audio
+2026-06-05 10:48:19,111 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:48:25,385 - faster_whisper - INFO - Processing audio with duration 00:02.688
+2026-06-05 10:48:25,398 - faster_whisper - INFO - VAD filter removed 00:00.000 of audio
+2026-06-05 10:48:35,780 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 10:48:43,926 - faster_whisper - INFO - Processing audio with duration 00:04.480
+2026-06-05 10:48:43,943 - faster_whisper - INFO - VAD filter removed 00:00.304 of audio
+2026-06-05 11:18:40,325 - speech.text_to_speech - INFO - Modèle chargé
+2026-06-05 11:18:49,407 - faster_whisper - INFO - Processing audio with duration 00:03.584
+2026-06-05 11:18:49,427 - faster_whisper - INFO - VAD filter removed 00:00.000 of audio

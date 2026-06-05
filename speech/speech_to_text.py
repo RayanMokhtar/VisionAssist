@@ -136,7 +136,7 @@ class SpeechToText:
                 )
 
                 energie = audioop.rms(data, 2)  # 2 octets
-                # print("energie ; ",energie)
+                print("energie :", energie)  # Debug: affiche l'énergie mesurée
                 if not parole_detectee:
                     pre_buffer.append(data)
                     if energie > self.audio_config.seuil_energie:
@@ -166,6 +166,12 @@ class SpeechToText:
             delete=False
         )
 
+        # Vérifier si des frames ont été enregistrées
+        if not frames or len(frames) < 10:  # Au moins quelques frames
+            print("Aucune parole détectée - fichier vide non retourné")
+            os.unlink(fichier_temporaire_stockage.name)
+            return None
+
         with wave.open(fichier_temporaire_stockage.name, "wb") as f:
             f.setnchannels(self.audio_config.canaux_ecoute)
             f.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
@@ -185,6 +191,7 @@ class SpeechToText:
             try : 
                 resultat = self.transcrire_fichier_audio(chemin_fichier_audio=chemin_audio)
                 texte = resultat.texte.lower().strip()
+                print("texte renvoyé par écoute : ",texte)
                 if not texte : 
                     continue
                 if not actif :  
@@ -192,7 +199,7 @@ class SpeechToText:
                         actif = True
                         print("assistant activé car présent dans texte : ",texte)
                         message_payload = {"resultat_stt":{"texte":texte.replace(CONFIGURATION.nom_assistant.lower(),"")}}
-                        CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
+                        # CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
                         actif = False
             except Exception as e : 
                 print("erreur inattenue dans ecoute continue stt",str(e))
@@ -232,7 +239,7 @@ class SpeechToText:
             if type == "micro":
                 os.unlink(chemin_fichier)
 
-instance_stt = SpeechToText()
-resultat = instance_stt.pipeline_authentification_stt()
+INSTANCE_STT = SpeechToText()
+# resultat = INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
 
   
