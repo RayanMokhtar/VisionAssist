@@ -131,11 +131,14 @@ def verifier_carte_hmac(card_id, challenge_id, challenge, signature):
 def authenticate():
     print("Carte inseree")
     try:
-        conn = connect_card()
+        is_ok , conn = connect_card()
     except Exception as exc:
         print(f"Erreur connexion carte: {exc}")
         return False
-    
+
+    if not is_ok:
+        return False
+
     sw1, sw2 = verify_csc0(conn, CSC0_SIMULATION)
     if not is_sw_ok(sw1, sw2):
         print(f"Erreur simulation: CSC0 refuse SW={sw1:02X}{sw2:02X}")
@@ -164,7 +167,7 @@ def authenticate():
         print(f"Acces refuse: {message}")
         return False
 
-    sw1, sw2 = verify_csc1(conn, pin_to_csc1_bytes(pin))
+    sw1, sw2 = verify_csc1(conn, pin_to_csc1_bytes(pin)) # après saisie pour le format de la carte
     if not is_sw_ok(sw1, sw2):
         print(f"Acces refuse: VERIFY CSC1 SW={sw1:02X}{sw2:02X}")
         return False

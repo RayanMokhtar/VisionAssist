@@ -35,8 +35,8 @@ logging.basicConfig(
     level=logging.INFO, 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  
     handlers=[
-        logging.StreamHandler(), #console 
-        logging.FileHandler(CONFIGURATION.paths.log_file), #fichier log
+        logging.StreamHandler() #console 
+        # logging.FileHandler(CONFIGURATION.paths.log_file), #fichier log
     ]
 )
 
@@ -54,16 +54,23 @@ class TTSResult(BaseModel):
     def __str__(self) -> str:
         return f"[{self.texte} {self.chemin_fichier_audio} | {self.duree_secondes} s]" 
 
-def charger_modele(configuration_tts=configuration_tts):
-    if os.path.exists(configuration_tts.chemin_modele):
-        print(f"{configuration_tts.chemin_modele}")
-        #doc : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_PYTHON.md
-        modele  = PiperVoice.load(configuration_tts.chemin_modele, config_path=configuration_tts.configuration_modele)
-        LOGGER.info("Modèle chargé" ) 
-        return modele
-    else : 
-        LOGGER.error("modele pas chargé ??")
 
+def charger_modele(configuration_tts=configuration_tts):
+    
+    if os.path.exists(configuration_tts.chemin_modele):
+        try : 
+            print(f"Chemin du modèle tts : {configuration_tts.chemin_modele}")
+            #doc : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_PYTHON.md
+            modele  = PiperVoice.load(configuration_tts.chemin_modele, config_path=configuration_tts.configuration_modele)
+            LOGGER.info("Modèle chargé" ) 
+            return modele
+        except Exception as e:
+            LOGGER.error(f"Erreur lors du chargement du modèle : {e}")
+    else : 
+        print("chemin du modele tts non trouvé : ",configuration_tts.chemin_modele , "chemin actuel : ", os.getcwd())
+        LOGGER.error(f"Modèle pas chargé ?? Chemin cherché : {configuration_tts.chemin_modele}")
+
+        
 MODELE_TTS = charger_modele()
 
 
@@ -149,9 +156,8 @@ INSTANCE_TTS = TextToSpeech()
 #à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
 def lancement_service_tts(client_id : str = "tts-jetson", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
     broker = get_broker_client(client_id) # à vori si singelton ou pas 
-    TTS = TextToSpeech()
     broker.connexion()
-    broker.sabonner(topic_sur_ecoute,TTS.fonction_trigger)
+    broker.sabonner(topic_sur_ecoute, INSTANCE_TTS.fonction_trigger)
 
     LOGGER.info("TTS en écoute sur topic %s...",topic_sur_ecoute)
     try:
@@ -161,5 +167,6 @@ def lancement_service_tts(client_id : str = "tts-jetson", topic_sur_ecoute : str
         broker.deconnexion()
         LOGGER.info("TTS arrêté.")
 
-
+if __name__ == "__main__":
+    lancement_service_tts()
 # lancement_service_tts()

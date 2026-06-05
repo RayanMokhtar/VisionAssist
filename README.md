@@ -122,3 +122,13 @@ sudo apt install -y nvidia-driver-550# maj driver
 
  commande lancement vllm : vllm serve ./langage/modeles/Qwen3.5-27B-4bit-bitsandbytes --max-model-len 8192 --gpu-memory-utilization 0.95 --enforce-eager
 
+
+
+
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json
+
+sudo apt-get install espeak-ng
+
+    "length_scale": 1.2, pour ralentir la parole ... selon préférences utilisateurs ... 
+

@@ -7,7 +7,7 @@ from huggingface_hub import hf_hub_download
 ##Script installation 
 REPO_ID = "rhasspy/piper-voices"  # Repo Hugging Face officiel pour Piper
 MODEL_NAME = "fr_FR-siwis-medium"  # Voix française (medium quality)
-LOCAL_DIR = "./data/tts/modeles/tts"  # Dossier de destination (comme dans TTSConfig)
+LOCAL_DIR = "./data/tts/modeles"  # Dossier de destination (comme dans TTSConfig)
 
 # Chemins des fichiers dans le repo
 ONNX_FILENAME = f"fr/fr_FR/siwis/medium/{MODEL_NAME}.onnx"

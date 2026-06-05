@@ -13,7 +13,9 @@ dependencies = [
     "sqlalchemy",
     "python-dotenv>=0.21.0",
     "pymysql",
-    "jwt"
+    "cryptography",
+    "pyscard",
+    "PyJWT"
 ]
 
 #à séparer après avec les commandes les dépendances de chaque module dans le projet 

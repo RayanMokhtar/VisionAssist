@@ -26,6 +26,7 @@ SECRET_CARTE_TAILLE = SECRET_CARTE_WORDS * 4
 # =========================
 
 def connect_card():
+    is_ok = False
     available_readers = readers()
     if not available_readers:
         raise Exception("Aucun lecteur detecte")
@@ -34,7 +35,8 @@ def connect_card():
     conn.connect()
     print(f"Lecteur : {reader}")
     print(f"ATR : {toHexString(conn.getATR())}")
-    return conn
+    is_ok = True
+    return is_ok , conn
 
 
 def is_sw_ok(sw1, sw2):

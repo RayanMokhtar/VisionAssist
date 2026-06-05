@@ -44,9 +44,11 @@ class MqttClientBroker(IBroker):
         logger.info("Déconnecté du broker")
     
     def publier(self, topic: str, payload: Any) -> bool:
+        print("publier dans broker : ", topic, payload , "avec configuration : ", self.conf)
         try:
             if isinstance(payload, (dict, list)):
                 payload = json.dumps(payload, ensure_ascii=False)
+            print("publication topic : ", topic, "payload : ", payload)
             result = self.client.publish(topic, str(payload), qos=self.conf.qos, retain=self.conf.retain)
             result.wait_for_publish(timeout=5.0)
             return result.rc == mqtt.MQTT_ERR_SUCCESS

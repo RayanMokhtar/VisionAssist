@@ -4,27 +4,29 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from pathlib import Path
 
 class STTConfig(BaseModel):
     model_name: Literal["tiny", "base", "small", "medium", "large-v3"] = "small"
     device: Literal["cuda", "cpu"] = "cpu"
     quantization_modele: Literal["int8", "float16", "int8_float16"] = "int8"
     langue: Optional[str] = "fr"
-    exploration_possibilites_decodage: int = Field(10, ge=1, le=10)
+    exploration_possibilites_decodage: int = Field(5, ge=1, le=10)
     detection_activite_de_la_voix: bool = True
     duree_min_fin_parole : int = 1200
 
 
 
-class TTSConfig(BaseModel):
-    moteur_tts: Literal["piper", "espeak","voxtral"] = "piper" #à voir si on migre sur du voxtral ? 
-    chemin_modele: str = "./data/tts/modeles/fr_FR-siwis-medium.onnx"
-    configuration_modele : Optional[str] = "./data/tts/modeles/fr_FR-siwis-medium.onnx.json"
-    taux_echantillonnage_hz: int = 22050
-    multiplicateur_lenteur: float = 1.0 # 2 alors 2 fois plus lent
-    dossier_sortie: str = "./data/tts/sortie_modeles"
+ROOT_DIR = Path(__file__).parent.absolute() 
 
+
+class TTSConfig(BaseModel):
+    moteur_tts: Literal["piper", "espeak","voxtral"] = "piper" 
+    chemin_modele: str = str(ROOT_DIR / "data/tts/modeles/fr_FR-siwis-medium.onnx")
+    configuration_modele : Optional[str] = str(ROOT_DIR / "data/tts/modeles/fr_FR-siwis-medium.onnx.json")
+    taux_echantillonnage_hz: int = 22050
+    multiplicateur_lenteur: float = 1.0 
+    dossier_sortie: str = str(ROOT_DIR / "data/tts/sortie_modeles")
     
 class AudioConfig(BaseModel):
     taux_echantillonnage_hz: int = 16000  #recommandé pour le tts à voir si on unifie pas
@@ -35,8 +37,6 @@ class AudioConfig(BaseModel):
     duree_max_enregistrement_theorique: float = 20
     seuil_energie: int = 300 #pour le RMS - réduit pour meilleure détection de parole
     pre_roll_parole_avant_enregistrement_secondes: float = 0.8
-
-
 
 
 
@@ -56,7 +56,7 @@ class TopicConfig(BaseModel):
 
 class BrokerConfig(BaseModel):
     type_broker : Literal["RabbitMQ","mosquitto"] = "mosquitto"
-    host: str = "172.20.10.4"
+    host: str = "localhost"
     port: int = Field(1883, ge=1, le=65535)
     keepalive: int = 60
     client_id: str = "visionassist-jetson" #TODO à modifier dans serveurito
@@ -94,7 +94,7 @@ class DBConfig(BaseModel):
 
 
 class JWTConfig(BaseModel):
-    secret_key: str = Field(..., description="Clé secrète pour signer les JWT")
+    secret_key: Optional[str] = Field("une_cle_a_remplacer", description="Clé secrète pour signer les JWT")
     algorithm: str = Field("HS256", description="Algorithme de signature des JWT")
     access_token_expire_minutes: int = Field(30, description="Durée de validité des tokens d'accès en minutes")
     refresh_token_expire_minutes: int = Field(1440, description="Durée de validité des tokens de rafraîchissement en minutes")
@@ -118,14 +118,16 @@ class Configuration(BaseSettings):
         env_nested_delimiter="__",
         extra="ignore",
     )
-    nom_assistant : str = "LAZIBUS"
+    nom_assistant : str = "wesker"
     stt:STTConfig=Field(default_factory=STTConfig,description="configuration modele stt")
     tts:TTSConfig=Field(default_factory=TTSConfig,description="configuration modele tts")
     audio:AudioConfig=Field(default_factory=AudioConfig,description="configuration modele audio")
     broker:BrokerConfig=Field(default_factory=BrokerConfig,description="configuration broker")
     paths: PathConfig=Field(default_factory=PathConfig,description="conf paths chemin fichiers")
     db : DBConfig = Field(default_factory=DBConfig,description="configuration base de données")
+    jwt : JWTConfig = Field(default_factory=JWTConfig,description="configuration JWT")
     security : SecurityConfig = Field(default_factory=SecurityConfig,description="configuration de la sécurité")
+    environnement : Literal["linux","windows"]="linux"
 
 def get_configuration():
     return Configuration()

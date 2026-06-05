@@ -136,7 +136,7 @@ class SpeechToText:
                 )
 
                 energie = audioop.rms(data, 2)  # 2 octets
-                print("energie :", energie)  # Debug: affiche l'énergie mesurée
+                # print("energie :", energie)  
                 if not parole_detectee:
                     pre_buffer.append(data)
                     if energie > self.audio_config.seuil_energie:
@@ -184,6 +184,7 @@ class SpeechToText:
     def ecouter_en_continu_avec_mot_activation(self) -> None : 
         print("mode écoute active en cours ...")
         actif = False
+        CLIENT_BROKER_STT.connexion()
         while True : 
             chemin_audio = self.enregistrer_audio_microphone_apres_activation()
             if chemin_audio is None : 
@@ -199,7 +200,9 @@ class SpeechToText:
                         actif = True
                         print("assistant activé car présent dans texte : ",texte)
                         message_payload = {"resultat_stt":{"texte":texte.replace(CONFIGURATION.nom_assistant.lower(),"")}}
-                        # CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
+                        pub = CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
+                        print("message publié sur le broker : ",CLIENT_BROKER_STT)
+                        print("état payload publié : ",pub )
                         actif = False
             except Exception as e : 
                 print("erreur inattenue dans ecoute continue stt",str(e))
@@ -242,4 +245,6 @@ class SpeechToText:
 INSTANCE_STT = SpeechToText()
 # resultat = INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
 
+if __name__ == "__main__":
+    INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
   

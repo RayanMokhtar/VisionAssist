@@ -26,7 +26,7 @@ CLIENT_BROKER_LLM = get_broker_client(client_id="llm-serveur_client") # à vori 
 def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
     MESSAGE_AVERTISSEMENT = "erreur potentielle dans la récupération du message faites attention"
     try : 
-        print("message reçu dans le trigger du llm",message_recu)
+        print("ATTENDS tu as recu ça",message_recu)
         resultat_llm = ""
         print("type message recu",type(message_recu))
         if isinstance(message_recu, dict):
@@ -37,10 +37,11 @@ def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
         else :
             raise ValueError("le message reçu n'est ni une string ni un dict",type(message_recu))
         if topic == CONFIGURATION.broker.topics.llm_topic_ecoute_stt :
+            print("agent a recu quelque chose : ",message_recu)
             texte = message_recu.get("resultat_stt","").get("texte","")
             entree_agent : BrokerRequest = BrokerRequest(
                 request_id=str(uuid.uuid4()),
-                session_id=message_recu.get("session_id",""),
+                session_id=message_recu.get("session_id","uuuisdgishgvg"),
                 text=texte,
                 image_url=None
             )
@@ -72,6 +73,7 @@ def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
 
 #à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
 def lancement_service_llm(topic_sur_ecoute : str = CONFIGURATION.broker.topics.llm_topic_ecoute_stt):
+    print("agent en cours de lancement ...")
     CLIENT_BROKER_LLM.connexion()
     CLIENT_BROKER_LLM.sabonner(topic_sur_ecoute,fonction_trigger_declenchement_llm)
 
@@ -85,7 +87,7 @@ def lancement_service_llm(topic_sur_ecoute : str = CONFIGURATION.broker.topics.l
 
 
 #lancement_llm seuleemnt sur stt
-
-lancement_service_llm()
+if __name__ == "__main__":
+    lancement_service_llm()
 
 
