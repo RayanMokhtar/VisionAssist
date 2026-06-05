@@ -88,6 +88,17 @@ class DBConfig(BaseModel):
     db_name : str = Field("visionassist_db", description="Nom de la base de données (si dialecte postgresql ou mysql)")
 
 
+class SecurityConfig(BaseModel):
+    # cle_chiffrement_cartes: str = Field(
+    #     "",
+    #     description="Cle Fernet pour chiffrer les secrets des cartes en base"
+    # )
+    # duree_challenge_secondes: int = Field(
+    #     60,
+    #     description="Duree de validite d'un challenge HMAC"
+    # )
+    pass
+
 class Configuration(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -100,7 +111,7 @@ class Configuration(BaseSettings):
     broker:BrokerConfig=Field(default_factory=BrokerConfig,description="configuration broker")
     paths: PathConfig=Field(default_factory=PathConfig,description="conf paths chemin fichiers")
     db : DBConfig = Field(default_factory=DBConfig,description="configuration base de données")
-
+    security: SecurityConfig = Field(default_factory=SecurityConfig,description="configuration sécurité")
 def get_configuration():
     return Configuration()
 
