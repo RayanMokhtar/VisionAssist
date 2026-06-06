@@ -21,14 +21,13 @@ using namespace cv;
 #define PI 3.14159265
 
 #define SEUIL_FILTRAGE 1.2
-#define SEUIL_DECISION_BRUIT 10
+#define SEUIL_DECISION_BRUIT 12
 #define SEUIL_DECISION_AVANT_ARRIERE 30
-#define MAX_FRAMES_DECISION 1
+#define MAX_FRAMES_DECISION 3
 
 enum Decisions {
     RIEN,
-    AVANT,
-    ARRIERE,
+    DEVANT,
     GAUCHE,
     DROITE,
     NB_DECISIONS
@@ -49,8 +48,9 @@ struct ObjectDetected
     std::vector<cv::Vec2f> velocity;
     std::array<int,360> histo;
     std::vector<Decisions> decisions;
+    float ttc = 0;
+    Decisions decision = RIEN;
 };
-
 
 int globalId = 0;
 
@@ -117,6 +117,7 @@ void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDe
             objectNew.velocity.push_back(objectNew.vect);
 
             objectNew.decisions = objectOldRef->decisions;
+            objectNew.ttc = objectOldRef->ttc;
 
             // if (objectNew.id == 0) {
             //     cv::Mat vis(620, 620, CV_8UC3, cv::Scalar(255, 255, 255));
@@ -523,6 +524,8 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
     for (const ObjectDetected& object : objects)
     {
+        if (object.className != "person")
+            continue;
         // for (int i = 0; i < 360; i++)
         // {
         //     std::cout << "[" << i << "]=" << object.histo[i] << " ";
@@ -560,6 +563,13 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                         1);
         }
 
+        float norme = 0.0; 
+        float taux_haut_bas = 0.0;
+        float taux_droite = 0.0;
+        float taux_gauche = 0.0;
+        float taux_null_droite = 0.0;
+        float taux_null_gauche = 0.0;
+
         // Histogramme
         for (int i = 0; i < 360; i++)
         {
@@ -575,7 +585,36 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                           cv::Point(x2, height - margin - barHeight),
                           cv::Scalar(0, 0, 0),
                           cv::FILLED);
+
+            norme += object.histo[i];
+            if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
+                taux_haut_bas += object.histo[i];
+            } else if (i > 135 && i <= 225) {
+                taux_gauche += object.histo[i];
+            } else {
+                taux_droite += object.histo[i];
+            }
+
+            if (i < 90 || i > 270) {
+                taux_null_droite += object.histo[i];
+            } else {
+                taux_null_gauche += object.histo[i];
+            }
         }
+
+        taux_haut_bas /= norme;
+        taux_droite /= norme;
+        taux_gauche /= norme;
+        taux_null_droite /= norme;
+        taux_null_gauche /= norme;
+        norme /= 360.0;
+
+        taux_haut_bas *= 100;
+        taux_droite *= 100;
+        taux_gauche *= 100;
+        taux_null_droite *= 100;
+        taux_null_gauche *= 100;
+        taux_haut_bas /= 2;
 
         // Axe X + graduations
         for (int angle = 0; angle <= 360; angle += 30)
@@ -624,7 +663,9 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
         // Titre
         cv::putText(img,
-                    "Histogramme des directions du flux optique - " + object.className,
+                    "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Thb: " + std::to_string(taux_haut_bas) 
+                    + " Td: " + std::to_string(taux_droite) + " Tg: " + std::to_string(taux_gauche) 
+                    + " Tnd: " + std::to_string(taux_null_droite) + " Tng: " + std::to_string(taux_null_gauche),
                     cv::Point(20, 30),
                     cv::FONT_HERSHEY_SIMPLEX,
                     0.8,
@@ -733,6 +774,9 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 
     for (ObjectDetected& object : objectsNew)
     {   
+        if (object.className != "person")
+            continue;
+
         float dx = object.centreGravity.x - pointRef.x;
         float dy = object.centreGravity.y - pointRef.y;
  
@@ -744,6 +788,8 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
         //float vr = (dx*object.vect[0] + dy*object.vect[1]) / r;
 
         float ttc = -r / v;
+
+        object.ttc += ttc;
 
         // if (ttc > - 500){
         //     std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER"<< std::endl;
@@ -800,16 +846,13 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
         taux_gauche /= somme;
         taux_null_droite /= somme;
         taux_null_gauche /= somme;
+        float norme = somme / 360.0;
 
         taux_haut_bas *= 100;
         taux_droite *= 100;
         taux_gauche *= 100;
         taux_null_droite *= 100;
         taux_null_gauche *= 100;
-
-        float norme_histo = somme / 360.0;
-
-        //std::cout << "Taux droite ==> " << taux_droite << " taux gauche ==> " << taux_gauche << " norme histogramme ==> " << norme_histo << std::endl;
 
         taux_haut_bas /= 2;
         
@@ -819,11 +862,11 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
         if (abs(taux_null_gauche - taux_null_droite) <= SEUIL_DECISION_BRUIT) {
             directionMax = RIEN;
         } else {
-            directionMax = ARRIERE;
+            directionMax = DEVANT;
 
             if (taux_haut_bas > maxTaux) {
                 maxTaux = taux_haut_bas;
-                directionMax = AVANT;
+                directionMax = DEVANT;
             }
 
             if (taux_droite > maxTaux) {
@@ -834,15 +877,6 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             if (taux_gauche > maxTaux) {
                 maxTaux = taux_gauche;
                 directionMax = GAUCHE;
-            }
-
-            if(directionMax == ARRIERE || directionMax == AVANT)
-            {
-                if (norme_histo < 60){
-                    directionMax = ARRIERE;
-                }else{
-                    directionMax = AVANT;
-                }
             }
         }
 
@@ -887,16 +921,26 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 
             if (finalDecision == RIEN)
                 std::cout << "DECISION FINAL ==> walou" << std::endl;
-            else if (finalDecision == AVANT)
-                std::cout << "DECISION FINAL ==> ça avance" << std::endl;
-            else if (finalDecision == ARRIERE)
-                std::cout << "DECISION FINAL ==> ça recule" << std::endl;
+            else if (finalDecision == DEVANT)
+                std::cout << "DECISION FINAL ==> tout droit" << std::endl;
             else if (finalDecision == GAUCHE)
                 std::cout << "DECISION FINAL ==> ça part vers la gauche" << std::endl;
             else if (finalDecision == DROITE)
                 std::cout << "DECISION FINAL ==> ça part vers la droite" << std::endl;
 
+            object.decision = finalDecision;
+
             object.decisions.clear();
+
+            float ttcFinal = object.ttc / (float) MAX_FRAMES_DECISION;
+
+            std::cout<< "norme ==> " << norme << std::endl;
+
+            if (norme > 100 && finalDecision!= RIEN) {
+                std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+            }
+
+            object.ttc = 0.0;
         }
 
         std::cout << "----------------------" << std::endl;
