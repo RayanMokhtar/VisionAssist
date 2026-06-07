@@ -16,6 +16,7 @@ using namespace cv;
 #define runOnGPU JETSON==1
 #define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
 #define FALLBACK_AVEC_CHEMIN_VIDEO "../../data/vid3.mp4"
+#define USE_IMU 1
 #define MAXDISTANCE 100
 #define MAX_PERSISTANCE 10
 #define RAYON_DETECTION 150
@@ -948,6 +949,7 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
     }
 }
 
+#if USE_IMU
 void readImu(IMU imu) {
     IMU::Vec3 accel = imu.readAccel();
     int temp = imu.readTemp();
@@ -957,6 +959,7 @@ void readImu(IMU imu) {
     //std::cout << "Acceleration: " << "x = " << accel.x << " y = " << accel.y << " z = " << accel.z << " total = " << accelNorm << " m/s2" << std::endl;
     //std::cout << "Temperature: " << temp << " °C" << std::endl;
 }
+#endif
 
 using Clock = std::chrono::high_resolution_clock;
 
@@ -974,6 +977,7 @@ int main(int argc, char** argv)
     Mat frameOld;
     Mat frame;
     timeval start, end;
+#if USE_IMU
     bool initImu;
     IMU imu(initImu);
 
@@ -981,7 +985,7 @@ int main(int argc, char** argv)
         std::cerr << "Impossible de lancer l'imu\n";
         return -1;
     }
-
+#endif
     VideoCapture cap;   
     
     beep(1);
@@ -1037,6 +1041,8 @@ int main(int argc, char** argv)
     std::vector<ObjectDetected> objectsNew;
 
     Point pointRef(frameOld.cols/2, frameOld.rows);
+
+    std::cout << "version opencv " << CV_VERSION << std::endl;
     
     for(;;)
     {
@@ -1068,7 +1074,9 @@ int main(int argc, char** argv)
         std::thread threadYolo([&]() {
             yoloDetection = yolo.exec(frame);
             objects = persistanceBetweenFrame(objectsNew, objects);
+#if USE_IMU
             readImu(imu);
+#endif
         });
 
         threadFlow.join();
