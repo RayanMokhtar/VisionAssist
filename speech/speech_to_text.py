@@ -103,18 +103,21 @@ class SpeechToText:
 
         return result
 
+
+    
     def enregistrer_audio_microphone_apres_activation(self) -> Optional[str]:
         print("micro en écoute ...")
         audio = pyaudio.PyAudio()
         stream = audio.open(
             format=pyaudio.paInt16,
             channels=self.audio_config.canaux_ecoute,
-            rate=self.audio_config.taux_echantillonnage_hz,
+            rate=self.audio_config.taux_echantillonnage_hz, #humain entre 300 et 3400hz
             input=True,
             input_device_index=self.audio_config.device_index,
             frames_per_buffer=self.audio_config.taille_chunk,
         )
 
+        #duree chunk : 64 ms car c la taille d'un chunk 1024 / taille échantillon valeur par seconde
         chunk_duree_secondes = self.audio_config.taille_chunk / self.audio_config.taux_echantillonnage_hz
         silence_chunks_max = int(self.audio_config.silence_duree_max_secondes / chunk_duree_secondes)
         max_chunks = int(self.audio_config.duree_max_enregistrement_theorique / chunk_duree_secondes)
@@ -134,8 +137,8 @@ class SpeechToText:
                     self.audio_config.taille_chunk,
                     exception_on_overflow=False
                 )
-
-                energie = audioop.rms(data, 2)  # 2 octets
+                print("data : ",data)
+                energie = audioop.rms(data, 2)  # 2 octets par échantillon
                 # print("energie :", energie)  
                 if not parole_detectee:
                     pre_buffer.append(data)

@@ -35,7 +35,7 @@ class AudioConfig(BaseModel):
     device_index: Optional[int] = None
     silence_duree_max_secondes: float = 1.2
     duree_max_enregistrement_theorique: float = 20
-    seuil_energie: int = 300 #pour le RMS - réduit pour meilleure détection de parole
+    seuil_energie: int = 300 #pour le RMS
     pre_roll_parole_avant_enregistrement_secondes: float = 0.8
 
 

@@ -140,7 +140,7 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
     nombre_tentatives = 0
     pin_valide = False
     print("ici")
-    card_id , message = lecture_card_id(conn)
+    card_id , message = lecture_card_id(conn) # duplicat à voir si on enlève ou pas ?
     while not pin_valide and  nombre_tentatives <= CONFIGURATION.security.max_tentatives_avant_blocage_carte_gemalto :
         print("nombre tentatives restantes ", nombre_tentatives)
         tts_texte = INSTANCE_TTS.pipeline(texte=DEMANDE_INSERTION_PIN ,nom_fichier_sortie=ficher_tts_sortie)
