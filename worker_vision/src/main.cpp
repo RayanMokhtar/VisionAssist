@@ -1,5 +1,6 @@
 #include "Yolo.h"
 #include "OpticalFlow.h"
+#include "imu.h"
 
 #include "opencv2/opencv.hpp"
 #include <gpiod.h>
@@ -947,6 +948,16 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
     }
 }
 
+void readImu(IMU imu) {
+    IMU::Vec3 accel = imu.readAccel();
+    int temp = imu.readTemp();
+
+    double accelNorm = std::sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+
+    //std::cout << "Acceleration: " << "x = " << accel.x << " y = " << accel.y << " z = " << accel.z << " total = " << accelNorm << " m/s2" << std::endl;
+    //std::cout << "Temperature: " << temp << " °C" << std::endl;
+}
+
 using Clock = std::chrono::high_resolution_clock;
 
 static double elapsedMs(
@@ -963,7 +974,14 @@ int main(int argc, char** argv)
     Mat frameOld;
     Mat frame;
     timeval start, end;
-    
+    bool initImu;
+    IMU imu(initImu);
+
+    if (!initImu) {
+        std::cerr << "Impossible de lancer l'imu\n";
+        return -1;
+    }
+
     VideoCapture cap;   
     
     beep(1);
@@ -1050,6 +1068,7 @@ int main(int argc, char** argv)
         std::thread threadYolo([&]() {
             yoloDetection = yolo.exec(frame);
             objects = persistanceBetweenFrame(objectsNew, objects);
+            readImu(imu);
         });
 
         threadFlow.join();

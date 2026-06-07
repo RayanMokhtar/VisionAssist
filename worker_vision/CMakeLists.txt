@@ -14,6 +14,7 @@ add_executable(main)
 
 target_sources(main
     PRIVATE
+        src/imu.cpp
         src/OpticalFlow.cpp
         src/Yolo.cpp
         src/main.cpp
