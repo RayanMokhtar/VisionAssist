@@ -14,10 +14,7 @@ def initialiser_session_db():
         if db_conf.dialecte == "sqlite":
             return f"sqlite:///{db_conf.db_file}"
 
-        elif db_conf.dialecte in ("postgresql", "mysql"):
-            return f"{db_conf.dialecte}://{db_conf.username}:{db_conf.password}@{db_conf.host}:{db_conf.port}/{db_conf.db_name}"
-
-        raise ValueError(f" erreur conf db config: {db_conf}")
+        raise ValueError(f" erreur conf db config (seul sqlite est supporté): {db_conf}")
     
     url = get_url()  
     print("Using DB URL:", url)  

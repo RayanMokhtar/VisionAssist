@@ -82,15 +82,9 @@ class PathConfig(BaseModel):
 
 class DBConfig(BaseModel):
     url  : Optional[str] = Field(None, description="URL de connexion à la base de données")
-    host : str = Field("localhost", description="Adresse du serveur de base de données")
-    port : int = Field(5432, description="Port de connexion à la base de données")
-    username : str = Field("qlq chose", description="Nom d'utilisateur pour la base de données")
-    password : str = Field("password", description="Mot de passe pour la base de données")
     echo : bool = Field(False, description="Afficher les requêtes SQL dans les logs (True/False)")
-    pool_size : int = Field(5, description="Nombre de connexions dans le pool de la base de données")
-    dialecte : str = Field("sqlite", description="Dialecte de la base de données (ex: postgresql, mysql, sqlite)")
-    db_file : Optional[str] = Field("db_file.db", description="Chemin du fichier de base de données SQLite (si dialecte sqlite)")
-    db_name : str = Field("visionassist_db", description="Nom de la base de données (si dialecte postgresql ou mysql)")
+    dialecte : str = Field("sqlite", description="Dialecte de la base de données (uniquement sqlite)")
+    db_file : Optional[str] = Field("db_file.db", description="Chemin du fichier de base de données SQLite")
 
 
 class JWTConfig(BaseModel):
