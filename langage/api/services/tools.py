@@ -28,8 +28,7 @@ from typing import List
 import requests
 from langchain_core.tools import tool
 
-from configuration import CONFIGURATION
-
+import os
 from langage.database.engine import get_db
 from langage.database.repositories import note_repo
 from langage.database.vector_store import vector_store
@@ -313,60 +312,28 @@ def query_memory(query: str) -> str:
         return result
 
 
-@tool
-def describe_current_scene() -> str:
-    """Demande une description détaillée de ce que voit la caméra actuellement.
-    Utile quand l'utilisateur demande 'qu'est-ce qu'il y a devant moi ?',
-    'décris ce que tu vois', ou 'qu'est-ce qui m'entoure ?'.
-
-    Note: Cet outil nécessite que le module vision (caméra) soit actif sur le Jetson.
-    """
-    result = (
-        "Le module de description visuelle nécessite la caméra embarquée sur le Jetson. "
-        "Quand la caméra est active, je peux décrire les objets, personnes et textes "
-        "visibles dans votre environnement. Envoyez une image via la requête pour "
-        "obtenir une description."
-    )
-    _log_tool("describe_current_scene", result)
-    return result
-
 
 @tool
-def read_text_in_scene() -> str:
-    """Lit le texte visible dans la scène (panneaux, enseignes, affiches).
-    Utile quand l'utilisateur demande 'lis-moi ce panneau',
-    'qu'est-ce qui est écrit ?', ou 'lis le texte devant moi'.
-
-    Note: Cet outil nécessite le module OCR et la caméra active sur le Jetson.
-    """
-    result = (
-        "Le module de lecture de texte nécessite la caméra embarquée et le module OCR "
-        "sur le Jetson. Quand ils sont actifs, je peux lire les panneaux, enseignes, "
-        "et tout texte visible dans votre environnement."
-    )
-    _log_tool("read_text_in_scene", result)
-    return result
-
-
-@tool
-def get_transit_info(destination: str, latitude: float, longitude: float) -> str:
+def get_transit_info(destination: str, latitude: float = None, longitude: float = None, origin: str = "") -> str:
     """Donne les prochains itinéraires de transport en commun (train, RER, métro, bus)
-    depuis la position actuelle de l'utilisateur vers une destination.
+    vers une destination.
+    Si l'utilisateur spécifie explicitement un point de départ (ex: "à partir de Paris Saint Lazare"), 
+    tu DOIS le mettre dans 'origin'. S'il ne précise rien, laisse 'origin' vide et sa position actuelle sera utilisée.
     Utile quand l'utilisateur demande 'quand est le prochain RER ?',
-    'comment aller à Paris ?', 'quel train pour [destination] ?',
-    'quand part le prochain train ?'.
+    'comment aller à Paris ?', 'quel train pour [destination] depuis [origine] ?'.
 
     Args:
         destination: La destination souhaitée (ex: "Paris Gare du Nord", "Châtelet", "Versailles").
-        latitude: Latitude GPS de l'utilisateur (fournie dans le message).
-        longitude: Longitude GPS de l'utilisateur (fournie dans le message).
+        latitude: Latitude GPS de l'utilisateur (fournie dans le message). Optionnelle si origin est rempli.
+        longitude: Longitude GPS de l'utilisateur (fournie dans le message). Optionnelle si origin est rempli.
+        origin: Le point de départ explicite, uniquement si demandé. Sinon vide.
     """
     import datetime as _dt
 
-    logger.info("🚆 [TOOL] get_transit_info | destination='%s'", destination)
+    logger.info("🚆 [TOOL] get_transit_info | destination='%s' origin='%s'", destination, origin)
 
     # Récupérer la clé API
-    api_key = CONFIGURATION.cle_sncf
+    api_key = os.environ.get("SNCF_API_KEY", "")
     if not api_key:
         result = "La clé API SNCF n'est pas configurée. Impossible d'obtenir les horaires de transport."
         _log_tool("get_transit_info", result)
@@ -449,11 +416,27 @@ def get_transit_info(destination: str, latitude: float, longitude: float) -> str
         dest_name = dest_place["name"]
         logger.info("🚆 [TRANSIT] Destination résolue : '%s' → %s (%s)", destination, dest_name, dest_id)
 
-        # ── Étape 2 : Résoudre l'origine (position de l'utilisateur) ──────────
+        # ── Étape 2 : Résoudre l'origine (position de l'utilisateur ou texte) ──────────
         now_str = _dt.datetime.now().strftime("%Y%m%dT%H%M%S")
 
         origin_id = None
-        if lat is not None and lon is not None:
+        if origin and origin.strip():
+            # Recherche textuelle de l'origine
+            origin_places = search_navitia_place(BASE_URL, origin)
+            if not origin_places:
+                origin_places = search_navitia_place(BASE_URL, origin.replace(" ", "-"))
+            if not origin_places and not origin.lower().startswith("gare"):
+                origin_places = search_navitia_place(BASE_URL, "Gare " + origin)
+            
+            origin_place_data = extract_dest(origin_places)
+            if origin_place_data:
+                origin_id = origin_place_data["id"]
+                logger.info("🚆 [TRANSIT] Origine explicite résolue : '%s' → %s", origin, origin_id)
+            else:
+                result = f"Je n'ai pas trouvé la gare de départ '{origin}' dans le réseau."
+                _log_tool("get_transit_info", result)
+                return result
+        elif lat is not None and lon is not None:
             # Tentative 1 : places_nearby (rayon 5km pour trouver une gare)
             for radius in [2000, 5000, 10000]:
                 try:
@@ -627,6 +610,4 @@ def get_all_tools() -> List:
         get_transit_info,
         save_note,
         query_memory,
-        describe_current_scene,
-        read_text_in_scene,
     ]

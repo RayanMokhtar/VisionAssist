@@ -22,10 +22,9 @@ from langchain_core.messages import (
 )
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-from configuration import CONFIGURATION
+from langage.api.config import settings
 
 logger = logging.getLogger(__name__)
-_conf = CONFIGURATION.llm
 
 
 class ModelService:
@@ -43,14 +42,14 @@ class ModelService:
 
         try:
             import torch
-            from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
+            from transformers import AutoProcessor, AutoModelForImageTextToText
         except ImportError:
             raise ImportError(
                 "transformers et torch requis. "
                 "Installez avec : pip install transformers torch accelerate"
             )
 
-        model_id = _conf.model_name
+        model_id = settings.model_id
         logger.info("Chargement du modèle Transformers : %s...", model_id)
         
         dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -69,7 +68,7 @@ class ModelService:
             device_map = "auto"
             logger.warning("BitsAndBytes non installé. Chargement en précision standard.")
 
-        self.model = Qwen3VLForConditionalGeneration.from_pretrained(
+        self.model = AutoModelForImageTextToText.from_pretrained(
             model_id,
             torch_dtype=dtype,
             device_map=device_map,
@@ -99,9 +98,9 @@ class ModelService:
         with torch.no_grad():
             output_ids = self.model.generate(
                 **inputs,
-                max_new_tokens=_conf.max_tokens,
-                do_sample=True,
-                temperature=_conf.temperature,
+                max_new_tokens=settings.max_new_tokens,
+                do_sample=settings.do_sample,
+                temperature=settings.temperature,
             )
             
         generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
@@ -117,48 +116,45 @@ class ModelService:
             self.load()
 
         hf_messages = []
-        pil_images = []  # images PIL à passer au processeur
-
         for m in lc_messages:
             if isinstance(m, HumanMessage):
                 # Détecter contenu multimodal (liste avec image_url + text)
                 if isinstance(m.content, list):
-                    hf_content = []
+                    content_list = []
                     for part in m.content:
-                        if part.get("type") == "image_url":
-                            url = part["image_url"]["url"]
-                            # Charger l'image PIL depuis un chemin fichier ou URL
-                            try:
-                                from PIL import Image as _PILImage
-                                if url.startswith("file://"):
-                                    img_path = url[7:]
-                                    pil_img = _PILImage.open(img_path).convert("RGB")
-                                else:
-                                    import io as _io
-                                    import requests as _req
-                                    r = _req.get(url, timeout=10)
-                                    pil_img = _PILImage.open(_io.BytesIO(r.content)).convert("RGB")
-                                pil_images.append(pil_img)
-                                hf_content.append({"type": "image"})
-                            except Exception as _img_err:
-                                logger.warning("Impossible de charger l'image : %s", _img_err)
-                        elif part.get("type") == "text":
-                            hf_content.append({"type": "text", "text": part["text"]})
-                    hf_messages.append({"role": "user", "content": hf_content})
+                        if part.get("type") == "text":
+                            content_list.append({"type": "text", "text": part["text"]})
+                        elif part.get("type") == "image_url":
+                            # Qwen-VL attend "image"
+                            img_uri = part["image_url"]["url"]
+                            content_list.append({"type": "image", "image": img_uri})
+                    hf_messages.append({"role": "user", "content": content_list})
                 else:
                     hf_messages.append({"role": "user", "content": m.content})
             elif isinstance(m, AIMessage):
                 if m.tool_calls:
-                    # Qwen s'attend à voir l'appel sous forme textuelle si c'est de l'historique
-                    calls_str = "\n".join(
-                        f'<tool_call>\n{{"name": "{tc["name"]}", "arguments": {json.dumps(tc["args"])}}}\n</tool_call>'
-                        for tc in m.tool_calls
-                    )
-                    hf_messages.append({"role": "assistant", "content": calls_str})
+                    hf_messages.append({
+                        "role": "assistant", 
+                        "content": m.content or "",
+                        "tool_calls": [
+                            {
+                                "type": "function",
+                                "function": {
+                                    "name": tc["name"],
+                                    "arguments": tc["args"]
+                                }
+                            } for tc in m.tool_calls
+                        ]
+                    })
                 else:
                     hf_messages.append({"role": "assistant", "content": m.content})
             elif isinstance(m, ToolMessage):
-                hf_messages.append({"role": "tool", "name": m.name, "content": m.content})
+                # Qwen 2.5/3 attend le rôle 'tool' avec le nom et le contenu
+                hf_messages.append({
+                    "role": "tool", 
+                    "name": m.name, 
+                    "content": str(m.content)
+                })
             elif isinstance(m, SystemMessage):
                 hf_messages.append({"role": "system", "content": m.content})
 
@@ -168,12 +164,16 @@ class ModelService:
         # Pour Qwen3-VL, on injecte les outils dans le system prompt si on gère à la main
         # Mais le processeur Qwen 2.5/3 supporte l'argument tools dans apply_chat_template !
         try:
-            text_prompt = self.processor.apply_chat_template(
-                hf_messages, 
-                tools=hf_tools, 
-                tokenize=False, 
-                add_generation_prompt=True
-            )
+            try:
+                text_prompt = self.processor.apply_chat_template(
+                    hf_messages, 
+                    tools=hf_tools, 
+                    tokenize=False, 
+                    add_generation_prompt=True
+                )
+            except Exception as e:
+                logger.error("Erreur lors de l'appel à apply_chat_template. Messages: %s, Tools: %s", hf_messages, hf_tools)
+                raise e
         except TypeError:
             # Fallback si le processeur ne supporte pas 'tools' nativement
             logger.warning("Le processor ne supporte pas l'argument tools, injection manuelle.")
@@ -193,24 +193,27 @@ class ModelService:
                 hf_messages, tokenize=False, add_generation_prompt=True
             )
 
-        # Passer les images PIL au processeur si présentes (Qwen-VL multimodal)
-        if pil_images:
-            logger.info("🖼️ [MODEL] Traitement multimodal : %d image(s) fournie(s)", len(pil_images))
+        try:
+            from qwen_vl_utils import process_vision_info
+            image_inputs, video_inputs = process_vision_info(hf_messages)
             inputs = self.processor(
                 text=[text_prompt],
-                images=pil_images,
+                images=image_inputs,
+                videos=video_inputs,
+                padding=True,
                 return_tensors="pt"
             ).to(self.model.device)
-        else:
+        except Exception as e:
+            logger.warning("Impossible de traiter l'image avec qwen_vl_utils: %s", e)
             inputs = self.processor(text=[text_prompt], return_tensors="pt").to(self.model.device)
 
         import torch
         with torch.no_grad():
             output_ids = self.model.generate(
                 **inputs,
-                max_new_tokens=_conf.max_tokens,
-                do_sample=True,
-                temperature=_conf.temperature,
+                max_new_tokens=settings.max_new_tokens,
+                do_sample=settings.do_sample,
+                temperature=settings.temperature,
             )
 
         generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
@@ -220,20 +223,57 @@ class ModelService:
         tool_calls = []
         content = response_text
 
-        # Regex pour matcher le bloc tool_call
-        match = re.search(r"<tool_call>\s*({.*?})\s*</tool_call>", response_text, re.DOTALL)
-        if match:
+        # Regex pour matcher le bloc tool_call (format JSON classique ou format XML natif Qwen3)
+        match_json = re.search(r"<tool_call>\s*({.*?})\s*</tool_call>", response_text, re.DOTALL)
+        match_xml = re.search(r"<tool_call>\s*<function=([^>]+)>\s*(.*?)\s*</function>\s*</tool_call>", response_text, re.DOTALL)
+
+        if match_json:
             try:
-                tc_data = json.loads(match.group(1))
+                tc_data = json.loads(match_json.group(1))
                 tool_calls.append({
                     "name": tc_data["name"],
                     "args": tc_data["arguments"],
                     "id": "tc_" + str(uuid.uuid4())[:8]
                 })
-                # On retire le bloc de tool call du contenu textuel retourné à l'utilisateur
-                content = response_text.replace(match.group(0), "").strip()
+                content = response_text.replace(match_json.group(0), "").strip()
             except Exception as e:
-                logger.error("Erreur de parsing du tool_call Qwen : %s", e)
+                logger.error("Erreur de parsing du tool_call Qwen JSON : %s", e)
+        elif match_xml:
+            try:
+                name = match_xml.group(1).strip()
+                args_str = match_xml.group(2).strip()
+                args = {}
+                if args_str:
+                    try:
+                        args = json.loads(args_str)
+                    except Exception:
+                        try:
+                            import ast
+                            args = ast.literal_eval(args_str)
+                        except Exception:
+                            # Fallback pour format XML attributs (ex: location="Cergy")
+                            pairs = re.findall(r'(\w+)=["\']([^"\']+)["\']', args_str)
+                            if pairs:
+                                args = dict(pairs)
+                            else:
+                                # Parsing du format <parameter=nom>valeur</parameter>
+                                param_matches = re.findall(r'<parameter=([^>]+)>\s*(.*?)\s*</parameter>', args_str, re.DOTALL)
+                                if param_matches:
+                                    args = {k: v.strip() for k, v in param_matches}
+                                else:
+                                    logger.error("Impossible de parser les arguments: %r", args_str)
+                tool_calls.append({
+                    "name": name,
+                    "args": args if isinstance(args, dict) else {},
+                    "id": "tc_" + str(uuid.uuid4())[:8]
+                })
+                content = response_text.replace(match_xml.group(0), "").strip()
+            except Exception as e:
+                logger.error("Erreur de parsing du tool_call Qwen XML : %s | args: %r", e, match_xml.group(2) if match_xml else "")
+
+        # Nettoyage des balises de "pensée" (Chain-of-Thought) du modèle Qwen
+        content = re.sub(r"<think>.*?(?:</think>|$)", "", content, flags=re.DOTALL)
+        content = re.sub(r"</?think>", "", content).strip()
 
         return AIMessage(content=content, tool_calls=tool_calls)
 

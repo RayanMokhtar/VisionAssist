@@ -20,12 +20,10 @@ from langchain_core.messages import (
 )
 from sqlalchemy.orm import Session
 
-from configuration import CONFIGURATION
 from langage.database.models import Message
 from langage.database.repositories import message_repo
 
 logger = logging.getLogger(__name__)
-_conf = CONFIGURATION.memory
 
 
 class ConversationBuffer:
@@ -42,7 +40,7 @@ class ConversationBuffer:
         max_messages: int | None = None,
     ):
         self.session_id = session_id
-        self.max_messages = max_messages or _conf.max_messages_court_terme
+        self.max_messages = max_messages or 20
 
     def get_langchain_messages(self, db: Session) -> List[BaseMessage]:
         """Charge les messages et les convertit en objets LangChain.

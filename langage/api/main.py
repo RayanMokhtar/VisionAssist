@@ -10,6 +10,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path="./langage/.env")
 
 from langage.api.schemas.broker import BrokerRequest, AgentResponse
 from langage.api.services.agent import QwenAgent

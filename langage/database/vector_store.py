@@ -14,18 +14,14 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from configuration import CONFIGURATION
-
 logger = logging.getLogger(__name__)
-
-_conf = CONFIGURATION.memory
 
 
 class VectorStore:
     """Wrapper ChromaDB embarqué (pas de serveur)."""
 
     def __init__(self, persist_directory: str | None = None):
-        self._persist_dir = persist_directory or _conf.chromadb_path
+        self._persist_dir = persist_directory or "./chroma_db"
         self._client = None
         self._embedding_fn = None
         self._collections: dict = {}
@@ -40,12 +36,12 @@ class VectorStore:
 
         self._client = chromadb.PersistentClient(path=self._persist_dir)
         self._embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=_conf.embedding_model,
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
         )
         logger.info(
             "ChromaDB initialisé (path=%s, model=%s)",
             self._persist_dir,
-            _conf.embedding_model,
+            "sentence-transformers/all-MiniLM-L6-v2",
         )
 
     def _get_collection(self, name: str):

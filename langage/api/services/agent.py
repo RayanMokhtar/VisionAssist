@@ -27,8 +27,6 @@ from langchain_core.messages import (
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 from sqlalchemy.orm import Session as DbSession
-
-from configuration import CONFIGURATION
 from langage.api.schemas.broker import BrokerRequest, AgentResponse
 from langage.api.services.model import model_service
 from langage.api.services.tools import (
@@ -45,11 +43,13 @@ from langage.memory.long_term import long_term_memory
 logger = logging.getLogger(__name__)
 
 
+from langgraph.graph.message import add_messages
+
 # ─── État du Graph LangGraph ──────────────────────────────────────────────────
 
 class AgentState(TypedDict):
     """État interne de l'agent pendant le traitement d'une requête."""
-    messages: Annotated[list[BaseMessage], "add_messages"]
+    messages: Annotated[list[BaseMessage], add_messages]
     user_id: str
     session_id: str
     tool_calls_made: list[str]
@@ -141,6 +141,10 @@ class QwenAgent:
             "sauvegarder des notes, ou consulter la mémoire passée.\n"
             "Sois concis et naturel dans tes réponses vocales. Parle à la 2ème personne du vouvoiement "
             "sauf si l'utilisateur préfère le tutoiement.\n"
+            "RÈGLES STRICTES DE RÉPONSE :\n"
+            "1. NE GÉNÈRE AUCUN MONOLOGUE INTERNE. Tu dois donner UNIQUEMENT la réponse finale attendue par l'utilisateur.\n"
+            "2. Il est formellement INTERDIT d'écrire des phrases telles que 'Je dois répondre...', 'L'utilisateur demande...', 'L'outil indique...', ou d'expliquer ce que tu vas faire.\n"
+            "3. Contente-toi de fournir l'information ou la réponse de manière directe, naturelle et fluide.\n"
             "Pour l'heure et la date, base-toi TOUJOURS sur le résultat le plus récent de l'outil "
             "get_current_time présent dans la conversation — jamais sur tes connaissances internes.\n"
             "Pour les horaires de transport (train, RER, métro, bus), utilise TOUJOURS l'outil "
@@ -293,15 +297,16 @@ class QwenAgent:
                     {"type": "text", "text": base_text},
                 ])
 
-            # [system] + [historique sauf dernier msg] + [tool_call + tool_result] + [msg actuel]
+            # [system] + [historique sauf dernier msg] + [msg actuel] + [tool_call + tool_result]
             messages_for_llm = (
                 [system_message]
                 + lc_messages[:-1]
-                + [injected_tool_call, injected_tool_result]
                 + [last_user_msg]
+                + [injected_tool_call, injected_tool_result]
             )
         else:
-            messages_for_llm = [system_message, injected_tool_call, injected_tool_result]
+            mock_user = HumanMessage(content=request.text or "Bonjour")
+            messages_for_llm = [system_message, mock_user, injected_tool_call, injected_tool_result]
 
         # 6. Invoquer l'agent (LangGraph)
         initial_state = {

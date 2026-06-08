@@ -17,13 +17,11 @@ import datetime
 import logging
 from typing import Callable
 
-from configuration import CONFIGURATION
 from langage.database.engine import get_db
 from langage.database.models import User
 from langage.memory.summarizer import generate_daily_summary
 
 logger = logging.getLogger(__name__)
-_conf = CONFIGURATION.memory
 
 
 def run_daily_summaries(llm_callable: Callable[[str], str]) -> None:
@@ -78,8 +76,8 @@ def start_daily_summary_scheduler(llm_callable: Callable[[str], str]) -> None:
 
     scheduler = BackgroundScheduler()
     trigger = CronTrigger(
-        hour=_conf.daily_summary_hour,
-        minute=_conf.daily_summary_minute,
+        hour=23,
+        minute=59,
     )
 
     scheduler.add_job(
@@ -94,6 +92,6 @@ def start_daily_summary_scheduler(llm_callable: Callable[[str], str]) -> None:
     scheduler.start()
     logger.info(
         "Planificateur résumé quotidien démarré → %02d:%02d chaque jour",
-        _conf.daily_summary_hour,
-        _conf.daily_summary_minute,
+        23,
+        59,
     )

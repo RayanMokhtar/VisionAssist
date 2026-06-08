@@ -21,21 +21,15 @@ from typing import Generator
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from configuration import CONFIGURATION
+import os
 
 logger = logging.getLogger(__name__)
-_conf = CONFIGURATION.mysql
 
-DATABASE_URL = (
-    f"mysql+pymysql://{_conf.user}:{_conf.password}"
-    f"@{_conf.host}:{_conf.port}/{_conf.database}"
-    f"?charset=utf8mb4"
-)
+DATABASE_URL = "sqlite:///visionassist.db"
 
 engine = create_engine(
     DATABASE_URL,
-    pool_size=_conf.pool_size,
-    pool_recycle=_conf.pool_recycle,
+    connect_args={"check_same_thread": False},
     echo=False,
 )
 
@@ -46,7 +40,7 @@ def init_db() -> None:
     """Crée toutes les tables si elles n'existent pas encore."""
     from langage.database.models import Base
     Base.metadata.create_all(bind=engine)
-    logger.info("Tables MySQL initialisées dans '%s'.", _conf.database)
+    logger.info("Tables SQLite initialisées.")
 
 
 def setup_database() -> None:
@@ -55,19 +49,7 @@ def setup_database() -> None:
     Appelé une seule fois au premier démarrage du service LLM.
     Se connecte d'abord sans base pour la créer, puis initialise les tables.
     """
-    temp_url = (
-        f"mysql+pymysql://{_conf.user}:{_conf.password}"
-        f"@{_conf.host}:{_conf.port}/"
-    )
-    temp_engine = create_engine(temp_url)
-    with temp_engine.connect() as conn:
-        conn.execute(text(
-            f"CREATE DATABASE IF NOT EXISTS `{_conf.database}` "
-            f"CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-        ))
-        conn.commit()
-    temp_engine.dispose()
-    logger.info("Base de données '%s' créée/vérifiée.", _conf.database)
+    logger.info("Base de données SQLite vérifiée.")
     init_db()
 
 
