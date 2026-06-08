@@ -1,36 +1,36 @@
 #include "OpticalFlow.h"
 
-void OpticalFlow::niveauGris(Mat frame, Mat *frameGris)
+void OpticalFlow::niveauGris(const Mat& frame, Mat& frameGris)
 {
-    *frameGris = cv::Mat(frame.rows, frame.cols, CV_32FC1);
-
-    for (int y = 0; y < frame.rows; y++)
+    #pragma omp parallel default(none) shared(frame, frameGris)
     {
-        cv::Vec3b *src = frame.ptr<cv::Vec3b>(y);
-        float *dst = frameGris->ptr<float>(y);
-
-        for (int x = 0; x < frame.cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame.rows; y++)
         {
-            const cv::Vec3b& pixel = src[x];
+            const cv::Vec3b *src = frame.ptr<cv::Vec3b>(y);
+            float *dst = frameGris.ptr<float>(y);
 
-            dst[x] = (pixel[0] + pixel[1] + pixel[2]) / 3.0f;
+            for (int x = 0; x < frame.cols; x++)
+            {
+                const cv::Vec3b& pixel = src[x];
+
+                dst[x] = (pixel[0] + pixel[1] + pixel[2]) / 3.0f;
+            }
         }
     }
 }
 
-void OpticalFlow::sobelX(Mat *frame, Mat *frameSobelX)
+void OpticalFlow::sobelX(const Mat& frame, Mat& frameSobelX)
 {
-    *frameSobelX = cv::Mat(frame->rows, frame->cols, CV_32FC1);
-
-    for (int y = 1; y < frame->rows - 1; y++)
+    for (int y = 1; y < frame.rows - 1; y++)
     {
-        float *prev = frame->ptr<float>(y - 1);
-        float *curr = frame->ptr<float>(y);
-        float *next = frame->ptr<float>(y + 1);
+        const float *prev = frame.ptr<float>(y - 1);
+        const float *curr = frame.ptr<float>(y);
+        const float *next = frame.ptr<float>(y + 1);
 
-        float *out = frameSobelX->ptr<float>(y);
+        float *out = frameSobelX.ptr<float>(y);
 
-        for (int x = 1; x < frame->cols - 1; x++)
+        for (int x = 1; x < frame.cols - 1; x++)
         {
             float v = (-1 * prev[x - 1]) + (1 * prev[x + 1]) +
                         (-2 * curr[x - 1]) + (2 * curr[x + 1]) +
@@ -41,18 +41,16 @@ void OpticalFlow::sobelX(Mat *frame, Mat *frameSobelX)
     }
 }
 
-void OpticalFlow::sobelY(Mat *frame, Mat *frameSobelY)
+void OpticalFlow::sobelY(const Mat& frame, Mat& frameSobelY)
 {
-    *frameSobelY = cv::Mat(frame->rows, frame->cols, CV_32FC1);
-
-    for (int y = 1; y < frame->rows - 1; y++)
+    for (int y = 1; y < frame.rows - 1; y++)
     {
-        float *prev = frame->ptr<float>(y - 1);
-        float *next = frame->ptr<float>(y + 1);
+        const float *prev = frame.ptr<float>(y - 1);
+        const float *next = frame.ptr<float>(y + 1);
 
-        float *out = frameSobelY->ptr<float>(y);
+        float *out = frameSobelY.ptr<float>(y);
 
-        for (int x = 1; x < frame->cols - 1; x++)
+        for (int x = 1; x < frame.cols - 1; x++)
         {
             float v = (-1 * prev[x - 1]) + (-2 * prev[x]) + (-1 * prev[x + 1]) +
                         (1 * next[x - 1]) + ( 2 * next[x]) + ( 1 * next[x + 1]);
@@ -62,118 +60,130 @@ void OpticalFlow::sobelY(Mat *frame, Mat *frameSobelY)
     }
 }
 
-void OpticalFlow::diffIntensite(Mat frame1, Mat frame2, Mat *frameDiffIntensite)
+void OpticalFlow::diffIntensite(const Mat& frame1, const Mat& frame2, Mat& frameDiffIntensite)
 {
-    *frameDiffIntensite = cv::Mat(frame1.rows, frame1.cols, CV_32FC1);
-
-    for (int y = 0; y < frame1.rows; y++)
+    #pragma omp parallel default(none) shared(frame1, frame2, frameDiffIntensite)
     {
-        float *p1 = frame1.ptr<float>(y);
-        float *p2 = frame2.ptr<float>(y);
-        float *pd = frameDiffIntensite->ptr<float>(y);
-
-        for (int x = 0; x < frame1.cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame1.rows; y++)
         {
-            pd[x] = p1[x] - p2[x];
+            const float *p1 = frame1.ptr<float>(y);
+            const float *p2 = frame2.ptr<float>(y);
+            float *pd = frameDiffIntensite.ptr<float>(y);
+
+            for (int x = 0; x < frame1.cols; x++)
+            {
+                pd[x] = p1[x] - p2[x];
+            }
         }
     }
 }
 
-void OpticalFlow::carre(Mat *frame, Mat *frameCarre)
+void OpticalFlow::carre(const Mat& frame, Mat& frameCarre)
 {
-    *frameCarre = cv::Mat(frame->rows, frame->cols, CV_32FC1);
-
-    for (int y = 0; y < frame->rows; y++)
+    #pragma omp parallel default(none) shared(frame, frameCarre)
     {
-        float *src = frame->ptr<float>(y);
-        float *dst = frameCarre->ptr<float>(y);
-
-        for (int x = 0; x < frame->cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame.rows; y++)
         {
-            float v = src[x];
-            dst[x] = v * v;
+            const float *src = frame.ptr<float>(y);
+            float *dst = frameCarre.ptr<float>(y);
+
+            for (int x = 0; x < frame.cols; x++)
+            {
+                float v = src[x];
+                dst[x] = v * v;
+            }
+        }
+
+    }
+}
+
+void OpticalFlow::somme(const Mat& frame1, const Mat& frame2, Mat& frameSomme)
+{
+    #pragma omp parallel default(none) shared(frame1, frame2, frameSomme)
+    {
+        #pragma omp for
+        for (int y = 0; y < frame1.rows; y++)
+        {
+            const float *p1 = frame1.ptr<float>(y);
+            const float *p2 = frame2.ptr<float>(y);
+            float *pd = frameSomme.ptr<float>(y);
+
+            for (int x = 0; x < frame1.cols; x++)
+            {
+                pd[x] = p1[x] + p2[x];
+            }
         }
     }
 }
 
-void OpticalFlow::somme(Mat frame1, Mat frame2, Mat *frameSomme)
+void OpticalFlow::produit(const Mat& frame1, const Mat& frame2, Mat& frameProduit)
 {
-    *frameSomme = cv::Mat(frame1.rows, frame1.cols, CV_32FC1);
-
-    for (int y = 0; y < frame1.rows; y++)
+    #pragma omp parallel default(none) shared(frame1, frame2, frameProduit)
     {
-        float *p1 = frame1.ptr<float>(y);
-        float *p2 = frame2.ptr<float>(y);
-        float *pd = frameSomme->ptr<float>(y);
-
-        for (int x = 0; x < frame1.cols; x++)
+        #pragma omp for
+        for (int y = 0; y < frame1.rows; y++)
         {
-            pd[x] = p1[x] + p2[x];
+            const float *p1 = frame1.ptr<float>(y);
+            const float *p2 = frame2.ptr<float>(y);
+            float *pd = frameProduit.ptr<float>(y);
+
+            for (int x = 0; x < frame1.cols; x++)
+            {
+                pd[x] = p1[x] * p2[x];
+            }
         }
     }
 }
 
-void OpticalFlow::produit(Mat *frame1, Mat *frame2, Mat *frameProduit)
+OpticalFlow::OpticalFlow()
 {
-    *frameProduit = cv::Mat(frame1->rows, frame1->cols, CV_32FC1);
-
-    for (int y = 0; y < frame1->rows; y++)
-    {
-        float *p1 = frame1->ptr<float>(y);
-        float *p2 = frame2->ptr<float>(y);
-        float *pd = frameProduit->ptr<float>(y);
-
-        for (int x = 0; x < frame1->cols; x++)
-        {
-            pd[x] = p1[x] * p2[x];
-        }
-    }
+    frameGris.create(640,640,CV_32FC1);
+    frameGrisOld.create(640,640,CV_32FC1);
+    frameSobelX.create(640,640,CV_32FC1);
+    frameSobelY.create(640,640,CV_32FC1);
+    frameDiffIntensite.create(640,640,CV_32FC1);
+    matDepl.create(640,640,CV_32FC2);
 }
 
-Mat OpticalFlow::exec(Mat frame, Mat frameOld)
+Mat OpticalFlow::exec(const Mat& frame, const Mat& frameOld)
 {
-    Mat frameGris, frameSobelX, frameSobelY, frameDiffIntensite, frameGrisOld;
+    niveauGris(frame, frameGris);
+    niveauGris(frameOld, frameGrisOld);
 
-    niveauGris(frame, &frameGris);
-    niveauGris(frameOld, &frameGrisOld);
+    sobelX(frameGris, frameSobelX);
+    sobelY(frameGris, frameSobelY);
 
-    sobelX(&frameGris, &frameSobelX);
-    sobelY(&frameGris, &frameSobelY);
+    diffIntensite(frameGris, frameGrisOld, frameDiffIntensite);
 
-    diffIntensite(frameGris, frameGrisOld, &frameDiffIntensite);
+    matDepl.setTo(cv::Scalar(0,0));
 
-    Mat matDepl = cv::Mat(frame.rows, frame.cols, CV_32FC2, cv::Scalar(0,0));
-
-    #pragma omp parallel default(none) firstprivate(frame, frameSobelX, frameSobelY, frameDiffIntensite) shared(matDepl, std::cout)
+    #pragma omp parallel default(none) shared(matDepl, frame, frameSobelX, frameSobelY, frameDiffIntensite, std::cout)
     {
-
         /*#pragma omp single
         {
             std::cout << "Nb threads actifs : " << omp_get_num_threads() << std::endl;
         }*/
 
-        #pragma omp for collapse(2) schedule(dynamic)
+        #pragma omp for schedule(static)
         for (int y = 1; y < frame.rows-1; y++)
         {
             for (int x = 1; x < frame.cols-1; x++)
             {
-                // TODO: Check bornes
                 int cols = 3;
                 int rows = 3;
 
                 float x2 = 0.0, y2 = 0.0, xy = 0.0, xt = 0.0, yt = 0.0;
 
-                for (int j = y-rows/2; j < y+rows/2; j++)
+                for (int j = y-rows/2; j <= y+rows/2; j++)
                 {
-                    float *ix = frameDiffIntensite.ptr<float>(j);
-                    float *sx = frameSobelX.ptr<float>(j);
-                    float *sy = frameSobelY.ptr<float>(j);
-
-                    for (int i = x-cols/2; i < x+cols/2; i++)
+                    for (int i = x-cols/2; i <= x+cols/2; i++)
                     {
-                        float Ix = ix[i];
-                        float Sx = sx[i];
-                        float Sy = sy[i];
+                        float Ix = frameDiffIntensite.ptr<float>(j)[i];
+                        float Sx = frameSobelX.ptr<float>(j)[i];
+                        float Sy = frameSobelY.ptr<float>(j)[i];
+
                         x2 += Sx * Sx;
                         y2 += Sy * Sy;
                         xy += Sx * Sy;
@@ -193,48 +203,52 @@ Mat OpticalFlow::exec(Mat frame, Mat frameOld)
                     v = (-xy * (-xt) + x2 * (-yt)) / det;
                 }
 
-                matDepl.at<cv::Vec2f>(y, x) = cv::Vec2f(u, v);
+                matDepl.ptr<cv::Vec2f>(y)[x] = cv::Vec2f(u, v);
             }
         }
     }
 
-    cv::Mat vis(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
+    // cv::Mat matOpticalFlow(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
-    int step = 20;
-    float scale = 50;
+    // int step = 3;
+    // float scale = 1;
 
-    for (int y = step; y < matDepl.rows - step; y += step)
-    {
-        for (int x = step; x < matDepl.cols - step; x += step)
-        {
-            float sum_u = 0, sum_v = 0;
-            int count = 0;
+    // for (int y = step; y < matDepl.rows - step; y += step)
+    // {
+    //     for (int x = step; x < matDepl.cols - step; x += step)
+    //     {
+    //         float sum_u = 0, sum_v = 0;
+    //         int count = 0;
 
-            for (int j = y - step/2; j < y + step/2; j++)
-            {
-                for (int i = x - step/2; i < x + step/2; i++)
-                {
-                    cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
-                    sum_u += p[0];
-                    sum_v += p[1];
-                    count++;
-                }
-            }
+    //         for (int j = y - step/2; j < y + step/2; j++)
+    //         {
+    //             for (int i = x - step/2; i < x + step/2; i++)
+    //             {
+    //                 cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
+    //                 sum_u += p[0];
+    //                 sum_v += p[1];
+    //                 count++;
+    //             }
+    //         }
 
-            float u = sum_u / count;
-            float v = sum_v / count;
+    //         float u = sum_u / count;
+    //         float v = sum_v / count;
 
-            float norm = sqrt(u*u + v*v);
-            if (norm < 1) continue;
+    //         // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
+    //         // float u = p[0];
+    //         // float v = p[1];
 
-            cv::Point p1(x, y);
-            cv::Point p2(x + u * scale, y + v * scale);
+    //         //float norm = sqrt(u*u + v*v);
+    //         //if (norm < 1) continue;
 
-            cv::arrowedLine(vis, p1, p2, cv::Scalar(0, 0, 255), 2);
-        }
-    }
+    //         cv::Point p1(x, y);
+    //         cv::Point p2(x + u * scale, y + v * scale);
 
-    //cv::imshow("vis", vis);
+    //         cv::arrowedLine(matOpticalFlow, p1, p2, cv::Scalar(0, 0, 255), 1);
+    //     }
+    // }
+
+    // cv::imshow("flux optique", matOpticalFlow);
 
     return matDepl;
 }
