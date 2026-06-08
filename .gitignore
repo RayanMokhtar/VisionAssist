@@ -12,7 +12,6 @@ logs/
 *.log
 worker_vision/build/
 modeles/
-api/
 langage/modeles/
 =======
 # Environments
