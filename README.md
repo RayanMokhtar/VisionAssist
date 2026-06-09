@@ -113,12 +113,8 @@ sudo apt install -y nvidia-driver-550# maj driver
 
 sudo apt install -y nvidia-driver-550# maj driver 
 
-
-
 // vllm doc suggère : uv
  pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu129 // à tester si ça marche pas
-
-
 
  commande lancement vllm : vllm serve ./langage/modeles/Qwen3.5-27B-4bit-bitsandbytes --max-model-len 8192 --gpu-memory-utilization 0.95 --enforce-eager
 

@@ -1,7 +1,11 @@
 from smartcard.System import readers
 from smartcard.util import toHexString
 
+<<<<<<< HEAD
 from security.client_side.common.card_config import P2_VERIFY_CSC0, P2_VERIFY_CSC1
+=======
+from common.card_config import P2_VERIFY_CSC0, P2_VERIFY_CSC1
+>>>>>>> feature/Agent-LLM-complet
 
 
 def connect_card():

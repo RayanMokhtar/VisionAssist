@@ -56,13 +56,14 @@ class TopicConfig(BaseModel):
 
 class BrokerConfig(BaseModel):
     type_broker : Literal["RabbitMQ","mosquitto"] = "mosquitto"
-    host: str = "localhost"
-    port: int = Field(1883, ge=1, le=65535)
+    host: str = "172.20.10.4"
+    port: int = Field(8883, ge=1, le=65535)
     keepalive: int = 60
     client_id: str = "visionassist-jetson" #TODO à modifier dans serveurito
     username: Optional[str] = None
     password: Optional[str] = None
-    use_tls: bool = False
+    use_tls: bool = True
+    ca_cert: Optional[str] = None
     qos: Literal[0, 1, 2] = 1
     retain: bool = True
     topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
@@ -111,6 +112,20 @@ class SecurityConfig(BaseModel):
         description="Duree de validite d'un challenge HMAC")
 
 
+class QwenConfig(BaseModel):
+    model_id: str = Field("./langage/modeles/Qwen3.5-27B",description="model id")
+    load_in_4bit: bool = Field(True,description="booleen chargement en 4 bits")
+    max_new_tokens: int = Field(1024,description="taille max de la reponse")
+    temperature: float = Field(0.7,description="temperature du modele")
+    top_p: float = Field(0.8,description="top_p du modele")
+    do_sample: bool = Field(True,description="do_sample du modele")
+    enable_thinking: bool = Field(False,description="enable_thinking du modele")
+    host: str = Field("0.0.0.0",description="host du modele")
+    port: int = Field(8000,description="port du modele")
+    max_image_size_mb: int = Field(10,description="taille max des images")
+    device : Literal["cuda","cpu","auto"] = Field("cuda",description="device du modele")
+
+
 
 class Configuration(BaseSettings):
     model_config = SettingsConfigDict(
@@ -128,8 +143,9 @@ class Configuration(BaseSettings):
     security : SecurityConfig = Field(default_factory=SecurityConfig,description="configuration de la sécurité")
     environnement : Literal["linux","windows"]="linux"
     mode_degrade : bool = True
+    qwen:QwenConfig=Field(default_factory=QwenConfig,description="configuration modèle qwen")
 
-def get_configuration():
+def get_configuration() -> Configuration:
     return Configuration()
 
 
