@@ -12,9 +12,9 @@ from configuration import CONFIGURATION
 from broker.service import get_broker_client 
 from broker.broker_interface import IBroker 
 
-from langage.api.schemas.broker import BrokerRequest
-from langage.api.services.model import model_service
-from langage.api.services.agent import QwenAgent
+from langage.schemas.broker import BrokerRequest
+from langage.services.model import model_service
+from langage.services.agent import QwenAgent
 
 LOGGER = logging.getLogger(__name__)
 

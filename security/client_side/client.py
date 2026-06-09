@@ -9,7 +9,6 @@ from getpass import getpass
 CLIENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CLIENT_DIR)
 PROJECT_DIR = os.path.dirname(BASE_DIR)
-<<<<<<< HEAD
 # sys.path.insert(0, CLIENT_DIR)
 # sys.path.insert(0, BASE_DIR)
 # sys.path.insert(0, PROJECT_DIR)
@@ -20,18 +19,6 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 from broker.service import get_broker_client  
 from configuration import CONFIGURATION  
 from security.client_side.common.utils_client import (calculer_signature, connect_card, is_sw_ok, lire_secret_carte, read_word_bytes, verify_csc1, emuler_mode_utilisateur,
-=======
-sys.path.insert(0, CLIENT_DIR)
-sys.path.insert(0, BASE_DIR)
-sys.path.insert(0, PROJECT_DIR)
-os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env"))
-os.environ.setdefault("BROKER_CREDENTIAL_PROFILE", "CLIENT")
-os.chdir(CLIENT_DIR)
-
-from broker.service import get_broker_client  
-from configuration import CONFIGURATION  
-from common.utils_client import (calculer_signature, connect_card, is_sw_ok, lire_secret_carte, read_word_bytes, verify_csc1, emuler_mode_utilisateur,
->>>>>>> feature/Agent-LLM-complet
 verify_csc0,verifier_mode_emule_par_lecture_secret,)  
 
 
@@ -84,10 +71,7 @@ def mqtt_request(action, payload, timeout=10):
 
     broker = get_broker_client(client_id)
     broker.connexion()
-<<<<<<< HEAD
     print("là")
-=======
->>>>>>> feature/Agent-LLM-complet
     try:
         time.sleep(0.5)
 
@@ -148,7 +132,6 @@ def verifier_carte_hmac(card_id, challenge_id, challenge, signature):
 def authenticate():
     print("Carte inseree")
     try:
-<<<<<<< HEAD
         is_ok , conn = connect_card()
     except Exception as exc:
         print(f"Erreur connexion carte: {exc}")
@@ -157,13 +140,6 @@ def authenticate():
     if not is_ok:
         return False
 
-=======
-        conn = connect_card()
-    except Exception as exc:
-        print(f"Erreur connexion carte: {exc}")
-        return False
-    
->>>>>>> feature/Agent-LLM-complet
     sw1, sw2 = verify_csc0(conn, CSC0_SIMULATION)
     if not is_sw_ok(sw1, sw2):
         print(f"Erreur simulation: CSC0 refuse SW={sw1:02X}{sw2:02X}")
@@ -192,11 +168,7 @@ def authenticate():
         print(f"Acces refuse: {message}")
         return False
 
-<<<<<<< HEAD
     sw1, sw2 = verify_csc1(conn, pin_to_csc1_bytes(pin)) # après saisie pour le format de la carte
-=======
-    sw1, sw2 = verify_csc1(conn, pin_to_csc1_bytes(pin))
->>>>>>> feature/Agent-LLM-complet
     if not is_sw_ok(sw1, sw2):
         print(f"Acces refuse: VERIFY CSC1 SW={sw1:02X}{sw2:02X}")
         return False

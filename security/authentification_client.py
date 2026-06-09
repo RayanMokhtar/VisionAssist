@@ -210,6 +210,9 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
         )
         INSTANCE_TTS.pipeline(f"{MESSAGE_BIENVENUE} {prenom_utilisateur} moi c'est {CONFIGURATION.nom_assistant}. comment puis je vous aider aujourd'hui ?" , ficher_tts_sortie)
         print(f"Session authentifiée créée avec ID: {session_id}")
+        #création de la session 
+        session = REPOSITORIES.sessions.create(user_id=response_authentification_apres_hmac.get("user_id"), card_id=response_authentification_apres_hmac.get("card_id"), session_id=session_id)
+        print("sessions créee en base de données : ", session)
         lancement_scripts_terminaux()
         return session_authentifiee # à ajouter l'expiration du token et la logique de refresh token dans le pipeline d'authentification ou dans un décorateur à part pour les méthodes qui nécessitent une authentification
     else : 
@@ -220,7 +223,8 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
 
 #ajouter le required_auth comme décorateur dans la méthode du llm où on doit soumettre nos trucs
 
-if __name__ == "__main__":
-    print("configuration ,",CONFIGURATION.broker)
-    session_authentification = pipeline_authentification()
-    print("session_authentification : ", session_authentification)
+SESSION_UTILISATEUR = None
+print("session_authentification avant : ", SESSION_UTILISATEUR)
+print("configuration ,",CONFIGURATION.broker)
+SESSION_UTILISATEUR = pipeline_authentification()
+print("session_authentification après : ", SESSION_UTILISATEUR)

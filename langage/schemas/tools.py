@@ -18,7 +18,7 @@ class ToolCallRecord(BaseModel):
     args: dict[str, Any] = {}
     result: Optional[str] = None
     duration_ms: Optional[int] = None
-    success: bool = True
+    success: bool = True    
     error_msg: Optional[str] = None
 
 

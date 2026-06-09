@@ -20,7 +20,6 @@ Outils disponibles :
 
 from __future__ import annotations
 
-import contextvars
 import datetime
 import logging
 from typing import List
@@ -36,18 +35,7 @@ from langage.memory.long_term import long_term_memory
 
 logger = logging.getLogger(__name__)
 
-# ─── Contexte utilisateur (thread-safe via contextvars) ───────────────────────
-# Défini par l'agent avant chaque invocation de l'agent LangGraph.
 
-current_user_id = contextvars.ContextVar("current_user_id", default="default")
-current_session_id = contextvars.ContextVar("current_session_id", default="")
-
-# Note : les coordonnées GPS ne sont plus dans des contextvars.
-# Elles sont injectées dans le texte du message utilisateur et passées
-# directement par le LLM comme arguments aux outils.
-
-
-# ─── Helper log ───────────────────────────────────────────────────────────────
 
 def _log_tool(tool_name: str, result: str) -> None:
     """Affiche un log structuré quand un outil est invoqué."""
@@ -55,7 +43,7 @@ def _log_tool(tool_name: str, result: str) -> None:
     logger.info("🔧 [TOOL] %-25s → %s", tool_name, preview)
 
 
-# ─── Outils ───────────────────────────────────────────────────────────────────
+
 
 @tool
 def get_current_time() -> str:
@@ -599,7 +587,6 @@ def get_transit_info(destination: str, latitude: float = None, longitude: float 
         return result
 
 
-# ─── Registre des outils ──────────────────────────────────────────────────────
 
 def get_all_tools() -> List:
     """Retourne la liste de tous les outils disponibles pour l'agent."""

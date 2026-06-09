@@ -241,23 +241,24 @@ class ModelService:
         return content.strip()
 
 
-model_service = ModelService()
+MODEL_SERVICE = ModelService()
 
-model_service.generate_with_tools(lc_messages=[
-    HumanMessage(content=[
-        {"type": "text", "text": "quelle est la météo ?"},
-        {"type": "image_url", "image_url": {"url": "./langage/missile.png"}}
-    ])
-], tools=[
-    {
-        "name": "get_weather",
-        "description": "Récupère la météo pour une localisation donnée.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "location": {"type": "string", "description": "La ville ou région pour la météo."}
-            },
-            "required": ["location"]
+if __name__ == "__main__":
+    MODEL_SERVICE.generate_with_tools(lc_messages=[
+        HumanMessage(content=[
+            {"type": "text", "text": "quelle est la météo ?"},
+            {"type": "image_url", "image_url": {"url": "./langage/missile.png"}}
+        ])
+    ], tools=[
+        {
+            "name": "get_weather",
+            "description": "Récupère la météo pour une localisation donnée.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "location": {"type": "string", "description": "La ville ou région pour la météo."}
+                },
+                "required": ["location"]
+            }
         }
-    }
-])
+    ])

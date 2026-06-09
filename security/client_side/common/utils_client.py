@@ -26,10 +26,7 @@ SECRET_CARTE_TAILLE = SECRET_CARTE_WORDS * 4
 # =========================
 
 def connect_card():
-<<<<<<< HEAD
     is_ok = False
-=======
->>>>>>> feature/Agent-LLM-complet
     available_readers = readers()
     if not available_readers:
         raise Exception("Aucun lecteur detecte")
@@ -38,12 +35,8 @@ def connect_card():
     conn.connect()
     print(f"Lecteur : {reader}")
     print(f"ATR : {toHexString(conn.getATR())}")
-<<<<<<< HEAD
     is_ok = True
     return is_ok , conn
-=======
-    return conn
->>>>>>> feature/Agent-LLM-complet
 
 
 def is_sw_ok(sw1, sw2):
