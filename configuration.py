@@ -101,7 +101,7 @@ class JWTConfig(BaseModel):
     refresh_token_expire_minutes: int = Field(1440, description="Durée de validité des tokens de rafraîchissement en minutes")
 
 class SecurityConfig(BaseModel):
-    jwtConfig : JWTConfig = Field(default_factory=JWTConfig,description="jwt config ")
+    jwt : JWTConfig = Field(default_factory=JWTConfig,description="jwt config ")
     max_tentatives_avant_blocage_carte_gemalto : int = 3
     cle_chiffrement_cartes: str = Field(
         "",
