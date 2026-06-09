@@ -24,7 +24,8 @@ class MqttClientBroker(IBroker):
             self.client.username_pw_set(conf_broker.username, conf_broker.password)
         
         if conf_broker.use_tls:
-            self.client.tls_set()
+            self.client.tls_set(ca_certs=conf_broker.ca_cert)
+            self.client.tls_insecure_set(False)
         
         self.est_connecte = False
         self.abonnement_topic_callback : dict[str, Callable] = {}

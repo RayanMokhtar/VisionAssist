@@ -1,15 +1,3 @@
-"""
-Agent Qwen — Orchestrateur principal (LangGraph).
-
-Reçoit les requêtes BrokerRequest, gère la mémoire (court/long terme),
-invoque le modèle et les outils, et retourne une AgentResponse.
-
-Implémente la logique de session journalière :
-    - 1 session par utilisateur par jour.
-    - Reprise de la session si l'utilisateur revient dans la même journée.
-    - Si nouvelle journée, injection du résumé de la veille dans le contexte.
-"""
-
 from __future__ import annotations
 
 import json
@@ -27,13 +15,9 @@ from langchain_core.messages import (
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 from sqlalchemy.orm import Session as DbSession
-from langage.api.schemas.broker import BrokerRequest, AgentResponse
-from langage.api.services.model import model_service
-from langage.api.services.tools import (
-    get_all_tools,
-    current_user_id,
-    current_session_id,
-)
+from langage.schemas.broker import BrokerRequest, AgentResponse
+from langage.services.model import model_service , ModelService
+from langage.services.tools import get_all_tools,current_user_id,current_session_id
 from langage.database.engine import get_db
 from langage.database.repositories import session_repo, message_repo, summary_repo, note_repo
 from langage.database.models import UserProfile
@@ -45,20 +29,16 @@ logger = logging.getLogger(__name__)
 
 from langgraph.graph.message import add_messages
 
-# ─── État du Graph LangGraph ──────────────────────────────────────────────────
 
 class AgentState(TypedDict):
-    """État interne de l'agent pendant le traitement d'une requête."""
     messages: Annotated[list[BaseMessage], add_messages]
     user_id: str
     session_id: str
     tool_calls_made: list[str]
 
 
-# ─── QwenAgent ────────────────────────────────────────────────────────────────
-
 class QwenAgent:
-    def __init__(self, model_service=model_service):
+    def __init__(self, model_service : ModelService = model_service):
         self.model_service = model_service
         self.tools = get_all_tools()
         self.graph = self._build_graph()

@@ -1,30 +1,25 @@
-"""
-ModelService — Abstraction du modèle de langage (LLM).
-
-Charge Qwen3-VL directement via HuggingFace Transformers en tant que Singleton.
-Gère le formatage des outils pour Qwen.
-"""
-
 from __future__ import annotations
 
 import json
 import logging
+import ast
 import re
 import uuid
 from typing import Optional, List, Any
 
-from langchain_core.messages import (
-    AIMessage,
-    BaseMessage,
-    HumanMessage,
-    SystemMessage,
-    ToolMessage,
-)
+import torch
+from transformers import AutoProcessor, AutoModelForImageTextToText , BitsAndBytesConfig
+
+from langchain_core.messages import AIMessage,BaseMessage,HumanMessage,SystemMessage,ToolMessage
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-from langage.api.config import settings
+from qwen_vl_utils import process_vision_info 
+
+
+from configuration import CONFIGURATION
 
 logger = logging.getLogger(__name__)
+
 
 
 class ModelService:
@@ -33,99 +28,77 @@ class ModelService:
     def __init__(self):
         self.model = None
         self.processor = None
-        self._loaded = False
+        self.est_charge = False
+        self.config_agent = CONFIGURATION.qwen
+        self.load()
 
-    def load(self) -> None:
+    def load(self) -> bool:
         """Charge le modèle directement via Transformers (singleton)."""
-        if self._loaded:
-            return
+        if self.est_charge:
+            return True
 
-        try:
-            import torch
-            from transformers import AutoProcessor, AutoModelForImageTextToText
-        except ImportError:
-            raise ImportError(
-                "transformers et torch requis. "
-                "Installez avec : pip install transformers torch accelerate"
-            )
-
-        model_id = settings.model_id
+        model_id = self.config_agent.model_id
         logger.info("Chargement du modèle Transformers : %s...", model_id)
         
         dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        print(" format bits : ",dtype)
 
         try:
-            from transformers import BitsAndBytesConfig
             quantization_config = BitsAndBytesConfig(
                 load_in_4bit=True,
                 bnb_4bit_compute_dtype=dtype
             )
-            # Utilisation de 'cuda' au lieu de 'auto' pour éviter les erreurs d'offload CPU avec BitsAndBytes
-            device_map = "cuda"
             logger.info("Utilisation de BitsAndBytes (4-bit) pour optimiser la VRAM. device_map forcé sur 'cuda'.")
         except ImportError:
             quantization_config = None
-            device_map = "auto"
             logger.warning("BitsAndBytes non installé. Chargement en précision standard.")
 
+        print("quantization config", quantization_config)
         self.model = AutoModelForImageTextToText.from_pretrained(
             model_id,
             torch_dtype=dtype,
-            device_map=device_map,
-            attn_implementation="sdpa",
+            device_map=self.config_agent.device,
+            attn_implementation="sdpa", #TODO : scaled dot product attention à revoir ??? 
             quantization_config=quantization_config,
         )
         self.processor = AutoProcessor.from_pretrained(model_id)
-        self._loaded = True
+        self.est_charge = True
         logger.info("LLM chargé avec succès.")
 
     def get_chat_model(self):
         raise NotImplementedError("Utilisez generate_with_tools directement en mode transformers.")
 
     def invoke_simple(self, prompt: str) -> str:
-        """Appel simple au LLM (sans tool calling) — utilisé par le summarizer."""
-        if not self._loaded:
-            self.load()
 
         messages = [{"role": "user", "content": prompt}]
         text_prompt = self.processor.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True
         )
 
-        inputs = self.processor(text=[text_prompt], return_tensors="pt").to(self.model.device)
+        inputs = self.processor(text=[text_prompt], return_tensors="pt").to(self.config_agent.device)
 
-        import torch
         with torch.no_grad():
             output_ids = self.model.generate(
                 **inputs,
-                max_new_tokens=settings.max_new_tokens,
-                do_sample=settings.do_sample,
-                temperature=settings.temperature,
+                max_new_tokens=self.config_agent.max_new_tokens,
+                do_sample=self.config_agent.do_sample,
+                temperature=self.config_agent.temperature,
             )
             
         generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
         return self.processor.decode(generated_ids, skip_special_tokens=True)
 
     def generate_with_tools(self, lc_messages: List[BaseMessage], tools: List[Any]) -> AIMessage:
-        """
-        Génère une réponse en supportant le tool calling manuellement.
-        Parse les messages LangChain en format dict HF, injecte les descriptions d'outils,
-        et parse la sortie pour identifier si le modèle a décidé d'utiliser un outil.
-        """
-        if not self._loaded:
-            self.load()
-
+        print("Messages reçus pour génération avec outils :", lc_messages)
         hf_messages = []
         for m in lc_messages:
             if isinstance(m, HumanMessage):
-                # Détecter contenu multimodal (liste avec image_url + text)
                 if isinstance(m.content, list):
                     content_list = []
                     for part in m.content:
                         if part.get("type") == "text":
                             content_list.append({"type": "text", "text": part["text"]})
                         elif part.get("type") == "image_url":
-                            # Qwen-VL attend "image"
                             img_uri = part["image_url"]["url"]
                             content_list.append({"type": "image", "image": img_uri})
                     hf_messages.append({"role": "user", "content": content_list})
@@ -158,43 +131,22 @@ class ModelService:
             elif isinstance(m, SystemMessage):
                 hf_messages.append({"role": "system", "content": m.content})
 
-        # Conversion des outils au format JSON Schema standard (OpenAI-like)
         hf_tools = [convert_to_openai_tool(t) for t in tools]
         
-        # Pour Qwen3-VL, on injecte les outils dans le system prompt si on gère à la main
-        # Mais le processeur Qwen 2.5/3 supporte l'argument tools dans apply_chat_template !
+        # try:
+        print("tools :",tools)
+        print("hf tools :",hf_tools)
         try:
-            try:
-                text_prompt = self.processor.apply_chat_template(
-                    hf_messages, 
-                    tools=hf_tools, 
-                    tokenize=False, 
-                    add_generation_prompt=True
-                )
-            except Exception as e:
-                logger.error("Erreur lors de l'appel à apply_chat_template. Messages: %s, Tools: %s", hf_messages, hf_tools)
-                raise e
-        except TypeError:
-            # Fallback si le processeur ne supporte pas 'tools' nativement
-            logger.warning("Le processor ne supporte pas l'argument tools, injection manuelle.")
-            tools_desc = json.dumps(hf_tools, indent=2, ensure_ascii=False)
-            sys_msg = (
-                "Tu as accès aux outils suivants:\n" + tools_desc + 
-                "\nPour utiliser un outil, réponds UNIQUEMENT avec le format XML suivant:\n"
-                "<tool_call>\n{\"name\": \"nom_outil\", \"arguments\": {\"arg1\": \"valeur1\"}}\n</tool_call>"
-            )
-            # Ajout au début
-            if hf_messages and hf_messages[0]["role"] == "system":
-                hf_messages[0]["content"] += "\n\n" + sys_msg
-            else:
-                hf_messages.insert(0, {"role": "system", "content": sys_msg})
-                
             text_prompt = self.processor.apply_chat_template(
-                hf_messages, tokenize=False, add_generation_prompt=True
+                hf_messages, 
+                tools=hf_tools, 
+                tokenize=False, 
+                add_generation_prompt=True
             )
-
+        except Exception as e:
+            logger.error("Erreur lors de l'appel à apply_chat_template. Messages: %s, Tools: %s", hf_messages, hf_tools)
+            raise e
         try:
-            from qwen_vl_utils import process_vision_info
             image_inputs, video_inputs = process_vision_info(hf_messages)
             inputs = self.processor(
                 text=[text_prompt],
@@ -207,38 +159,46 @@ class ModelService:
             logger.warning("Impossible de traiter l'image avec qwen_vl_utils: %s", e)
             inputs = self.processor(text=[text_prompt], return_tensors="pt").to(self.model.device)
 
-        import torch
         with torch.no_grad():
             output_ids = self.model.generate(
                 **inputs,
-                max_new_tokens=settings.max_new_tokens,
-                do_sample=settings.do_sample,
-                temperature=settings.temperature,
+                max_new_tokens=self.config_agent.max_new_tokens,
+                do_sample=self.config_agent.do_sample,
+                temperature=self.config_agent.temperature,
             )
 
         generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
         response_text = self.processor.decode(generated_ids, skip_special_tokens=True)
 
-        # Parse du format tool call de Qwen : <tool_call>\n{"name": "...", "arguments": {...}}\n</tool_call>
         tool_calls = []
         content = response_text
 
-        # Regex pour matcher le bloc tool_call (format JSON classique ou format XML natif Qwen3)
-        match_json = re.search(r"<tool_call>\s*({.*?})\s*</tool_call>", response_text, re.DOTALL)
-        match_xml = re.search(r"<tool_call>\s*<function=([^>]+)>\s*(.*?)\s*</function>\s*</tool_call>", response_text, re.DOTALL)
+        print("Réponse brute du modèle :", response_text)
 
-        if match_json:
+
+        reponse_nettoyee = ModelService.nettoyer_reponse_llm_brute(content,tool_calls)
+
+        print("réponse nettoyée : " , reponse_nettoyee)
+
+        return AIMessage(content=reponse_nettoyee, tool_calls=tool_calls)
+
+    @staticmethod
+    def nettoyer_reponse_llm_brute(reponse_brute: str, tool_calls: Optional[List] = None) -> str:
+        if tool_calls is None:
+            tool_calls = []
+            
+        for match_json in re.finditer(r"<tool_call>\s*({.*?})\s*</tool_call>", reponse_brute, re.DOTALL):
             try:
                 tc_data = json.loads(match_json.group(1))
                 tool_calls.append({
-                    "name": tc_data["name"],
-                    "args": tc_data["arguments"],
+                    "name": tc_data.get("name", "unknown"),
+                    "args": tc_data.get("arguments", {}),
                     "id": "tc_" + str(uuid.uuid4())[:8]
                 })
-                content = response_text.replace(match_json.group(0), "").strip()
             except Exception as e:
                 logger.error("Erreur de parsing du tool_call Qwen JSON : %s", e)
-        elif match_xml:
+
+        for match_xml in re.finditer(r"<tool_call>\s*<function=([^>]+)>\s*(.*?)\s*</function>\s*</tool_call>", reponse_brute, re.DOTALL):
             try:
                 name = match_xml.group(1).strip()
                 args_str = match_xml.group(2).strip()
@@ -248,35 +208,56 @@ class ModelService:
                         args = json.loads(args_str)
                     except Exception:
                         try:
-                            import ast
                             args = ast.literal_eval(args_str)
                         except Exception:
-                            # Fallback pour format XML attributs (ex: location="Cergy")
                             pairs = re.findall(r'(\w+)=["\']([^"\']+)["\']', args_str)
                             if pairs:
                                 args = dict(pairs)
                             else:
-                                # Parsing du format <parameter=nom>valeur</parameter>
                                 param_matches = re.findall(r'<parameter=([^>]+)>\s*(.*?)\s*</parameter>', args_str, re.DOTALL)
                                 if param_matches:
                                     args = {k: v.strip() for k, v in param_matches}
                                 else:
-                                    logger.error("Impossible de parser les arguments: %r", args_str)
+                                    logger.error("Impossible de parser les arguments XML: %r", args_str)
+                
                 tool_calls.append({
                     "name": name,
                     "args": args if isinstance(args, dict) else {},
                     "id": "tc_" + str(uuid.uuid4())[:8]
                 })
-                content = response_text.replace(match_xml.group(0), "").strip()
             except Exception as e:
-                logger.error("Erreur de parsing du tool_call Qwen XML : %s | args: %r", e, match_xml.group(2) if match_xml else "")
+                logger.error("Erreur de parsing du tool_call Qwen XML : %s", e)
 
-        # Nettoyage des balises de "pensée" (Chain-of-Thought) du modèle Qwen
-        content = re.sub(r"<think>.*?(?:</think>|$)", "", content, flags=re.DOTALL)
-        content = re.sub(r"</?think>", "", content).strip()
+        
+        # 3. Nettoyage du texte (suppression des balises <think> et <tool_call>)
+        content = re.sub(r"<think>.*?</think>", "", reponse_brute, flags=re.DOTALL)
+        if "</think>" in content:
+            content = content.split("</think>", 1)[-1]
+            
+        content = re.sub(r"<tool_call>.*?</tool_call>", "", content, flags=re.DOTALL)
+        if "<tool_call>" in content:
+            content = content.split("<tool_call>", 1)[0]
+            
+        return content.strip()
 
-        return AIMessage(content=content, tool_calls=tool_calls)
 
-
-# Singleton global
 model_service = ModelService()
+
+model_service.generate_with_tools(lc_messages=[
+    HumanMessage(content=[
+        {"type": "text", "text": "quelle est la météo ?"},
+        {"type": "image_url", "image_url": {"url": "./langage/missile.png"}}
+    ])
+], tools=[
+    {
+        "name": "get_weather",
+        "description": "Récupère la météo pour une localisation donnée.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "La ville ou région pour la météo."}
+            },
+            "required": ["location"]
+        }
+    }
+])
