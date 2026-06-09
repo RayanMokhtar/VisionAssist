@@ -4,6 +4,8 @@ import json
 import logging
 from typing import TypedDict, Annotated, List, Optional
 import datetime
+import subprocess as _sp
+import uuid as _uuid
 
 from langchain_core.messages import (
     BaseMessage,
@@ -14,20 +16,36 @@ from langchain_core.messages import (
 )
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
-from sqlalchemy.orm import Session as DbSession
+
 from langage.schemas.broker import BrokerRequest, AgentResponse
 from langage.services.model import model_service , ModelService
 from langage.services.tools import get_all_tools,current_user_id,current_session_id
-from langage.database.engine import get_db
-from langage.database.repositories import session_repo, message_repo, summary_repo, note_repo
-from langage.database.models import UserProfile
+from persistance.repository import REPOSITORIES
 from langage.memory.short_term import ConversationBuffer
 from langage.memory.long_term import long_term_memory
+from security.authentification_client import SessionAuthentifiee , session_authentifiee
 
 logger = logging.getLogger(__name__)
 
 
 from langgraph.graph.message import add_messages
+
+
+
+BASE_PROMPT = """Tu es VisionAssist, un assistant intelligent, bienveillant et proactif conçu pour aider une personne malvoyante dans son quotidien.
+
+Tu peux utiliser tes outils pour obtenir la météo, chercher des lieux, connaître les prochains trains/RER/métros, sauvegarder des notes, ou consulter la mémoire passée.
+
+Sois concis et naturel dans tes réponses vocales. Parle à la 2ème personne du vouvoiement sauf si l'utilisateur préfère le tutoiement.
+
+RÈGLES STRICTES DE RÉPONSE :
+1. NE GÉNÈRE AUCUN MONOLOGUE INTERNE. Tu dois donner UNIQUEMENT la réponse finale attendue par l'utilisateur.
+2. Il est formellement INTERDIT d'écrire des phrases telles que 'Je dois répondre...', 'L'utilisateur demande...', 'L'outil indique...', ou d'expliquer ce que tu vas faire.
+3. Contente-toi de fournir l'information ou la réponse de manière directe, naturelle et fluide.
+
+Pour l'heure et la date, base-toi TOUJOURS sur le résultat le plus récent de l'outil get_current_time présent dans la conversation — jamais sur tes connaissances internes.
+Pour les horaires de transport (train, RER, métro, bus), utilise TOUJOURS l'outil get_transit_info avec la destination demandée par l'utilisateur.
+Pour sauvegarder un rappel, un mémo ou une note, tu DOIS TOUJOURS utiliser l'outil save_note. Ne dis JAMAIS que tu as noté quelque chose sans avoir appelé l'outil save_note au format XML."""
 
 
 class AgentState(TypedDict):
@@ -44,23 +62,21 @@ class QwenAgent:
         self.graph = self._build_graph()
 
     def _build_graph(self):
-        """Construit le graphe d'exécution LangGraph."""
-        # 1. Le ToolNode qui exécute les outils
+
         tool_node = ToolNode(self.tools)
 
-        # 2. Le noeud du LLM
         def call_model(state: AgentState):
-            # Utilise la méthode personnalisée pour HF (Singleton)
+
             response = self.model_service.generate_with_tools(state["messages"], self.tools)
-            
-            # Enregistrer les tools appelés pour les stats/réponse
+            print("la réponse call model ", response)
             if response.tool_calls:
                 for tc in response.tool_calls:
                     state["tool_calls_made"].append(tc["name"])
-                    
+            
+            print("state => ",state)
+
             return {"messages": [response]}
 
-        # 3. Routage conditionnel
         def should_continue(state: AgentState):
             last_message = state["messages"][-1]
             if hasattr(last_message, "tool_calls") and last_message.tool_calls:
@@ -79,61 +95,29 @@ class QwenAgent:
 
     def _build_system_prompt(
         self,
-        db: DbSession,
         user_id: str,
         session_model,
         latitude: float | None = None,
         longitude: float | None = None,
     ) -> SystemMessage:
-        """Construit le prompt système initial avec l'historique et la mémoire."""
         
-        # 1. Résumé d'hier (si c'est une nouvelle session et non injecté)
         yesterday_context = ""
-        if not session_model.yesterday_summary_injected:
-            yesterday_summary = summary_repo.get_yesterday_summary(db, user_id)
-            if yesterday_summary:
-                yesterday_context = f"\n\nCONTEXTE D'HIER :\n{yesterday_summary.summary}"
-            else:
-                yesterday_context = "\n\nCONTEXTE : C'est votre premier échange (ou aucune donnée hier)."
-            
-            # Marquer comme injecté pour ne pas le répéter en base
-            session_repo.mark_yesterday_injected(db, session_model.id)
+        if session_model.resume:
+            yesterday_context = f"\n\nCONTEXTE PRÉCÉDENT :\n{session_model.resume}"
 
-        # 2. Profil utilisateur (préférences)
-        user_profile_records = db.query(UserProfile).filter(UserProfile.user_id == session_model.user_id).all()
         profile_context = ""
-        if user_profile_records:
-            prefs = {p.cle: p.valeur for p in user_profile_records}
-            profile_context = f"\n\nPRÉFÉRENCES UTILISATEUR :\n{json.dumps(prefs, ensure_ascii=False)}"
+        try:
+            user = REPOSITORIES.users.get(int(user_id))
+            if user and user.preferences:
+                profile_context = f"\n\nPRÉFÉRENCES UTILISATEUR :\n{json.dumps(user.preferences, ensure_ascii=False)}"
+        except ValueError:
+            logger.warning(f"Impossible de convertir user_id {user_id} en entier.")
 
-        # 3. Rappels actifs
-        active_notes = note_repo.get_active_notes(db, user_id)
         notes_context = ""
-        if active_notes:
-            notes_lines = [f"- {n.content}" for n in active_notes]
-            notes_context = "\n\nRAPPELS ACTIFS :\n" + "\n".join(notes_lines)
+        # TODO: Rétablir les notes actives quand note_repo sera intégré à persistance.
 
-        base_prompt = (
-            "Tu es VisionAssist, un assistant intelligent, bienveillant et proactif conçu pour "
-            "aider une personne malvoyante dans son quotidien.\n"
-            "Tu peux utiliser tes outils pour obtenir la météo, chercher des lieux, "
-            "connaître les prochains trains/RER/métros, "
-            "sauvegarder des notes, ou consulter la mémoire passée.\n"
-            "Sois concis et naturel dans tes réponses vocales. Parle à la 2ème personne du vouvoiement "
-            "sauf si l'utilisateur préfère le tutoiement.\n"
-            "RÈGLES STRICTES DE RÉPONSE :\n"
-            "1. NE GÉNÈRE AUCUN MONOLOGUE INTERNE. Tu dois donner UNIQUEMENT la réponse finale attendue par l'utilisateur.\n"
-            "2. Il est formellement INTERDIT d'écrire des phrases telles que 'Je dois répondre...', 'L'utilisateur demande...', 'L'outil indique...', ou d'expliquer ce que tu vas faire.\n"
-            "3. Contente-toi de fournir l'information ou la réponse de manière directe, naturelle et fluide.\n"
-            "Pour l'heure et la date, base-toi TOUJOURS sur le résultat le plus récent de l'outil "
-            "get_current_time présent dans la conversation — jamais sur tes connaissances internes.\n"
-            "Pour les horaires de transport (train, RER, métro, bus), utilise TOUJOURS l'outil "
-            "get_transit_info avec la destination demandée par l'utilisateur.\n"
-            "Pour sauvegarder un rappel, un mémo ou une note, tu DOIS TOUJOURS utiliser l'outil save_note. "
-            "Ne dis JAMAIS que tu as noté quelque chose sans avoir appelé l'outil save_note au format XML."
-        )
+        base_prompt = BASE_PROMPT
 
-        # Injection de la position GPS si disponible
         if latitude is not None and longitude is not None:
             gps_context = (
                 f"\n\nPOSITION GPS ACTUELLE DE L'UTILISATEUR : latitude={latitude:.6f}, longitude={longitude:.6f}. "
@@ -155,90 +139,84 @@ class QwenAgent:
         
         logger.info("Réception requête Broker: %s", request.request_id)
         
-        # Setup contextvars pour les outils
         current_user_id.set(request.user_id)
 
-        # GPS injecté dans le texte du message (voir étape 2 ci-dessous)
         if request.latitude is not None and request.longitude is not None:
             logger.info("📍 [GPS] Position reçue : lat=%.4f lon=%.4f", request.latitude, request.longitude)
         else:
             logger.info("📍 [GPS] Pas de coordonnées fournies dans cette requête")
         
-        with get_db() as db:
-            # 1. Gestion de la session journalière
-            session_model, is_new_session = session_repo.get_or_create_today_session(db, request.user_id)
-            session_id = session_model.id
-            current_session_id.set(session_id)
-            
-            # 2. Enregistrer le message de l'utilisateur
-            user_content = request.text
-            if request.image_url:
-                user_content += f"\n[Image attachée: {request.image_url}]"
+        # 1. Gestion de la session journalière
+        try:
+            uid = int(request.user_id)
+            sessions = REPOSITORIES.sessions.list_for_user(uid)
+            if sessions:
+                session_model = sessions[-1]
+            else:
+                session_model = REPOSITORIES.sessions.create(user_id=uid)
+        except ValueError:
+            logger.warning(f"user_id invalide {request.user_id}, session mockée")
+            session_model = REPOSITORIES.sessions.create()
 
-            # Injecter les coordonnées GPS dans le texte → le LLM sait TOUJOURS où l'utilisateur est
-            if request.latitude is not None and request.longitude is not None:
-                user_content = (
-                    f"[Ma position GPS actuelle : latitude={request.latitude:.6f}, longitude={request.longitude:.6f}]\n"
-                    + user_content
-                )
-                
-            message_repo.add_message(
-                db=db,
-                session_id=session_id,
-                role="user",
-                content=user_content,
-                source="api" if request.image_url else "stt"
+        session_id = session_model.session_id
+        current_session_id.set(session_id)
+        
+        # 2. Enregistrer le message de l'utilisateur
+        user_content = request.text
+        if request.image_url:
+            user_content += f"\n[Image attachée: {request.image_url}]"
+
+        # Injecter les coordonnées GPS dans le texte
+        if request.latitude is not None and request.longitude is not None:
+            user_content = (
+                f"[Ma position GPS actuelle : latitude={request.latitude:.6f}, longitude={request.longitude:.6f}]\n"
+                + user_content
             )
-            session_repo.increment_message_count(db, session_id)
-
-            # 3. Construire le contexte LangChain
-            buffer = ConversationBuffer(session_id)
-            lc_messages = buffer.get_langchain_messages(db)
             
-            # Récupérer les informations nécessaires pour le prompt système
-            system_message = self._build_system_prompt(
-                db, request.user_id, session_model,
-                latitude=request.latitude,
-                longitude=request.longitude,
+        current_db_msg = REPOSITORIES.messages.create(
+            session_id=session_id,
+            requete=user_content
+        )
+
+        buffer = ConversationBuffer(str(session_id))
+        lc_messages = buffer.get_langchain_messages()
+        
+        system_message = self._build_system_prompt(
+            request.user_id, session_model,
+            latitude=request.latitude,
+            longitude=request.longitude,
+        )
+
+        try:
+            _time_result = _sp.check_output(
+                ["date", "+%H:%M|%u|%d|%m|%Y"], text=True
+            ).strip()
+            _tp = _time_result.split("|")
+            _hm = _tp[0]          # ex: "10:20"
+            _h, _m = _hm.split(":")
+            _jours_fr = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+            _mois_fr  = ["janvier", "février", "mars", "avril", "mai", "juin",
+                         "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+            _jour_nom = _jours_fr[int(_tp[1]) - 1]
+            _mois_nom = _mois_fr[int(_tp[3]) - 1]
+            _time_str = (
+                f"Il est {int(_h)}h{_m}. "
+                f"Nous sommes {_jour_nom} {int(_tp[2])} {_mois_nom} {_tp[4]}."
+            )
+        except Exception as _e:
+            logger.warning("Fallback datetime pour l'heure : %s", _e)
+            _now = datetime.datetime.now()
+            _jours_fr = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+            _mois_fr  = ["janvier", "février", "mars", "avril", "mai", "juin",
+                         "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+            _time_str = (
+                f"Il est {_now.hour}h{_now.minute:02d}. "
+                f"Nous sommes {_jours_fr[_now.weekday()]} {_now.day} "
+                f"{_mois_fr[_now.month - 1]} {_now.year}."
             )
 
-        # =====================================================================
-        # APPEL AU LLM (HORS TRANSACTION BDD POUR NE PAS BLOQUER)
-        # =====================================================================
-        # 4. Récupérer l'heure exacte via la commande système WSL
-            import subprocess as _sp
-            import uuid as _uuid
-            try:
-                _time_result = _sp.check_output(
-                    ["date", "+%H:%M|%u|%d|%m|%Y"], text=True
-                ).strip()
-                _tp = _time_result.split("|")
-                _hm = _tp[0]          # ex: "10:20"
-                _h, _m = _hm.split(":")
-                _jours_fr = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
-                _mois_fr  = ["janvier", "février", "mars", "avril", "mai", "juin",
-                             "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
-                _jour_nom = _jours_fr[int(_tp[1]) - 1]
-                _mois_nom = _mois_fr[int(_tp[3]) - 1]
-                _time_str = (
-                    f"Il est {int(_h)}h{_m}. "
-                    f"Nous sommes {_jour_nom} {int(_tp[2])} {_mois_nom} {_tp[4]}."
-                )
-            except Exception as _e:
-                logger.warning("Fallback datetime pour l'heure : %s", _e)
-                _now = datetime.datetime.now()
-                _jours_fr = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
-                _mois_fr  = ["janvier", "février", "mars", "avril", "mai", "juin",
-                             "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
-                _time_str = (
-                    f"Il est {_now.hour}h{_now.minute:02d}. "
-                    f"Nous sommes {_jours_fr[_now.weekday()]} {_now.day} "
-                    f"{_mois_fr[_now.month - 1]} {_now.year}."
-                )
+        logger.info("🕐 [TOOL INJECTÉ] get_current_time → %s", _time_str)
 
-            logger.info("🕐 [TOOL INJECTÉ] get_current_time → %s", _time_str)
-
-        # 5. Ajouter le SystemMessage en tête
         _tool_call_id = f"injected_time_{_uuid.uuid4().hex[:8]}"
         injected_tool_call = AIMessage(
             content="",
@@ -304,26 +282,15 @@ class QwenAgent:
             last_message = final_state["messages"][-1]
             response_text = last_message.content
 
-            # =====================================================================
-            # SAUVEGARDE EN BDD DE LA RÉPONSE DE L'ASSISTANT
-            # =====================================================================
-            with get_db() as db:
-                # 7. Sauvegarder la réponse en BDD
-                message_repo.add_message(
-                    db=db,
-                    session_id=session_id,
-                    role="assistant",
-                    content=response_text,
-                    source="api"
-                )
-                session_repo.increment_message_count(db, session_id)
-                
-                # Si des tools ont été utilisés, on les sauvegarde aussi dans l'historique
-                # (Dans une v2, on pourrait itérer sur final_state["messages"] pour sauvegarder 
-                # spécifiquement les ToolMessages et AIMessages intermédiaires)
-                for tc in final_state["tool_calls_made"]:
-                    # Juste pour log basique
-                    logger.info("Tool utilisé: %s", tc)
+            # 7. Sauvegarder la réponse en BDD
+            REPOSITORIES.messages.update_response(current_db_msg, reponse=response_text)
+            
+            # Si des tools ont été utilisés, on les sauvegarde aussi dans l'historique
+            # (Dans une v2, on pourrait itérer sur final_state["messages"] pour sauvegarder 
+            # spécifiquement les ToolMessages et AIMessages intermédiaires)
+            for tc in final_state["tool_calls_made"]:
+                # Juste pour log basique
+                logger.info("Tool utilisé: %s", tc)
 
             return AgentResponse(
                 request_id=request.request_id,

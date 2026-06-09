@@ -58,4 +58,4 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav"):
 
         
         
-pipeline_authentification()
+session_authentification = pipeline_authentification()
