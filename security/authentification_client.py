@@ -79,14 +79,12 @@ def lancement_scripts_terminaux(chemin_vers_python: str = "../../.venv/bin/pytho
     # On calcule le chemin absolu du dossier racine où se trouvent tes packages (ex: le dossier qui contient 'speech')
     dossier_racine = os.path.abspath("../../")
     
-    # On transforme le chemin du python en chemin absolu pour éviter tout problème après le changement de dossier
+    #récupérer le chemin absolu
     chemin_python_absolu = os.path.abspath(chemin_vers_python)
 
     if CONFIGURATION.environnement == "linux": 
-        # On définit clairement les commandes telles qu'elles doivent être tapées dans Bash
-        # On utilise des guillemets doubles pour protéger les chemins absolus
         scripts_linux = [
-            f'"{chemin_python_absolu}" -m speech.text_to_speech 2>/dev/null',
+            f'"{chemin_python_absolu}" -m speech.text_to_speech 2>/dev/null', # 2/dev/null pour avoir des logs moins verbeux
             f'"{chemin_python_absolu}" -m speech.speech_to_text 2>/dev/null',
             f'"{os.path.abspath("../worker_vision/build/main")}"' 
         ]
@@ -126,40 +124,42 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
     card_id = None
     conn = None
     carte_lecteur_non_lue = True 
-    while carte_lecteur_non_lue :
-        is_ok , conn = connect_card()
-        if is_ok : 
-            mode_emule_actif = mode_emule_pour_user(conn)
-            card_id , message = lecture_card_id(conn)
-            if card_id is not None  and mode_emule_actif : 
-                carte_lecteur_non_lue = False
-            else :
-                print(f"Carte lecteur non lue ou mode emule non actif: {message}")
-                INSTANCE_TTS.pipeline(texte="Carte lecteur non lue ou mode emule non actif, veuillez réessayer" , nom_fichier_sortie=ficher_tts_sortie)
+    if not CONFIGURATION.mode_degrade : #pas besoin de la carte si dégradé
+        print("conf mode" , CONFIGURATION.mode_degrade)
+        while carte_lecteur_non_lue :
+            is_ok , conn = connect_card()
+            if is_ok : 
+                mode_emule_actif = mode_emule_pour_user(conn)
+                card_id , message = lecture_card_id(conn)
+                if card_id is not None  and mode_emule_actif : 
+                    carte_lecteur_non_lue = False
+                else :
+                    print(f"Carte lecteur non lue ou mode emule non actif: {message}")
+                    INSTANCE_TTS.pipeline(texte="Carte lecteur non lue ou mode emule non actif, veuillez réessayer" , nom_fichier_sortie=ficher_tts_sortie)
 
-    nombre_tentatives = 0
-    pin_valide = False
-    print("ici")
-    card_id , message = lecture_card_id(conn) # duplicat à voir si on enlève ou pas ?
-    while not pin_valide and  nombre_tentatives <= CONFIGURATION.security.max_tentatives_avant_blocage_carte_gemalto :
-        print("nombre tentatives restantes ", nombre_tentatives)
-        tts_texte = INSTANCE_TTS.pipeline(texte=DEMANDE_INSERTION_PIN ,nom_fichier_sortie=ficher_tts_sortie)
-        code_pin_potentiel = INSTANCE_STT.pipeline_authentification_stt(nombre_tentatives)
-        try : 
-            valid, message = validate_csc1_pin(code_pin_potentiel)
-        except Exception as e:
-            print(f"Erreur lors de la validation du pin: {e}")
-            nombre_tentatives += 1
-            _ = INSTANCE_TTS.pipeline(texte=CODE_PIN_ERRONE , nom_fichier_sortie=ficher_tts_sortie)
-            continue
+        nombre_tentatives = 0
+        pin_valide = False
+        print("ici")
+        card_id , message = lecture_card_id(conn) # duplicat à voir si on enlève ou pas ?
+        while not pin_valide and  nombre_tentatives <= CONFIGURATION.security.max_tentatives_avant_blocage_carte_gemalto :
+            print("nombre tentatives restantes ", nombre_tentatives)
+            tts_texte = INSTANCE_TTS.pipeline(texte=DEMANDE_INSERTION_PIN ,nom_fichier_sortie=ficher_tts_sortie)
+            code_pin_potentiel = INSTANCE_STT.pipeline_authentification_stt(nombre_tentatives)
+            try : 
+                valid, message = validate_csc1_pin(code_pin_potentiel)
+            except Exception as e:
+                print(f"Erreur lors de la validation du pin: {e}")
+                nombre_tentatives += 1
+                _ = INSTANCE_TTS.pipeline(texte=CODE_PIN_ERRONE , nom_fichier_sortie=ficher_tts_sortie)
+                continue
 
-        pin_valide = verifier_format_pin_dans_csc1(conn , code_pin_potentiel)
-        if not pin_valide : 
-            nombre_tentatives += 1
-            _ = INSTANCE_TTS.pipeline(texte=CODE_PIN_ERRONE , nom_fichier_sortie=ficher_tts_sortie)
-    
-    if nombre_tentatives >= CONFIGURATION.security.max_tentatives_avant_blocage_carte_gemalto : 
-        INSTANCE_TTS.pipeline(texte=CODE_PIN_ERRONE , nom_fichier_sortie=ficher_tts_sortie)
+            pin_valide = verifier_format_pin_dans_csc1(conn , code_pin_potentiel)
+            if not pin_valide : 
+                nombre_tentatives += 1
+                _ = INSTANCE_TTS.pipeline(texte=CODE_PIN_ERRONE , nom_fichier_sortie=ficher_tts_sortie)
+        
+        if nombre_tentatives >= CONFIGURATION.security.max_tentatives_avant_blocage_carte_gemalto : 
+            INSTANCE_TTS.pipeline(texte=CODE_PIN_ERRONE , nom_fichier_sortie=ficher_tts_sortie)
     
     INSTANCE_TTS.pipeline(texte=MESSAGE_ATTENTE , nom_fichier_sortie=ficher_tts_sortie)
     #vérificaiton validité de la carte + secret + challenge crytpo côté serveur 
@@ -220,6 +220,7 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
 
 #ajouter le required_auth comme décorateur dans la méthode du llm où on doit soumettre nos trucs
 
-        
-session_authentification = pipeline_authentification()
-print("session_authentification : ", session_authentification)
+if __name__ == "__main__":
+    print("configuration ,",CONFIGURATION.broker)
+    session_authentification = pipeline_authentification()
+    print("session_authentification : ", session_authentification)

@@ -1,0 +1,1 @@
+python -m speech.speech_to_text 2>/dev/null

@@ -1,0 +1,9 @@
+
+Ouvrir le terminal et télécharger l'outil : git clone https://github.com/dusty-nv/jetson-containers.git
+
+Entrer dans ce dossier : cd jetson-containers
+
+Lancer l'ordinateur virtuel en lui donnant accès à ton micro et à ton dossier de travail :
+./run.sh --device /dev/snd -v ~/Documents/VisionAssist:/VisionAssist $(./autotag faster-whisper)
+
+Une fois dedans, lancement code python

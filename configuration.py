@@ -125,9 +125,9 @@ class Configuration(BaseSettings):
     broker:BrokerConfig=Field(default_factory=BrokerConfig,description="configuration broker")
     paths: PathConfig=Field(default_factory=PathConfig,description="conf paths chemin fichiers")
     db : DBConfig = Field(default_factory=DBConfig,description="configuration base de données")
-    jwt : JWTConfig = Field(default_factory=JWTConfig,description="configuration JWT")
     security : SecurityConfig = Field(default_factory=SecurityConfig,description="configuration de la sécurité")
     environnement : Literal["linux","windows"]="linux"
+    mode_degrade : bool = True
 
 def get_configuration():
     return Configuration()

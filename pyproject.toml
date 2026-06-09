@@ -9,7 +9,7 @@ requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings[toml]>=2.0.0",
-    "numpy>=1.21.0",
+    "numpy>=1.21.0,<2",
     "sqlalchemy",
     "python-dotenv>=0.21.0",
     "pymysql",
@@ -20,15 +20,17 @@ dependencies = [
 
 #à séparer après avec les commandes les dépendances de chaque module dans le projet 
 #python3 -m piper.download_voices fr_FR-siwis-medium
+#sudo apt install portaudio19-dev python3-dev à ajouter également +  sudo apt install pcscd pcsc-tools swig python3-dev libpcsclite-dev partie gemalto
 
 [project.optional-dependencies]
 jetson = [
     "faster-whisper>=1.0.0",
     "pyaudio>=0.2.13",
-    "piper-tts==1.4.1", #je fige pour éviter les problemes
+    "piper-tts==1.4.1",
     "paho-mqtt>=2.0.0",
     "torch",
-    "transformers"
+    "transformers",
+    "onnxruntime>=1.17.0,<1.18.0"
 ]
 server = [
     "fastapi>=0.136.1",

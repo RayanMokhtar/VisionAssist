@@ -42,6 +42,8 @@ class STTResult(BaseModel):
     def __str__(self) -> str:# pour afficher l'objet
         return f"[{self.language} {self.language_probability:.0%} | {self.duration_ms}ms] {self.texte} , segments : \n {self.segments}" 
 
+print("configuration  dans stt,",CONFIGURATION.broker)
+
 
 MODELE_STT = WhisperModel(CONFIGURATION.stt.model_name,device=CONFIGURATION.stt.device,compute_type=CONFIGURATION.stt.quantization_modele)
 
@@ -57,7 +59,7 @@ class SpeechToText:
 
     def charger_modele(self) -> None:
         if self.modele is None : 
-            print("chargement modele stt")
+            print("chargement modele stt selon conf ", self.stt_configuration)
             self.modele = WhisperModel(
                 self.stt_configuration.model_name,
                 device=self.stt_configuration.device,
@@ -137,7 +139,7 @@ class SpeechToText:
                     self.audio_config.taille_chunk,
                     exception_on_overflow=False
                 )
-                print("data : ",data)
+                # print("data : ",data)  data en little endian
                 energie = audioop.rms(data, 2)  # 2 octets par échantillon
                 # print("energie :", energie)  
                 if not parole_detectee:

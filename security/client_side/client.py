@@ -9,16 +9,16 @@ from getpass import getpass
 CLIENT_DIR = os.path.dirname(os.path.abspath(__file__))
 BASE_DIR = os.path.dirname(CLIENT_DIR)
 PROJECT_DIR = os.path.dirname(BASE_DIR)
-sys.path.insert(0, CLIENT_DIR)
-sys.path.insert(0, BASE_DIR)
-sys.path.insert(0, PROJECT_DIR)
-os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env"))
-os.environ.setdefault("BROKER_CREDENTIAL_PROFILE", "CLIENT")
-os.chdir(CLIENT_DIR)
+# sys.path.insert(0, CLIENT_DIR)
+# sys.path.insert(0, BASE_DIR)
+# sys.path.insert(0, PROJECT_DIR)
+# os.environ.setdefault("ENV_FILE", os.path.join(PROJECT_DIR, ".env"))
+# os.environ.setdefault("BROKER_CREDENTIAL_PROFILE", "CLIENT")
+# os.chdir(CLIENT_DIR)
 
 from broker.service import get_broker_client  
 from configuration import CONFIGURATION  
-from common.utils_client import (calculer_signature, connect_card, is_sw_ok, lire_secret_carte, read_word_bytes, verify_csc1, emuler_mode_utilisateur,
+from security.client_side.common.utils_client import (calculer_signature, connect_card, is_sw_ok, lire_secret_carte, read_word_bytes, verify_csc1, emuler_mode_utilisateur,
 verify_csc0,verifier_mode_emule_par_lecture_secret,)  
 
 
@@ -71,6 +71,7 @@ def mqtt_request(action, payload, timeout=10):
 
     broker = get_broker_client(client_id)
     broker.connexion()
+    print("là")
     try:
         time.sleep(0.5)
 
