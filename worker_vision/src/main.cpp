@@ -23,13 +23,16 @@ using namespace cv;
 #define PI 3.14159265
 
 #define SEUIL_FILTRAGE 1.2
-#define SEUIL_DECISION_BRUIT 12
+#define SEUIL_DECISION_BRUIT 15
 #define SEUIL_DECISION_AVANT_ARRIERE 30
-#define MAX_FRAMES_DECISION 3
+#define MAX_FRAMES_DECISION 5
+#define SEUIL_DANGER 120
 
 enum Decisions {
     RIEN,
     DEVANT,
+    AVANT, 
+    ARRIERE,
     GAUCHE,
     DROITE,
     NB_DECISIONS
@@ -52,6 +55,7 @@ struct ObjectDetected
     std::vector<Decisions> decisions;
     float ttc = 0;
     Decisions decision = RIEN;
+    float normeHisto = 0.0;
 };
 
 int globalId = 0;
@@ -117,6 +121,7 @@ void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDe
             objectNew.trajectory.push_back(objectNew.centreGravity);
             objectNew.velocity = objectOldRef->velocity;
             objectNew.velocity.push_back(objectNew.vect);
+            objectNew.normeHisto = objectOldRef->normeHisto;
 
             objectNew.decisions = objectOldRef->decisions;
             objectNew.ttc = objectOldRef->ttc;
@@ -566,9 +571,12 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
         }
 
         float norme = 0.0; 
-        float taux_haut_bas = 0.0;
-        float taux_droite = 0.0;
-        float taux_gauche = 0.0;
+        float norme_haut_bas = 0.0;
+        float norme_droite = 0.0;
+        float norme_gauche = 0.0;
+        // float taux_haut_bas = 0.0;
+        // float taux_droite = 0.0;
+        // float taux_gauche = 0.0;
         float taux_null_droite = 0.0;
         float taux_null_gauche = 0.0;
 
@@ -590,11 +598,14 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
             norme += object.histo[i];
             if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
-                taux_haut_bas += object.histo[i];
+                //taux_haut_bas += object.histo[i];
+                norme_haut_bas += object.histo[i];
             } else if (i > 135 && i <= 225) {
-                taux_gauche += object.histo[i];
+                //taux_gauche += object.histo[i];
+                norme_gauche += object.histo[i];
             } else {
-                taux_droite += object.histo[i];
+                //taux_droite += object.histo[i];
+                norme_droite += object.histo[i];
             }
 
             if (i < 90 || i > 270) {
@@ -604,19 +615,22 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
             }
         }
 
-        taux_haut_bas /= norme;
-        taux_droite /= norme;
-        taux_gauche /= norme;
+        norme_haut_bas /= 180;
+        norme_droite /= 90;
+        norme_gauche /= 90;
+        // taux_haut_bas /= norme;
+        // taux_droite /= norme;
+        // taux_gauche /= norme;
         taux_null_droite /= norme;
         taux_null_gauche /= norme;
         norme /= 360.0;
 
-        taux_haut_bas *= 100;
-        taux_droite *= 100;
-        taux_gauche *= 100;
+        // taux_haut_bas *= 100;
+        // taux_droite *= 100;
+        // taux_gauche *= 100;
         taux_null_droite *= 100;
         taux_null_gauche *= 100;
-        taux_haut_bas /= 2;
+        // taux_haut_bas /= 2;
 
         // Axe X + graduations
         for (int angle = 0; angle <= 360; angle += 30)
@@ -665,8 +679,8 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
         // Titre
         cv::putText(img,
-                    "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Thb: " + std::to_string(taux_haut_bas) 
-                    + " Td: " + std::to_string(taux_droite) + " Tg: " + std::to_string(taux_gauche) 
+                    "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Nhb: " + std::to_string(norme_haut_bas) 
+                    + " Nd: " + std::to_string(norme_droite) + " Ng: " + std::to_string(norme_gauche) 
                     + " Tnd: " + std::to_string(taux_null_droite) + " Tng: " + std::to_string(taux_null_gauche),
                     cv::Point(20, 30),
                     cv::FONT_HERSHEY_SIMPLEX,
@@ -817,11 +831,15 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 
         float somme =  0.0;
 
-        float taux_haut_bas = 0.0;
-        float taux_droite = 0.0;
-        float taux_gauche = 0.0;
+        // float taux_haut_bas = 0.0;
+        // float taux_droite = 0.0;
+        // float taux_gauche = 0.0;
+        float norme_haut_bas = 0.0;
+        float norme_droite = 0.0;
+        float norme_gauche = 0.0;
         float taux_null_droite = 0.0;
         float taux_null_gauche = 0.0;
+
 
         // Histogramme
         for (int i = 0; i < 360; i++)
@@ -829,11 +847,14 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             somme += object.histo[i];
 
             if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
-                taux_haut_bas += object.histo[i];
+                //taux_haut_bas += object.histo[i];
+                norme_haut_bas += object.histo[i];
             } else if (i > 135 && i <= 225) {
-                taux_gauche += object.histo[i];
+                //taux_gauche += object.histo[i];
+                norme_gauche += object.histo[i];
             } else {
-                taux_droite += object.histo[i];
+                //taux_droite += object.histo[i];
+                norme_droite += object.histo[i];
             }
 
             if (i < 90 || i > 270) {
@@ -843,47 +864,66 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             }
         }
 
-        taux_haut_bas /= somme;
-        taux_droite /= somme;
-        taux_gauche /= somme;
+        // taux_haut_bas /= somme;
+        // taux_droite /= somme;
+        // taux_gauche /= somme;
+        norme_haut_bas /= 180;
+        norme_droite /= 90;
+        norme_gauche /= 90;
         taux_null_droite /= somme;
         taux_null_gauche /= somme;
         float norme = somme / 360.0;
 
-        taux_haut_bas *= 100;
-        taux_droite *= 100;
-        taux_gauche *= 100;
+        // norme_haut_bas /= 2;
+
+        // taux_haut_bas *= 100;
+        // taux_droite *= 100;
+        // taux_gauche *= 100;
         taux_null_droite *= 100;
         taux_null_gauche *= 100;
 
-        taux_haut_bas /= 2;
-        
-        float maxTaux = taux_haut_bas;
+        // taux_haut_bas /= 2;
+
+        //std::cout << "norme " << norme << std::endl;
+
+        //float maxTaux = taux_haut_bas;
+        float maxTaux = norme_haut_bas;
         Decisions directionMax;
+
         
-        if (abs(taux_null_gauche - taux_null_droite) <= SEUIL_DECISION_BRUIT) {
+        if ((norme_gauche <= SEUIL_DECISION_BRUIT) && (norme_droite <= SEUIL_DECISION_BRUIT) && ((norme_haut_bas/2) <= SEUIL_DECISION_BRUIT)) {
             directionMax = RIEN;
         } else {
             directionMax = DEVANT;
 
-            if (taux_haut_bas > maxTaux) {
-                maxTaux = taux_haut_bas;
+            if (norme_haut_bas > maxTaux) {
+                maxTaux = norme_haut_bas;
                 directionMax = DEVANT;
             }
 
-            if (taux_droite > maxTaux) {
-                maxTaux = taux_droite;
+            if (norme_droite > maxTaux) {
+                maxTaux = norme_droite;
                 directionMax = DROITE;
             }
 
-            if (taux_gauche > maxTaux) {
-                maxTaux = taux_gauche;
+            if (norme_gauche > maxTaux) {
+                maxTaux = norme_gauche;
                 directionMax = GAUCHE;
             }
-        }
+
+            if (directionMax == DEVANT) {
+                float diff = norme - object.normeHisto;
+
+                if (diff > 0)
+                    directionMax = AVANT;
+                else
+                    directionMax = ARRIERE;
+            }
+         }
 
         object.decisions.push_back(directionMax);
 
+        object.normeHisto = norme;
         // if (abs(taux_gauche - taux_droite) <= SEUIL_DECISION_BRUIT) {
         //     //std::cout << "walou" << std::endl;
         //     object.decisions.push_back(RIEN);
@@ -923,8 +963,10 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 
             if (finalDecision == RIEN)
                 std::cout << "DECISION FINAL ==> walou" << std::endl;
-            else if (finalDecision == DEVANT)
-                std::cout << "DECISION FINAL ==> tout droit" << std::endl;
+            else if (finalDecision == ARRIERE)
+                std::cout << "DECISION FINAL ==> ARRIERE" << std::endl;
+            else if (finalDecision == AVANT)
+                std::cout << "DECISION FINAL ==> AVANT " << std::endl;
             else if (finalDecision == GAUCHE)
                 std::cout << "DECISION FINAL ==> ça part vers la gauche" << std::endl;
             else if (finalDecision == DROITE)
@@ -933,17 +975,20 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             object.decision = finalDecision;
 
             object.decisions.clear();
+            //object.decisions.erase(object.decisions.begin());
 
             float ttcFinal = object.ttc / (float) MAX_FRAMES_DECISION;
 
-            std::cout<< "norme ==> " << norme << std::endl;
+            // std::cout<< "norme ==> " << norme << std::endl;
 
-            if (norme > 100 && finalDecision!= RIEN) {
+            if ((norme_gauche > SEUIL_DANGER) && (norme_droite > SEUIL_DANGER) && (norme_haut_bas > SEUIL_DANGER) && (finalDecision != RIEN)) {
                 std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
             }
 
+
             object.ttc = 0.0;
         }
+
 
         std::cout << "----------------------" << std::endl;
     }
@@ -956,8 +1001,8 @@ void readImu(IMU imu) {
 
     double accelNorm = std::sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
 
-    //std::cout << "Acceleration: " << "x = " << accel.x << " y = " << accel.y << " z = " << accel.z << " total = " << accelNorm << " m/s2" << std::endl;
-    //std::cout << "Temperature: " << temp << " °C" << std::endl;
+    // std::cout << "Acceleration: " << "x = " << accel.x << " y = " << accel.y << " z = " << accel.z << " total = " << accelNorm << " m/s2" << std::endl;
+    // std::cout << "Temperature: " << temp << " °C" << std::endl;
 }
 #endif
 
@@ -1043,7 +1088,7 @@ int main(int argc, char** argv)
     Point pointRef(frameOld.cols/2, frameOld.rows);
 
     std::cout << "version opencv " << CV_VERSION << std::endl;
-    
+
     for(;;)
     {
         auto tGlobalStart = Clock::now();
