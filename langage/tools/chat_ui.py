@@ -1,4 +1,4 @@
-"""Temporary web UI to test the Qwen agent without the broker."""
+"""Web UI to test the Qwen agent directly using Python handlers."""
 
 from __future__ import annotations
 
@@ -11,12 +11,18 @@ from typing import Any
 import gradio as gr
 from PIL import Image
 
-ROOT_DIR = Path(__file__).resolve().parents[1]
+# Add the project root to sys.path to allow absolute imports
+ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-import requests
-from requests.exceptions import RequestException
+from langage.services.agent import QwenAgent
+from langage.services.model import MODEL_SERVICE
+from langage.schemas.broker import BrokerRequest
+from security.authentification_client import SessionAuthentifiee
+
+# Initialize the agent
+qwen_agent = QwenAgent(model_service=MODEL_SERVICE)
 
 
 def _save_image(image: Image.Image | None) -> str | None:
@@ -25,9 +31,6 @@ def _save_image(image: Image.Image | None) -> str | None:
     tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     image.save(tmp.name)
     return tmp.name
-
-
-
 
 
 def _format_history(
@@ -44,25 +47,38 @@ def _chat(
     latitude: float | None,
     longitude: float | None,
 ) -> tuple[list[dict[str, str]], str]:
-    url = "http://127.0.0.1:8000/chat"
+    
     image_path = _save_image(image)
-    payload = {
-        "request_id": str(uuid.uuid4()),
-        "text": message,
-        "image_url": image_path,
-        "session_id": session_id,
-        "latitude": float(latitude) if latitude is not None else None,
-        "longitude": float(longitude) if longitude is not None else None,
-    }
+    
+    # Mocking authenticated session for the UI testing
+    session_auth = SessionAuthentifiee(
+        user_id="test_user",
+        session_id=session_id,
+        card_id="test_card_id",
+        access_token="mock_token"
+    )
+    
+    # Creating the broker request simulating an incoming request
+    request = BrokerRequest(
+        request_id=str(uuid.uuid4()),
+        session_id=session_id,
+        user_id="test_user",
+        text=message,
+        image_url=image_path,
+        session_authentifiee=session_auth
+    )
     
     try:
-        resp = requests.post(url, json=payload, timeout=600)
-        resp.raise_for_status()
-        data = resp.json()
-        # Si 'response' est null, on affiche l'erreur
-        response_text = data.get("response") or f"Erreur API: {data.get('error', 'Inconnue')}"
+        # Directly invoking the agent handler
+        response = qwen_agent.handle(request)
+        
+        if response.error:
+            response_text = f"Erreur de l'agent: {response.error}"
+        else:
+            response_text = response.response
+            
     except Exception as e:
-        response_text = f"Erreur de communication avec l'API FastAPI : {e}"
+        response_text = f"Erreur lors de l'exécution de l'agent : {e}"
 
     history = _format_history(history)
     user_text = message if image is None else f"{message}\n[image attached]"
@@ -73,7 +89,7 @@ def _chat(
 
 def build_ui() -> gr.Blocks:
     with gr.Blocks(title="Qwen Agent Test") as demo:
-        gr.Markdown("# Qwen Agent Test UI")
+        gr.Markdown("# Qwen Agent Test UI (Direct Handler)")
         session_state = gr.State(str(uuid.uuid4()))
         chatbot = gr.Chatbot(label="Conversation")
         with gr.Row():

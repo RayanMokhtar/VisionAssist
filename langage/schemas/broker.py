@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from security.authentification_client import SessionAuthentifiee
 
 class BrokerRequest(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     request_id: str
     session_id: Optional[str] = ""
     user_id: Optional[str] = "default"

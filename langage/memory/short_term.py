@@ -35,10 +35,10 @@ class ConversationBuffer:
     def __init__(
         self,
         session_id: str,
-        max_messages: int | None = None,
+        max_messages: int = 1,
     ):
         self.session_id = session_id
-        self.max_messages = max_messages or 20
+        self.max_messages = max_messages  # 4 échanges = ~8 msgs LangChain, limite VRAM
 
     def get_langchain_messages(self) -> List[BaseMessage]:
         """Charge les messages et les convertit en objets LangChain.

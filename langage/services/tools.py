@@ -20,8 +20,9 @@ Outils disponibles :
 
 from __future__ import annotations
 
-import datetime
+import datetime as _dt
 import logging
+import subprocess
 from typing import List
 
 import requests
@@ -52,39 +53,29 @@ def get_current_time() -> str:
     l'heure ou la date. Ne jamais utiliser une heure mémorisée d'un échange précédent.
     L'heure change à chaque seconde — toujours appeler cet outil pour avoir la valeur fraîche.
     """
-    import subprocess
     jours = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
     mois = [
         "janvier", "février", "mars", "avril", "mai", "juin",
         "juillet", "août", "septembre", "octobre", "novembre", "décembre"
     ]
 
-    # Lire l'heure système via la commande 'date' (même source que le terminal WSL)
     try:
         raw = subprocess.check_output(["date", "+%H:%M:%S|%w|%d|%m|%Y"], text=True).strip()
-        parts = raw.split("|")
-        heure, minute, seconde = parts[0].split(":")
-        weekday_num = int(parts[1])  # 0=dimanche, 1=lundi...
-        jour = int(parts[2])
-        mois_num = int(parts[3])
-        annee = parts[4]
-        # Convertir dimanche=0 en index Python (lundi=0)
-        weekday_idx = (weekday_num - 1) % 7
-        jour_nom = jours[weekday_idx]
+        heure, minute, seconde = raw.split("|")[0].split(":")
+        weekday_num = int(raw.split("|")[1])
+        jour = int(raw.split("|")[2])
+        mois_num = int(raw.split("|")[3])
+        annee = raw.split("|")[4]
+        
+        jour_nom = jours[(weekday_num - 1) % 7]
         mois_nom = mois[mois_num - 1]
-        result = (
-            f"Il est {int(heure)}h{minute}. "
-            f"Nous sommes {jour_nom} {jour} {mois_nom} {annee}."
-        )
+        result = f"Il est {int(heure)}h{minute}. Nous sommes {jour_nom} {jour} {mois_nom} {annee}."
     except Exception as e:
         logger.warning("Fallback datetime.now() car subprocess.date a échoué: %s", e)
-        now = datetime.datetime.now()
+        now = _dt.datetime.now()
         jour_nom = jours[now.weekday()]
         mois_nom = mois[now.month - 1]
-        result = (
-            f"Il est {now.hour}h{now.minute:02d}. "
-            f"Nous sommes {jour_nom} {now.day} {mois_nom} {now.year}."
-        )
+        result = f"Il est {now.hour}h{now.minute:02d}. Nous sommes {jour_nom} {now.day} {mois_nom} {now.year}."
 
     print(f"⏰ [TOOL APPELÉ] get_current_time → {result}", flush=True)
     _log_tool("get_current_time", result)
@@ -316,12 +307,11 @@ def get_transit_info(destination: str, latitude: float = None, longitude: float 
         longitude: Longitude GPS de l'utilisateur (fournie dans le message). Optionnelle si origin est rempli.
         origin: Le point de départ explicite, uniquement si demandé. Sinon vide.
     """
-    import datetime as _dt
 
     logger.info("🚆 [TOOL] get_transit_info | destination='%s' origin='%s'", destination, origin)
 
     # Récupérer la clé API
-    api_key = os.environ.get("SNCF_API_KEY", "")
+    api_key = os.environ.get("SNCF_API_KEY", "53460872-dc6a-41f4-8197-0d00ba8e2074")
     if not api_key:
         result = "La clé API SNCF n'est pas configurée. Impossible d'obtenir les horaires de transport."
         _log_tool("get_transit_info", result)

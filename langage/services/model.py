@@ -41,7 +41,7 @@ class ModelService:
         logger.info("Chargement du modèle Transformers : %s...", model_id)
         
         dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-        print(" format bits : ",dtype)
+        logger.info("Format de bits du modèle: %s", dtype)
 
         try:
             quantization_config = BitsAndBytesConfig(
@@ -53,7 +53,7 @@ class ModelService:
             quantization_config = None
             logger.warning("BitsAndBytes non installé. Chargement en précision standard.")
 
-        print("quantization config", quantization_config)
+        logger.info("Quantization config: %s", quantization_config)
         self.model = AutoModelForImageTextToText.from_pretrained(
             model_id,
             torch_dtype=dtype,
@@ -89,7 +89,7 @@ class ModelService:
         return self.processor.decode(generated_ids, skip_special_tokens=True)
 
     def generate_with_tools(self, lc_messages: List[BaseMessage], tools: List[Any]) -> AIMessage:
-        print("Messages reçus pour génération avec outils :", lc_messages)
+        logger.info(f"[ModelService] Préparation de {len(lc_messages)} messages pour le LLM.")
         hf_messages = []
         for m in lc_messages:
             if isinstance(m, HumanMessage):
@@ -100,6 +100,12 @@ class ModelService:
                             content_list.append({"type": "text", "text": part["text"]})
                         elif part.get("type") == "image_url":
                             img_uri = part["image_url"]["url"]
+                            if img_uri.startswith("data:image") and "base64," in img_uri:
+                                header, b64_data = img_uri.split("base64,", 1)
+                                missing_padding = len(b64_data) % 4
+                                if missing_padding:
+                                    b64_data += "=" * (4 - missing_padding)
+                                img_uri = header + "base64," + b64_data
                             content_list.append({"type": "image", "image": img_uri})
                     hf_messages.append({"role": "user", "content": content_list})
                 else:
@@ -133,9 +139,11 @@ class ModelService:
 
         hf_tools = [convert_to_openai_tool(t) for t in tools]
         
-        # try:
-        print("tools :",tools)
-        print("hf tools :",hf_tools)
+        # Free up cache before starting a big inference
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
+        logger.info(f"[ModelService] {len(tools)} outils mis à disposition du LLM.")
         try:
             text_prompt = self.processor.apply_chat_template(
                 hf_messages, 
@@ -159,13 +167,18 @@ class ModelService:
             logger.warning("Impossible de traiter l'image avec qwen_vl_utils: %s", e)
             inputs = self.processor(text=[text_prompt], return_tensors="pt").to(self.model.device)
 
-        with torch.no_grad():
-            output_ids = self.model.generate(
-                **inputs,
-                max_new_tokens=self.config_agent.max_new_tokens,
-                do_sample=self.config_agent.do_sample,
-                temperature=self.config_agent.temperature,
-            )
+        try:
+            with torch.no_grad():
+                output_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=self.config_agent.max_new_tokens,
+                    do_sample=self.config_agent.do_sample,
+                    temperature=self.config_agent.temperature,
+                )
+        except torch.OutOfMemoryError as e:
+            logger.error(f"CUDA Out of memory lors de la génération: {e}. On vide le cache.")
+            torch.cuda.empty_cache()
+            return AIMessage(content="[Erreur Technique] Le modèle a manqué de mémoire vidéo (OOM). Veuillez relancer la requête ou réduire la taille de l'historique.", tool_calls=[])
 
         generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
         response_text = self.processor.decode(generated_ids, skip_special_tokens=True)
@@ -173,12 +186,12 @@ class ModelService:
         tool_calls = []
         content = response_text
 
-        print("Réponse brute du modèle :", response_text)
+        logger.info("\n" + "="*50 + "\n[ModelService] RÉPONSE BRUTE DU MODÈLE :\n" + response_text + "\n" + "="*50)
 
 
         reponse_nettoyee = ModelService.nettoyer_reponse_llm_brute(content,tool_calls)
 
-        print("réponse nettoyée : " , reponse_nettoyee)
+        logger.info("\n" + "="*50 + "\n[ModelService] RÉPONSE NETTOYÉE (affichée/lue à l'utilisateur) :\n" + reponse_nettoyee + "\n" + "="*50)
 
         return AIMessage(content=reponse_nettoyee, tool_calls=tool_calls)
 
@@ -207,18 +220,15 @@ class ModelService:
                     try:
                         args = json.loads(args_str)
                     except Exception:
-                        try:
-                            args = ast.literal_eval(args_str)
-                        except Exception:
-                            pairs = re.findall(r'(\w+)=["\']([^"\']+)["\']', args_str)
-                            if pairs:
-                                args = dict(pairs)
-                            else:
-                                param_matches = re.findall(r'<parameter=([^>]+)>\s*(.*?)\s*</parameter>', args_str, re.DOTALL)
-                                if param_matches:
-                                    args = {k: v.strip() for k, v in param_matches}
-                                else:
-                                    logger.error("Impossible de parser les arguments XML: %r", args_str)
+                        if pairs := re.findall(r'(\w+)=["\']([^"\']+)["\']', args_str):
+                            args = dict(pairs)
+                        elif param_matches := re.findall(r'<parameter=([^>]+)>\s*(.*?)\s*</parameter>', args_str, re.DOTALL):
+                            args = {k: v.strip() for k, v in param_matches}
+                        else:
+                            try:
+                                args = ast.literal_eval(args_str)
+                            except Exception:
+                                logger.error("Impossible de parser les arguments XML: %r", args_str)
                 
                 tool_calls.append({
                     "name": name,
@@ -231,34 +241,12 @@ class ModelService:
         
         # 3. Nettoyage du texte (suppression des balises <think> et <tool_call>)
         content = re.sub(r"<think>.*?</think>", "", reponse_brute, flags=re.DOTALL)
-        if "</think>" in content:
-            content = content.split("</think>", 1)[-1]
-            
+        content = content.split("</think>", 1)[-1] if "</think>" in content else content
         content = re.sub(r"<tool_call>.*?</tool_call>", "", content, flags=re.DOTALL)
-        if "<tool_call>" in content:
-            content = content.split("<tool_call>", 1)[0]
+        content = content.split("<tool_call>", 1)[0] if "<tool_call>" in content else content
             
         return content.strip()
 
 
 MODEL_SERVICE = ModelService()
 
-if __name__ == "__main__":
-    MODEL_SERVICE.generate_with_tools(lc_messages=[
-        HumanMessage(content=[
-            {"type": "text", "text": "quelle est la météo ?"},
-            {"type": "image_url", "image_url": {"url": "./langage/missile.png"}}
-        ])
-    ], tools=[
-        {
-            "name": "get_weather",
-            "description": "Récupère la météo pour une localisation donnée.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "location": {"type": "string", "description": "La ville ou région pour la météo."}
-                },
-                "required": ["location"]
-            }
-        }
-    ])

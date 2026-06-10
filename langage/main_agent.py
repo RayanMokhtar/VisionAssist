@@ -15,6 +15,7 @@ from broker.broker_interface import IBroker
 from langage.schemas.broker import BrokerRequest
 from langage.services.model import MODEL_SERVICE
 from langage.services.agent import QwenAgent
+from security.authentification_client import SessionAuthentifiee
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,6 +23,41 @@ LOGGER = logging.getLogger(__name__)
 INSTANCE_AGENT = QwenAgent(MODEL_SERVICE)
 CLIENT_BROKER_LLM = get_broker_client(client_id="llm-serveur_client") # à vori si singelton ou pas 
 
+
+def transformer_message_broker_en_entree_agent(message_recu : str | dict , texte : str  , image_b64: Optional[str]) -> BrokerRequest :
+    try: 
+        session_authentifiee = None
+        if isinstance(message_recu, dict):
+            print("message déjà parsé en dict")
+        elif isinstance(message_recu, str):
+            print("casting json ....")
+            message_recu = json.loads(message_recu)
+        else :
+            raise ValueError("le message reçu n'est ni une string ni un dict",type(message_recu))
+        message_recu.get("session_authentifiee",None)
+        if message_recu.get("session_authentifiee",None) != None :
+            session_authentifiee_dict = message_recu.get("session_authentifiee",None)
+            session_authentifiee = SessionAuthentifiee(
+                user_id=session_authentifiee_dict.get("user_id",None),
+                card_id=session_authentifiee_dict.get("card_id",None),
+                access_token=session_authentifiee_dict.get("access_token",None),
+                refresh_token=session_authentifiee_dict.get("refresh_token",None),
+                prenom=session_authentifiee_dict.get("prenom",None),
+                session_id=session_authentifiee_dict.get("session_id",None),
+                expire_at=session_authentifiee_dict.get("expire_at",None)
+            )
+
+        entree_agent : BrokerRequest = BrokerRequest(
+            request_id=str(uuid.uuid4()),
+            session_id=message_recu.get("session_id",""),
+            text=texte,
+            image_url=image_b64,
+            session_authentifiee=session_authentifiee
+        )
+        return entree_agent
+    except Exception as e :
+        LOGGER.error("erreur dans la transformation du message broker en entrée agent : %s",str(e))
+        raise e
 
 def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
     MESSAGE_AVERTISSEMENT = "erreur potentielle dans la récupération du message faites attention"
@@ -39,25 +75,16 @@ def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
         if topic == CONFIGURATION.broker.topics.llm_topic_ecoute_stt :
             print("agent a recu quelque chose : ",message_recu)
             texte = message_recu.get("resultat_stt","").get("texte","")
-            entree_agent : BrokerRequest = BrokerRequest(
-                request_id=str(uuid.uuid4()),
-                session_id=message_recu.get("session_id","uuuisdgishgvg"),
-                text=texte,
-                image_url=None
-            )
-            resultat_llm = INSTANCE_AGENT.handle(entree_agent)
+            image = message_recu.get("resultat_stt","").get("image","")
+            entree_agent : BrokerRequest = transformer_message_broker_en_entree_agent(message_recu,texte,image)
         elif topic == CONFIGURATION.broker.topics.llm_topic_ecoute_vision :
             texte = message_recu.get("resultat_vision","").get("texte","")
-            entree_agent : BrokerRequest = BrokerRequest(
-                request_id=str(uuid.uuid4()),
-                session_id=message_recu.get("session_id",""),
-                text=texte,
-                image_url=None # pour l'instant à NOne , on va la récupérer après soit en base 64 , soit via un envoi directement
-            )
-            resultat_llm = INSTANCE_AGENT.handle(entree_agent)
+            image = message_recu.get("resultat_vision","").get("image","")
+            entree_agent : BrokerRequest = transformer_message_broker_en_entree_agent(message_recu,texte,image)
         else : 
             raise ValueError("la valeur de ce topic est pas attendue",topic)
 
+        resultat_llm = INSTANCE_AGENT.handle(entree_agent)
         if resultat_llm.response != None : 
             resultat_json = resultat_llm.model_dump_json()
             print("résultat json à publier",resultat_json)

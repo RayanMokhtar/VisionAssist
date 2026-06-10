@@ -9,6 +9,7 @@ from speech.speech_to_text import INSTANCE_STT
 from speech.text_to_speech import INSTANCE_TTS
 from configuration import CONFIGURATION
 from persistance.repository import REPOSITORIES
+from security.schema import SessionAuthentifiee
 
 
 
@@ -25,26 +26,6 @@ CODE_PIN_ERRONE = "Code pinne erroné"
 CARTE_BLOQUEE = "La carte est bloquée après 3 tentatives veuillez vous rapprocher de l'administrateur désormais"
 MESSAGE_ATTENTE = "Merci de patienter pendant que je vérifie votre carte et prépare tout pour vous"
 MESSAGE_BIENVENUE = "BONJOUR BONJOUR BONJOUR"
-
-class SessionAuthentifiee:
-    def __init__(
-        self, 
-        user_id: Optional[str] = None, 
-        card_id: Optional[str] = None, 
-        access_token: Optional[str] = None, 
-        refresh_token: Optional[str] = None, 
-        prenom: Optional[str] = None, 
-        session_id: Optional[str] = None,
-        expire_at: Optional[float] = None
-    ):
-        self.user_id = user_id
-        self.carte_id = card_id  
-        self.access_token = access_token
-        self.refresh_token = refresh_token
-        self.prenom = prenom
-        self.session_id = session_id
-        self.expire_at = expire_at
-
 
 def mode_emule_pour_user(conn):
     sw1, sw2 = verify_csc0(conn, CSC0_SIMULATION)
@@ -224,7 +205,9 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
 #ajouter le required_auth comme décorateur dans la méthode du llm où on doit soumettre nos trucs
 
 SESSION_UTILISATEUR = None
-print("session_authentification avant : ", SESSION_UTILISATEUR)
-print("configuration ,",CONFIGURATION.broker)
-SESSION_UTILISATEUR = pipeline_authentification()
-print("session_authentification après : ", SESSION_UTILISATEUR)
+
+if __name__ == "__main__":
+    print("session_authentification avant : ", SESSION_UTILISATEUR)
+    print("configuration ,",CONFIGURATION.broker)
+    SESSION_UTILISATEUR = pipeline_authentification()
+    print("session_authentification après : ", SESSION_UTILISATEUR)
