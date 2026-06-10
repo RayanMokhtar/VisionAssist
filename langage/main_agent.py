@@ -13,13 +13,13 @@ from broker.service import get_broker_client
 from broker.broker_interface import IBroker 
 
 from langage.schemas.broker import BrokerRequest
-from langage.services.model import model_service
+from langage.services.model import MODEL_SERVICE
 from langage.services.agent import QwenAgent
 
 LOGGER = logging.getLogger(__name__)
 
 
-INSTANCE_AGENT = QwenAgent(model_service)
+INSTANCE_AGENT = QwenAgent(MODEL_SERVICE)
 CLIENT_BROKER_LLM = get_broker_client(client_id="llm-serveur_client") # à vori si singelton ou pas 
 
 

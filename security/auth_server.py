@@ -117,90 +117,94 @@ class Authentification:
 
     @staticmethod
     def handle_verify_card_hmac(broker, _topic, request):
-        card_id = str(request.get("card_id", "")).strip().upper()
-        challenge_id = str(request.get("challenge_id", "")).strip()
-        signature = str(request.get("signature", "")).strip()
+        try : 
+            print("handle verify card hmac", request)
+            card_id = str(request.get("card_id", "")).strip().upper()
+            challenge_id = str(request.get("challenge_id", "")).strip()
+            signature = str(request.get("signature", "")).strip()
 
-        if not card_id or not challenge_id or not signature:
-            publish_response_securite(broker, request, {"success": False, "error": "donnees hmac manquantes"})
-            return
+            if not card_id or not challenge_id or not signature:
+                publish_response_securite(broker, request, {"success": False, "error": "donnees hmac manquantes"})
+                return
 
-        challenge_info = CHALLENGES.get(challenge_id)
-        if not challenge_info:
-            publish_response_securite(broker, request, {"success": False, "error": "challenge inconnu"})
-            return
+            challenge_info = CHALLENGES.get(challenge_id)
+            if not challenge_info:
+                publish_response_securite(broker, request, {"success": False, "error": "challenge inconnu"})
+                return
 
-        if challenge_info["utilise"]:
-            publish_response_securite(broker, request, {"success": False, "error": "challenge deja utilise"})
-            return
+            if challenge_info["utilise"]:
+                publish_response_securite(broker, request, {"success": False, "error": "challenge deja utilise"})
+                return
 
-        if datetime.now() > challenge_info["expiration"]:
-            CHALLENGES.pop(challenge_id, None)
-            publish_response_securite(broker, request, {"success": False, "error": "challenge expire"})
-            return
+            if datetime.now() > challenge_info["expiration"]:
+                CHALLENGES.pop(challenge_id, None)
+                publish_response_securite(broker, request, {"success": False, "error": "challenge expire"})
+                return
 
-        if challenge_info["card_id"] != card_id:
-            publish_response_securite(broker, request, {"success": False, "error": "challenge non lie a cette carte"})
-            return
+            if challenge_info["card_id"] != card_id:
+                publish_response_securite(broker, request, {"success": False, "error": "challenge non lie a cette carte"})
+                return
 
-        carte = REPOSITORIES.cartes.get(card_id=card_id)
-        if not carte:
-            publish_response_securite(broker, request, {"success": False, "error": "card_id inconnu"})
-            return
+            carte = REPOSITORIES.cartes.get(card_id=card_id)
+            if not carte:
+                publish_response_securite(broker, request, {"success": False, "error": "card_id inconnu"})
+                return
 
-        if carte.statut.value != "active":
-            publish_response_securite(broker, request, {"success": False, "error": carte.statut.value})
-            return
+            if carte.statut.value != "active":
+                publish_response_securite(broker, request, {"success": False, "error": carte.statut.value})
+                return
 
-        if not carte.secret_chiffre:
-            publish_response_securite(broker, request, {"success": False, "error": "secret carte non configure"})
-            return
+            if not carte.secret_chiffre:
+                publish_response_securite(broker, request, {"success": False, "error": "secret carte non configure"})
+                return
 
-        try:
-            secret = dechiffrer_secret(carte.secret_chiffre)
-        except Exception:
-            publish_response_securite(broker, request, {"success": False, "error": "secret serveur illisible"})
-            return
+            try:
+                secret = dechiffrer_secret(carte.secret_chiffre)
+            except Exception:
+                publish_response_securite(broker, request, {"success": False, "error": "secret serveur illisible"})
+                return
 
-        signature_attendue = calculer_signature(
-            secret,
-            card_id,
-            challenge_id,
-            challenge_info["challenge"],
-        )
+            signature_attendue = calculer_signature(
+                secret,
+                card_id,
+                challenge_id,
+                challenge_info["challenge"],
+            )
 
-        if not hmac.compare_digest(signature_attendue, signature):
-            publish_response_securite(broker, request, {"success": False, "error": "signature invalide"})
-            return
+            if not hmac.compare_digest(signature_attendue, signature):
+                publish_response_securite(broker, request, {"success": False, "error": "signature invalide"})
+                return
 
-        challenge_info["utilise"] = True
+            challenge_info["utilise"] = True
 
-        user = REPOSITORIES.users.get(user_id=carte.user_id)
-        if not user:
-            publish_response_securite(broker, request, {"success": False, "error": "utilisateur inconnu"})
-            return
+            user = REPOSITORIES.users.get(user_id=carte.user_id)
+            if not user:
+                publish_response_securite(broker, request, {"success": False, "error": "utilisateur inconnu"})
+                return
 
-        user = REPOSITORIES.users.update(user, derniere_connexion=datetime.now())
-        if user : 
-            verification_de_la_carte = {"success": True,
-                "card_id": card_id,
-                "user_id": user.id,
-                "prenom":user.prenom,
-                "status": carte.statut.value,
-                "derniere_connexion": str(user.derniere_connexion)
-            }
+            user = REPOSITORIES.users.update(user, derniere_connexion=datetime.now())
+            if user : 
+                verification_de_la_carte = {"success": True,
+                    "card_id": card_id,
+                    "user_id": user.id,
+                    "prenom":user.prenom,
+                    "status": carte.statut.value,
+                    "derniere_connexion": str(user.derniere_connexion)
+                }
 
-            user_id = verification_de_la_carte.get("user_id")
-            access_token = create_access_token(user_id=user_id, card_id=card_id)
-            refresh_token = create_refresh_token(user_id=user_id, card_id=card_id)
-            verification_de_la_carte["access_token"] = access_token
-            verification_de_la_carte["refresh_token"] = refresh_token
-            
-            publish_response_securite(broker, request, verification_de_la_carte)
-        else : 
-            print("Erreur mise à jour dernière connexion utilisateur")
-            publish_response_securite(broker, request, {"success": False, "error": "erreur à la fin du pipeline lors de la mise à jour de l'utilisateur"})
-
+                user_id = verification_de_la_carte.get("user_id")
+                access_token = create_access_token(user_id=user_id, card_id=card_id)
+                refresh_token = create_refresh_token(user_id=user_id, card_id=card_id)
+                verification_de_la_carte["access_token"] = access_token
+                verification_de_la_carte["refresh_token"] = refresh_token
+                
+                publish_response_securite(broker, request, verification_de_la_carte)
+            else : 
+                print("Erreur mise à jour dernière connexion utilisateur")
+                publish_response_securite(broker, request, {"success": False, "error": "erreur à la fin du pipeline lors de la mise à jour de l'utilisateur"})
+        except Exception as e:
+            print("Erreur inattendue dans handle_verify_card_hmac:", str(e))
+            publish_response_securite(broker, request, {"success": False, "error": "erreur serveur inattendue"})
 
 class CreationEnrollementCarte:
 

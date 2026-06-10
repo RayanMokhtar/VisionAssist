@@ -128,3 +128,7 @@ sudo apt-get install espeak-ng
 
     "length_scale": 1.2, pour ralentir la parole ... selon préférences utilisateurs ... 
 
+
+mosquitto_sub -h 172.30.137.124 -p 8883   --cafile /etc/mosquitto/certs/ca.crt   -t "#" -v
+
+mosquitto_pub -h 172.30.137.124 -p 8883  --cafile /etc/mosquitto/certs/ca.crt -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
