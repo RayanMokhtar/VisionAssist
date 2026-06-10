@@ -115,7 +115,7 @@ class SecurityConfig(BaseModel):
 class QwenConfig(BaseModel):
     model_id: str = Field("./langage/modeles/Qwen3.5-27B",description="model id")
     load_in_4bit: bool = Field(True,description="booleen chargement en 4 bits")
-    max_new_tokens: int = Field(1024,description="taille max de la reponse")
+    max_new_tokens: int = Field(500,description="taille max de la reponse")
     temperature: float = Field(0.7,description="temperature du modele")
     top_p: float = Field(0.8,description="top_p du modele")
     do_sample: bool = Field(True,description="do_sample du modele")
@@ -133,7 +133,7 @@ class Configuration(BaseSettings):
         env_nested_delimiter="__",
         extra="ignore",
     )
-    nom_assistant : str = "wesker"
+    nom_assistant : str = "max"
     stt:STTConfig=Field(default_factory=STTConfig,description="configuration modele stt")
     tts:TTSConfig=Field(default_factory=TTSConfig,description="configuration modele tts")
     audio:AudioConfig=Field(default_factory=AudioConfig,description="configuration modele audio")

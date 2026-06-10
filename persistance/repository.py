@@ -101,7 +101,13 @@ class MessageRepository(BaseRepository):
     def list_for_session(self, session_id: Union[UUID, str], limit: int = 1000) -> List[Message]:
         if isinstance(session_id, str):
             session_id = UUID(session_id)
-        return self.db.query(Message).filter_by(session_id=session_id).limit(limit).all()
+        return (
+            self.db.query(Message)
+            .filter_by(session_id=session_id)
+            .order_by(Message.message_id.desc())
+            .limit(limit)
+            .all()[::-1]  # On prend les N plus récents, puis on remet en ordre chronologique
+        )
 
     def create(self, *, session_id: Union[UUID, str], requete: str, reponse: Optional[str] = None, contexte: Optional[dict] = None) -> Message:
         if isinstance(session_id, str):

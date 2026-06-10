@@ -22,20 +22,24 @@ from security.authentification_client import SessionAuthentifiee
 from configuration import CONFIGURATION
 logger = logging.getLogger(__name__)
 
-BASE_PROMPT = f"""Tu es {CONFIGURATION.nom_assistant}, un assistant intelligent, bienveillant et proactif conçu pour aider une personne malvoyante dans son quotidien.
+BASE_PROMPT = f"""Tu es {CONFIGURATION.nom_assistant}, un assistant vocal intelligent conçu pour aider une personne malvoyante.
 
-Tu peux utiliser tes outils pour obtenir la météo, chercher des lieux, connaître les prochains trains/RER/métros, sauvegarder des notes, ou consulter la mémoire passée.
+LANGUE : Tu DOIS répondre UNIQUEMENT en français. Ne réponds jamais en anglais, ni dans une autre langue.
 
-Sois concis et naturel dans tes réponses vocales. Parle à la 2ème personne du vouvoiement sauf si l'utilisateur préfère le tutoiement.
+Tu peux utiliser tes outils : météo, lieux proches, prochains transports, notes, mémoire.
 
-RÈGLES STRICTES DE RÉPONSE :
-1. NE GÉNÈRE AUCUN MONOLOGUE INTERNE. Tu dois donner UNIQUEMENT la réponse finale attendue par l'utilisateur.
-2. Il est formellement INTERDIT d'écrire des phrases telles que 'Je dois répondre...', 'L'utilisateur demande...', 'L'outil indique...', ou d'expliquer ce que tu vas faire.
-3. Contente-toi de fournir l'information ou la réponse de manière directe, naturelle et fluide.
+RÈGLES STRICTES :
+1. RÉPONSE DIRECTE UNIQUEMENT. Donne immédiatement la réponse, sans jamais expliquer ta démarche.
+2. INTERDIT : 'Je dois...', 'L'utilisateur demande...', 'Wait,', 'Let me...', 'However,', ou tout raisonnement interne.
+3. Phrases courtes, naturelles, adaptées à la voix.
+4. Vouvoiement par défaut.
 
-Pour l'heure et la date, base-toi TOUJOURS sur le résultat le plus récent de l'outil get_current_time présent dans la conversation — jamais sur tes connaissances internes.
-Pour les horaires de transport (train, RER, métro, bus), utilise TOUJOURS l'outil get_transit_info avec la destination demandée par l'utilisateur.
+Pour l'heure/date : utilise toujours l'outil get_current_time.
+Pour les transports : utilise toujours l'outil get_transit_info.
 """
+
+
+BASE_PROMPT_SIMPLE = f"""Tu es un assistant vocal intelligent conçu pour aider une personne malvoyante. Tu DOIS répondre UNIQUEMENT en français de manière brève."""
 
 
 class AgentState(TypedDict):
@@ -75,13 +79,13 @@ class QwenAgent:
             return {"messages": [response]}
 
         def doit_poursuivre_si_tool_present(state: AgentState):
-            print("vérification si on poursuit")
+            logger.debug("Vérification si on poursuit")
             last_message = state["messages"][-1]
             if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-                print("on continue car tool_calls présents dans le message du modèle")
+                logger.info("On continue car tool_calls présents dans le message du modèle")
                 return "tools"
             else : 
-                print("pas de tool_calls présents dans le message du modèle, on termine")
+                logger.info("Pas de tool_calls présents dans le message du modèle, on termine")
                 return END
 
         workflow = StateGraph(AgentState)
@@ -95,7 +99,7 @@ class QwenAgent:
         return workflow.compile()
 
     def _build_system_prompt(self, session_model: Optional[SessionModel]) -> SystemMessage:
-        prompt = BASE_PROMPT
+        prompt = BASE_PROMPT_SIMPLE
         if session_model:
             if session_model.resume:
                 prompt += f"\n\nCONTEXTE PRÉCÉDENT :\n{session_model.resume}"
@@ -123,37 +127,32 @@ class QwenAgent:
         if request.image_url:
             user_content += f"\n[Image attachée: {request.image_url}]"
 
-            
+        # Charger l'historique AVANT de sauvegarder la requête actuelle
+        # => le buffer contient uniquement les échanges précédents, pas le message actuel
+        buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
+        historique = buffer.get_langchain_messages()
+
+        # Sauvegarder la requête actuelle en base pour la persistance
         current_db_msg = REPOSITORIES.messages.create(
             session_id=request.session_authentifiee.session_id,
             requete=user_content
         )
 
-        buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
-        lc_messages = buffer.get_langchain_messages()
-        
         system_message = self._build_system_prompt(session_model=session)
 
-        if lc_messages:
-            last_user_msg = lc_messages[-1]
-
-            if request.image_url:
-                img_b64 = request.image_url
-
-                # Texte du message (sans la mention [Image attachée: ...])
-                base_text = last_user_msg.content.replace(f"\n[Image attachée: {img_b64}]", "").strip()
-
-                last_user_msg = HumanMessage(content=[
-                    {"type": "image_url", "image_url": {"url": img_b64}},
-                    {"type": "text", "text": base_text},
-                ])
-
-            # [system] + [historique sauf dernier msg] + [msg actuel] + [tool_call + tool_result]
-            messages_for_llm = [system_message] + lc_messages[:-1] + [last_user_msg]
+        # Construire le message utilisateur courant (toujours depuis request, jamais depuis le buffer)
+        if request.image_url:
+            img_b64 = request.image_url
+            base_text = request.text
+            current_user_msg = HumanMessage(content=[
+                {"type": "image_url", "image_url": {"url": img_b64}},
+                {"type": "text", "text": base_text},
+            ])
         else:
-            mock_user = HumanMessage(content=request.text)
-            logger.info("[Agent] Nouveau message de l'utilisateur reçu.")
-            messages_for_llm = [system_message, mock_user]
+            current_user_msg = HumanMessage(content=request.text)
+
+        # [System] + [historique complet] + [message actuel]
+        messages_for_llm = [system_message] + historique + [current_user_msg]
 
         initial_state = {
             "messages": messages_for_llm,

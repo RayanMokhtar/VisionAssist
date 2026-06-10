@@ -33,7 +33,7 @@ from broker.broker_interface import IBroker
 
 logging.basicConfig(
     level=logging.INFO, 
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  
+    format='%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s] - %(message)s',  
     handlers=[
         logging.StreamHandler() #console 
         # logging.FileHandler(CONFIGURATION.paths.log_file), #fichier log

@@ -77,7 +77,7 @@ def get_current_time() -> str:
         mois_nom = mois[now.month - 1]
         result = f"Il est {now.hour}h{now.minute:02d}. Nous sommes {jour_nom} {now.day} {mois_nom} {now.year}."
 
-    print(f"⏰ [TOOL APPELÉ] get_current_time → {result}", flush=True)
+    logger.info(f"⏰ [TOOL APPELÉ] get_current_time → {result}")
     _log_tool("get_current_time", result)
     return result
 

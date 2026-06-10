@@ -90,6 +90,7 @@ class ModelService:
 
     def generate_with_tools(self, lc_messages: List[BaseMessage], tools: List[Any]) -> AIMessage:
         logger.info(f"[ModelService] Préparation de {len(lc_messages)} messages pour le LLM.")
+        logger.debug("[ModelService] Étape 1/4 : Conversion des messages LangChain -> HuggingFace")
         hf_messages = []
         for m in lc_messages:
             if isinstance(m, HumanMessage):
@@ -137,6 +138,7 @@ class ModelService:
             elif isinstance(m, SystemMessage):
                 hf_messages.append({"role": "system", "content": m.content})
 
+        logger.debug(f"[ModelService] Étape 2/4 : Conversion de {len(tools)} outils.")
         hf_tools = [convert_to_openai_tool(t) for t in tools]
         
         # Free up cache before starting a big inference
@@ -144,6 +146,7 @@ class ModelService:
             torch.cuda.empty_cache()
 
         logger.info(f"[ModelService] {len(tools)} outils mis à disposition du LLM.")
+        logger.debug("[ModelService] Étape 3/4 : Application du chat_template (formatage textuel).")
         try:
             text_prompt = self.processor.apply_chat_template(
                 hf_messages, 
@@ -154,6 +157,8 @@ class ModelService:
         except Exception as e:
             logger.error("Erreur lors de l'appel à apply_chat_template. Messages: %s, Tools: %s", hf_messages, hf_tools)
             raise e
+            
+        logger.debug("[ModelService] Préparation des tenseurs (processing images/textes)...")
         try:
             image_inputs, video_inputs = process_vision_info(hf_messages)
             inputs = self.processor(
@@ -167,6 +172,9 @@ class ModelService:
             logger.warning("Impossible de traiter l'image avec qwen_vl_utils: %s", e)
             inputs = self.processor(text=[text_prompt], return_tensors="pt").to(self.model.device)
 
+        import time
+        logger.debug(f"[ModelService] Étape 4/4 : Lancement de l'inférence (model.generate) avec {inputs['input_ids'].shape[-1]} tokens en entrée...")
+        start_time = time.time()
         try:
             with torch.no_grad():
                 output_ids = self.model.generate(
@@ -175,6 +183,9 @@ class ModelService:
                     do_sample=self.config_agent.do_sample,
                     temperature=self.config_agent.temperature,
                 )
+            
+            duree = time.time() - start_time
+            logger.debug(f"[ModelService] Inférence terminée avec succès en {duree:.2f} secondes.")
         except torch.OutOfMemoryError as e:
             logger.error(f"CUDA Out of memory lors de la génération: {e}. On vide le cache.")
             torch.cuda.empty_cache()
@@ -244,7 +255,33 @@ class ModelService:
         content = content.split("</think>", 1)[-1] if "</think>" in content else content
         content = re.sub(r"<tool_call>.*?</tool_call>", "", content, flags=re.DOTALL)
         content = content.split("<tool_call>", 1)[0] if "<tool_call>" in content else content
-            
+
+        # 4. Détecter un raisonnement interne non bailisé (anglais, style chain-of-thought)
+        #    Si la réponse commence par des marqueurs de raisonnement, on cherche la vraie réponse.
+        MARQUEURS_RAISONNEMENT = (
+            "The user", "Let me", "Let's", "Wait,", "Wait ", "Hmm", "However,",
+            "Actually,", "Looking at", "I need to", "I should", "I must",
+            "First,", "So,", "OK,", "Okay,", "Alright,",
+        )
+        contenu_stripped = content.strip()
+        if any(contenu_stripped.startswith(m) for m in MARQUEURS_RAISONNEMENT):
+            # Chercher la première ligne qui ressemble à une vraie réponse française
+            lignes = contenu_stripped.splitlines()
+            for i, ligne in enumerate(lignes):
+                ligne_stripped = ligne.strip()
+                # Une ligne française valide : non vide, ne commence pas par un marqueur anglais
+                if (ligne_stripped
+                        and not any(ligne_stripped.startswith(m) for m in MARQUEURS_RAISONNEMENT)
+                        and not ligne_stripped.startswith("-")
+                        and len(ligne_stripped) > 5):
+                    content = "\n".join(lignes[i:]).strip()
+                    logger.warning("[ModelService] Raisonnement non bailisé détecté et supprimé (%d lignes).", i)
+                    break
+            else:
+                # Tout le contenu est du raisonnement : réponse générique
+                content = "Désolé, je n'ai pas pu formuler une réponse claire. Pouvez-vous reformuler votre demande ?"
+                logger.error("[ModelService] Toute la réponse semble être du raisonnement interne. Réponse générique utilisée.")
+
         return content.strip()
 
 
