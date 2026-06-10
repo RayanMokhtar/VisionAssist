@@ -1,1 +1,1 @@
-python -m security.authentification_client
+python -m security.authentification_client 2>/dev/null

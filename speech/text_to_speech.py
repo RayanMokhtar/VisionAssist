@@ -16,6 +16,9 @@ from pydantic import BaseModel, Field
 from configuration import CONFIGURATION
 from broker.service import get_broker_client 
 from broker.broker_interface import IBroker 
+import multiprocessing
+
+
 
 
 ### TTS piper : https://arxiv.org/html/2512.08006v1
@@ -128,6 +131,7 @@ class TextToSpeech:
 
 
     def pipeline(self, texte: str, nom_fichier_sortie : str = "test.wav", supprimer_fichier: bool = False) -> TTSResult:
+        print(f"[{multiprocessing.current_process().name}] mode écoute active en cours ...")
         resultat = self.synthetiser(texte, nom_fichier_sortie=nom_fichier_sortie)
         try:
             self.lire_audio(resultat.chemin_fichier_audio)

@@ -17,6 +17,10 @@ from configuration import CONFIGURATION
 from broker.service import get_broker_client 
 from security.utils import extraire_pin_4_chiffres
 
+import base64
+import multiprocessing
+
+audio_lock = multiprocessing.Lock()
 
 #Lien de la cdoc de doc de la librairie faster_whisper :  https://github.com/SYSTRAN/faster-whisper
 
@@ -110,15 +114,18 @@ class SpeechToText:
     def enregistrer_audio_microphone_apres_activation(self) -> Optional[str]:
         print("micro en écoute ...")
         audio = pyaudio.PyAudio()
-        stream = audio.open(
-            format=pyaudio.paInt16,
-            channels=self.audio_config.canaux_ecoute,
-            rate=self.audio_config.taux_echantillonnage_hz, #humain entre 300 et 3400hz
-            input=True,
-            input_device_index=self.audio_config.device_index,
-            frames_per_buffer=self.audio_config.taille_chunk,
-        )
-
+        # for i in range(audio.get_device_count()):
+        #     print("audio",audio.get_device_info_by_index(i))
+        with audio_lock :
+            stream = audio.open(
+                format=pyaudio.paInt16,
+                channels=self.audio_config.canaux_ecoute,
+                rate=self.audio_config.taux_echantillonnage_hz, #humain entre 300 et 3400hz
+                input=True,
+                input_device_index=self.audio_config.device_index,
+                frames_per_buffer=self.audio_config.taille_chunk,
+            )
+        
         #duree chunk : 64 ms car c la taille d'un chunk 1024 / taille échantillon valeur par seconde
         chunk_duree_secondes = self.audio_config.taille_chunk / self.audio_config.taux_echantillonnage_hz
         silence_chunks_max = int(self.audio_config.silence_duree_max_secondes / chunk_duree_secondes)
@@ -141,8 +148,8 @@ class SpeechToText:
                 )
                 # print("data : ",data)  data en little endian
                 energie = audioop.rms(data, 2)  # 2 octets par échantillon
-                # print("energie :", energie)  
-                if not parole_detectee:
+                # print("energie ",energie)
+                if not parole_detectee: 
                     pre_buffer.append(data)
                     if energie > self.audio_config.seuil_energie:
                         print("parole détectée")
@@ -185,12 +192,25 @@ class SpeechToText:
 
         return fichier_temporaire_stockage.name
     
+
+        
+    @staticmethod
+    def image_en_base64(image_file: str = "last_image_path.png") -> str:
+        image_path = f"{CONFIGURATION.paths.image_path}/{image_file}"
+
+        with open(image_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+
+        return f"data:image/png;base64,{b64}"
+            
+
     #après authentification on l'active, quand il a rentré le pin ...sinon enregistrer_audio_microphone_apres_activation
-    def ecouter_en_continu_avec_mot_activation(self) -> None : 
-        print("mode écoute active en cours ...")
+    def ecouter_en_continu_avec_mot_activation(self,session_utilisateur : Optional[str] = None ) -> None : 
+        print(f"[{multiprocessing.current_process().name}] mode écoute active en cours ...")
         actif = False
         CLIENT_BROKER_STT.connexion()
         while True : 
+            print("dans la boucle")
             chemin_audio = self.enregistrer_audio_microphone_apres_activation()
             if chemin_audio is None : 
                 continue
@@ -204,7 +224,9 @@ class SpeechToText:
                     if CONFIGURATION.nom_assistant.lower() in texte:
                         actif = True
                         print("assistant activé car présent dans texte : ",texte)
-                        message_payload = {"resultat_stt":{"texte":texte.replace(CONFIGURATION.nom_assistant.lower(),"")}}
+                        message_payload = {"resultat_stt":{"texte":texte.replace(CONFIGURATION.nom_assistant.lower(),""),"image":INSTANCE_STT.image_en_base64()}}
+                        if session_utilisateur is not None : 
+                            message_payload['session_authentifiee'] = session_utilisateur.model_dump()
                         pub = CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
                         print("message publié sur le broker : ",CLIENT_BROKER_STT)
                         print("état payload publié : ",pub )
@@ -213,6 +235,7 @@ class SpeechToText:
                 print("erreur inattenue dans ecoute continue stt",str(e))
             finally : 
                 os.unlink(chemin_audio)
+
 
     def pipeline_authentification_stt(self , nombre_tentatives : int = 0): #pour tester on garde à 1 mais sera à injecter
         while nombre_tentatives <= CONFIGURATION.security.max_tentatives_avant_blocage_carte_gemalto : 
@@ -250,6 +273,7 @@ class SpeechToText:
 INSTANCE_STT = SpeechToText()
 # resultat = INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
 
-if __name__ == "__main__":
-    INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
-  
+# if __name__ == "__main__":
+#     INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
+    # res = INSTANCE_STT.image_en_base64()
+    # print("res ",res)

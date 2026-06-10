@@ -1,14 +1,19 @@
 import os
 from typing import Optional
 import uuid
+from pathlib import Path
 import subprocess
 
 from security.client_side.client import CSC0_SIMULATION, demander_challenge, pin_to_csc1_bytes, read_public_card_id, validate_csc1_pin, verifier_carte_hmac
 from security.client_side.client import CSC0_SIMULATION
 from speech.speech_to_text import INSTANCE_STT
-from speech.text_to_speech import INSTANCE_TTS
+from speech.text_to_speech import INSTANCE_TTS , lancement_service_tts
 from configuration import CONFIGURATION
 from persistance.repository import REPOSITORIES
+
+from multiprocessing import Process
+from threading import Thread
+from pydantic import BaseModel
 
 
 
@@ -26,24 +31,14 @@ CARTE_BLOQUEE = "La carte est bloquée après 3 tentatives veuillez vous rapproc
 MESSAGE_ATTENTE = "Merci de patienter pendant que je vérifie votre carte et prépare tout pour vous"
 MESSAGE_BIENVENUE = "BONJOUR BONJOUR BONJOUR"
 
-class SessionAuthentifiee:
-    def __init__(
-        self, 
-        user_id: Optional[str] = None, 
-        card_id: Optional[str] = None, 
-        access_token: Optional[str] = None, 
-        refresh_token: Optional[str] = None, 
-        prenom: Optional[str] = None, 
-        session_id: Optional[str] = None,
-        expire_at: Optional[float] = None
-    ):
-        self.user_id = user_id
-        self.carte_id = card_id  
-        self.access_token = access_token
-        self.refresh_token = refresh_token
-        self.prenom = prenom
-        self.session_id = session_id
-        self.expire_at = expire_at
+class SessionAuthentifiee(BaseModel):
+    user_id: Optional[str] = None, 
+    card_id: Optional[str] = None, 
+    access_token: Optional[str] = None, 
+    refresh_token: Optional[str] = None, 
+    prenom: Optional[str] = None, 
+    session_id: Optional[str] = None,
+    expire_at: Optional[float] = None
 
 
 def mode_emule_pour_user(conn):
@@ -71,37 +66,46 @@ def verifier_format_pin_dans_csc1(conn , pin):
 def logique_creation_session_agent_ia(reponse_authentification_apres_hmac : dict) -> SessionAuthentifiee :
     session_id = uuid.uuid4()
     session_repo = REPOSITORIES.sessions.create(session_id=session_id, user_id=reponse_authentification_apres_hmac.get("user_id"), card_id=reponse_authentification_apres_hmac.get("card_id"))
+    print("sessions créee en base de données : ", session_repo)
+
     return session_id
 
     
 
-def lancement_scripts_terminaux(chemin_vers_python: str = "../../.venv/bin/python" if CONFIGURATION.environnement == "linux" else r"..\..\.venv\Scripts\python.exe"):
-    # On calcule le chemin absolu du dossier racine où se trouvent tes packages (ex: le dossier qui contient 'speech')
-    dossier_racine = os.path.abspath("../../")
+
+def lancement_scripts_terminaux():
+    # 1. On trouve automatiquement la racine du projet (le dossier VisionAssist)
+    # Assure-toi que ce fichier est bien dans un sous-dossier, sinon ajuste les .parent
+    print("lancement scripts")
+    dossier_racine = Path(__file__).resolve().parent.parent 
     
-    #récupérer le chemin absolu
-    chemin_python_absolu = os.path.abspath(chemin_vers_python)
+    # 2. On construit le chemin vers Python de manière fiable
+    if CONFIGURATION.environnement == "linux":
+        chemin_python = dossier_racine / ".venv" / "bin" / "python"
+    else:
+        chemin_python = dossier_racine / ".venv" / "Scripts" / "python.exe"
+
+    chemin_python_absolu = str(chemin_python)
+    dossier_racine_absolu = str(dossier_racine)
 
     if CONFIGURATION.environnement == "linux": 
+        # J'ai retiré le 2>/dev/null temporairement pour que tu puisses voir les erreurs 
+        # dans les nouvelles fenêtres qui vont s'ouvrir. Tu pourras les remettre plus tard !
         scripts_linux = [
-            f'"{chemin_python_absolu}" -m speech.text_to_speech 2>/dev/null', # 2/dev/null pour avoir des logs moins verbeux
-            f'"{chemin_python_absolu}" -m speech.speech_to_text 2>/dev/null',
-            f'"{os.path.abspath("../worker_vision/build/main")}"' 
+            f'"{chemin_python_absolu}" -m speech.text_to_speech', 
+            f'"{chemin_python_absolu}" -m speech.speech_to_text',
+            # f'"{dossier_racine_absolu}/worker_vision/build/main"' 
         ]
     
         for cmd_str in scripts_linux:
             try:
-                # Syntaxe robuste pour gnome-terminal : la commande Bash complète doit être un seul bloc string après "-c"
                 commande_complete = ["gnome-terminal", "--", "bash", "-c", f"{cmd_str}; exec bash"]
-                
-                # cwd=dossier_racine force le terminal à se placer au bon endroit avant d'exécuter la commande
-                subprocess.Popen(commande_complete, preexec_fn=os.setpgrp, cwd=dossier_racine)
+                subprocess.Popen(commande_complete, preexec_fn=os.setpgrp, cwd=dossier_racine_absolu)
                 print(f"Terminal Linux lancé pour : {cmd_str}")
             except Exception as e:
                 print(f"Erreur lors du lancement Linux de {cmd_str} : {e}")
                 
     else: # Cas Windows
-        # On entoure le chemin de Python et du binaire de guillemets au cas où il y aurait des espaces dans le chemin
         scripts_windows = [
             f'"{chemin_python_absolu}" -m speech.text_to_speech',
             f'"{chemin_python_absolu}" -m speech.speech_to_text'
@@ -110,9 +114,7 @@ def lancement_scripts_terminaux(chemin_vers_python: str = "../../.venv/bin/pytho
         for cmd in scripts_windows:
             try:
                 commande_complete = f"start cmd /K {cmd}"
-                
-                # cwd=dossier_racine fonctionne aussi parfaitement sous Windows
-                subprocess.Popen(commande_complete, shell=True, cwd=dossier_racine)
+                subprocess.Popen(commande_complete, shell=True, cwd=dossier_racine_absolu)
                 print(f"Terminal Windows lancé pour : {cmd}")
             except Exception as e:
                 print(f"Erreur lors du lancement Windows de {cmd} : {e}")
@@ -197,7 +199,8 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
 
     prenom_utilisateur = response_authentification_apres_hmac.get("prenom")
     access_token , refresh_token = response_authentification_apres_hmac.get("access_token") , response_authentification_apres_hmac.get("refresh_token")
-
+    
+    print("is carte valide :", is_carte_valide)
     if is_carte_valide : 
         session_id = logique_creation_session_agent_ia(response_authentification_apres_hmac)
         session_authentifiee = SessionAuthentifiee(
@@ -211,9 +214,8 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
         INSTANCE_TTS.pipeline(f"{MESSAGE_BIENVENUE} {prenom_utilisateur} moi c'est {CONFIGURATION.nom_assistant}. comment puis je vous aider aujourd'hui ?" , ficher_tts_sortie)
         print(f"Session authentifiée créée avec ID: {session_id}")
         #création de la session 
-        session = REPOSITORIES.sessions.create(user_id=response_authentification_apres_hmac.get("user_id"), card_id=response_authentification_apres_hmac.get("card_id"), session_id=session_id)
-        print("sessions créee en base de données : ", session)
-        lancement_scripts_terminaux()
+        # session = REPOSITORIES.sessions.create(user_id=response_authentification_apres_hmac.get("user_id"), card_id=response_authentification_apres_hmac.get("card_id"), session_id=session_id)
+        # lancement_scripts_terminaux()
         return session_authentifiee # à ajouter l'expiration du token et la logique de refresh token dans le pipeline d'authentification ou dans un décorateur à part pour les méthodes qui nécessitent une authentification
     else : 
         print("carte pas valide vérifier une des étapes du pipeline")
@@ -223,8 +225,30 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
 
 #ajouter le required_auth comme décorateur dans la méthode du llm où on doit soumettre nos trucs
 
-SESSION_UTILISATEUR = None
-print("session_authentification avant : ", SESSION_UTILISATEUR)
-print("configuration ,",CONFIGURATION.broker)
-SESSION_UTILISATEUR = pipeline_authentification()
-print("session_authentification après : ", SESSION_UTILISATEUR)
+SESSION_UTILISATEUR = SessionAuthentifiee(
+    user_id="user_123",
+    card_id="card_456",
+    access_token="access_token_mock_abc123",
+    refresh_token="refresh_token_mock_def456",
+    prenom="Jean",
+    session_id="c30c6528-400c-408e-8c2a-dd1e4d701a36",
+    expire_at=1760000000.0  # timestamp futur simulé
+)
+
+if __name__ == "__main__":
+    # print("session_authentification avant : ", SESSION_UTILISATEUR)
+    # SESSION_UTILISATEUR = pipeline_authentification()
+    # if SESSION_UTILISATEUR is not None :
+    #     print("session_authentification après : ", SESSION_UTILISATEUR)
+    #     process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,),name="STT_WORKER")
+    #     process_tts = Thread(target=lancement_service_tts,name="TTS_WORKER")
+    #     process_stt.start() ; process_tts.start()
+    #     print("STT + TTS lancés en parallèle")
+
+
+
+    print("session_authentification après : ", SESSION_UTILISATEUR)
+    process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,),name="STT_WORKER")
+    process_tts = Thread(target=lancement_service_tts,name="TTS_WORKER")
+    process_stt.start() ; process_tts.start()
+    # lancement_scripts_terminaux()

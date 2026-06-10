@@ -70,7 +70,7 @@ class BrokerConfig(BaseModel):
 
 
 class PathConfig(BaseModel):
-    data_dir: str = "./data"
+    data_dir: str = str(ROOT_DIR / "data")
     stt_file: str = "./data/stt_history.jsonl"
     tts_file: str = "./data/tts_history.jsonl"
     events_file: str = "./data/events.jsonl"
@@ -79,6 +79,7 @@ class PathConfig(BaseModel):
     log_level: str = "INFO"
     log_max_bytes: int = 5 * 1024 * 1024
     log_backup_count: int = 3
+    image_path : str = str(ROOT_DIR / "data/images/")
 
 
 class DBConfig(BaseModel):
@@ -133,7 +134,7 @@ class Configuration(BaseSettings):
         env_nested_delimiter="__",
         extra="ignore",
     )
-    nom_assistant : str = "wesker"
+    nom_assistant : str = "max"
     stt:STTConfig=Field(default_factory=STTConfig,description="configuration modele stt")
     tts:TTSConfig=Field(default_factory=TTSConfig,description="configuration modele tts")
     audio:AudioConfig=Field(default_factory=AudioConfig,description="configuration modele audio")
