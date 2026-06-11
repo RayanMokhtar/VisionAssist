@@ -1,0 +1,116 @@
+{
+  "backend": "huggingface",
+  "modele": "./langage/modeles/Qwen3.5-27B",
+  "quantification": "4-bit (BitsAndBytes)",
+  "dtype": "bfloat16",
+  "temps_chargement_s": 25.736,
+  "vram_avant_chargement_mb": 0.0,
+  "vram_apres_chargement_mb": 18223.1,
+  "vram_modele_mb": 18223.1,
+  "requetes": [
+    {
+      "texte": "Qu'est-ce que l'intelligence artificielle ?",
+      "temps_inference_s": 16.348,
+      "tokens_entree": 192,
+      "reponse": "L'intelligence artificielle, ou IA, est la capacité d'une machine à simuler l'intelligence humaine. Cela inclut des fonctions comme l'apprentissage, le raisonnement, la résolution de problèmes et la compréhension du langage.\n\nEn pratique, l'IA permet aux ordinateurs d'accomplir des tâches qui nécessiteraient normalement l'intelligence humaine, comme reconnaître des images, comprendre et répondre à des questions, ou prendre des décisions.\n\nAujourd'hui, l'IA fait partie de notre quotidien : assistants vocaux comme moi, recommandations de vidéos, traduction automatique, voitures autonomes, et bien d'autres applications.",
+      "tokens_sortie_approx": 156,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quel temps fait-il à Paris ?",
+      "temps_inference_s": 9.898,
+      "tokens_entree": 188,
+      "reponse": "Il pleut légèrement à Paris, avec une température de 16,4 degrés et un vent de 10,7 km/h.",
+      "tokens_sortie_approx": 22,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Bonjour, comment puis-je t'aider ?",
+      "temps_inference_s": 9.517,
+      "tokens_entree": 190,
+      "reponse": "Bonjour ! Je suis Max, votre assistant vocal. Je peux vous aider à savoir l'heure actuelle, la météo, trouver des lieux à proximité, ou connaître les prochains transports. Comment puis-je vous aider aujourd'hui ?",
+      "tokens_sortie_approx": 53,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il ?",
+      "temps_inference_s": 10.232,
+      "tokens_entree": 187,
+      "reponse": "Il est 19h12. Nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Explique-moi ce qu'est un réseau de neurones en deux phrases.",
+      "temps_inference_s": 10.919,
+      "tokens_entree": 197,
+      "reponse": "Un réseau de neurones est un système informatique inspiré du fonctionnement du cerveau humain, composé de nombreuses unités interconnectées appelées neurones artificiels. Ces neurones traitent l'information par couches successives pour apprendre à reconnaître des motifs et prendre des décisions, comme identifier une image ou comprendre un langage.",
+      "tokens_sortie_approx": 87,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Lyon.",
+      "temps_inference_s": 10.736,
+      "tokens_entree": 188,
+      "reponse": "À Lyon, il fait principalement dégagé avec une température de 21,5 degrés. Le vent souffle à 12,3 km/h.",
+      "tokens_sortie_approx": 25,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le machine learning ?",
+      "temps_inference_s": 17.382,
+      "tokens_entree": 190,
+      "reponse": "Le machine learning, ou apprentissage automatique, est une branche de l'intelligence artificielle qui permet aux ordinateurs d'apprendre à partir de données sans être explicitement programmés pour chaque tâche.\n\nConcrètement, on entraîne un algorithme avec des exemples, et il apprend à reconnaître des modèles pour faire des prédictions ou prendre des décisions. Par exemple, c'est ce qui permet à votre téléphone de reconnaître votre visage, ou à un assistant vocal de comprendre ce que vous dites.",
+      "tokens_sortie_approx": 125,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il exactement ?",
+      "temps_inference_s": 12.42,
+      "tokens_entree": 189,
+      "reponse": "Il est 19h13. Nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le deep learning ?",
+      "temps_inference_s": 15.358,
+      "tokens_entree": 189,
+      "reponse": "Le deep learning, ou apprentissage profond, est une technique d'intelligence artificielle qui utilise des réseaux de neurones artificiels inspirés du cerveau humain.\n\nCes réseaux sont composés de nombreuses couches de neurones interconnectés. Plus il y a de couches, plus le modèle est \"profond\" et capable d'apprendre des caractéristiques complexes à partir de grandes quantités de données.\n\nLe deep learning est utilisé dans de nombreux domaines : reconnaissance d'images, compréhension de la langue, traduction automatique, voitures autonomes, et bien d'autres applications.",
+      "tokens_sortie_approx": 144,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Bordeaux.",
+      "temps_inference_s": 10.512,
+      "tokens_entree": 189,
+      "reponse": "À Bordeaux, il fait principalement dégagé avec une température de 21,5 degrés et un vent de 12,5 kilomètres à l'heure.",
+      "tokens_sortie_approx": 29,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    }
+  ],
+  "temps_inference_moyen_s": 12.332,
+  "temps_inference_min_s": 9.517,
+  "temps_inference_max_s": 17.382,
+  "temps_total_s": 123.324
+}

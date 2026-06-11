@@ -1,0 +1,116 @@
+{
+  "backend": "huggingface",
+  "modele": "Qwen/Qwen3.5-9B",
+  "quantification": "aucune (fp16 natif)",
+  "dtype": "bfloat16",
+  "temps_chargement_s": 18.222,
+  "vram_avant_chargement_mb": 0.0,
+  "vram_apres_chargement_mb": 17947.9,
+  "vram_modele_mb": 17947.9,
+  "requetes": [
+    {
+      "texte": "Qu'est-ce que l'intelligence artificielle ?",
+      "temps_inference_s": 8.894,
+      "tokens_entree": 192,
+      "reponse": "L'intelligence artificielle, ou IA, c'est la capacité des machines à imiter les fonctions humaines comme l'apprentissage, la résolution de problèmes et la prise de décision. C'est un domaine technologique qui crée des systèmes capables de penser et d'agir de manière autonome.",
+      "tokens_sortie_approx": 69,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quel temps fait-il à Paris ?",
+      "temps_inference_s": 9.782,
+      "tokens_entree": 188,
+      "reponse": "Il pleut légèrement à Paris avec une température de 16,3 degrés et un vent de 10,7 km/h.",
+      "tokens_sortie_approx": 22,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Bonjour, comment puis-je t'aider ?",
+      "temps_inference_s": 6.153,
+      "tokens_entree": 190,
+      "reponse": "Bonjour ! Je suis Max, votre assistant vocal. Je peux vous aider avec la météo, les transports en commun, trouver des lieux à proximité, prendre des notes ou consulter votre mémoire. Comment puis-je vous assister aujourd'hui ?",
+      "tokens_sortie_approx": 56,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il ?",
+      "temps_inference_s": 5.704,
+      "tokens_entree": 187,
+      "reponse": "Il est 19h16. Nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Explique-moi ce qu'est un réseau de neurones en deux phrases.",
+      "temps_inference_s": 7.943,
+      "tokens_entree": 197,
+      "reponse": "Un réseau de neurones est un système d'intelligence artificielle inspiré du cerveau humain qui apprend à partir de données. Il se compose de couches de nœuds interconnectés qui traitent l'information pour reconnaître des motifs et prendre des décisions.",
+      "tokens_sortie_approx": 63,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Lyon.",
+      "temps_inference_s": 9.931,
+      "tokens_entree": 188,
+      "reponse": "Il fait beau à Lyon. Ciel dégagé avec une température de 21,4 degrés et un vent de 11,9 km/h.",
+      "tokens_sortie_approx": 23,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le machine learning ?",
+      "temps_inference_s": 7.679,
+      "tokens_entree": 190,
+      "reponse": "Le machine learning, ou apprentissage automatique, est une branche de l'intelligence artificielle qui permet aux ordinateurs d'apprendre à partir de données sans être explicitement programmés. Il utilise des algorithmes pour analyser les données, trouver des motifs et prendre des décisions ou faire des prédictions.",
+      "tokens_sortie_approx": 79,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il exactement ?",
+      "temps_inference_s": 5.737,
+      "tokens_entree": 189,
+      "reponse": "Il est 19 heures 17. Nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 13,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le deep learning ?",
+      "temps_inference_s": 8.145,
+      "tokens_entree": 189,
+      "reponse": "Le deep learning est un type d'intelligence artificielle qui utilise des réseaux de neurones artificiels profonds pour traiter des données complexes. Il imite le fonctionnement du cerveau humain avec plusieurs couches de traitement pour reconnaître des motifs, des images, des sons ou du langage naturel.",
+      "tokens_sortie_approx": 76,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Bordeaux.",
+      "temps_inference_s": 10.008,
+      "tokens_entree": 189,
+      "reponse": "À Bordeaux, il fait beau avec un ciel dégagé. La température est de 21,3 degrés et le vent souffle à 12,8 km/h.",
+      "tokens_sortie_approx": 27,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    }
+  ],
+  "temps_inference_moyen_s": 7.998,
+  "temps_inference_min_s": 5.704,
+  "temps_inference_max_s": 10.008,
+  "temps_total_s": 79.977
+}

@@ -1,0 +1,107 @@
+{
+  "backend": "vllm_bitsandbytes_4bit_parallel",
+  "modele": "./langage/modeles/Qwen3.5-27B",
+  "quantification": "vLLM bitsandbytes 4-bit",
+  "nb_requetes": 10,
+  "max_tokens": 1000,
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "temps_chargement_s": 65.843,
+  "vram_modele_mb": 0.0,
+  "temps_total_batch1_s": 49.558,
+  "temps_total_batch2_s": 14.244,
+  "temps_total_s": 63.802,
+  "debit_requetes_par_s": 0.157,
+  "requetes": [
+    {
+      "texte": "Qu'est-ce que l'intelligence artificielle ?",
+      "reponse": "L'intelligence artificielle est la capacité d'une machine à imiter l'intelligence humaine pour accomplir des tâches comme l'apprentissage, le raisonnement et la résolution de problèmes. Elle repose sur des algorithmes et des données pour analyser, prédire et prendre des décisions autonomes.",
+      "tokens_entree": 58,
+      "tokens_sortie_approx": 72,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quel temps fait-il à Paris ?",
+      "reponse": "À Paris, il est couvert avec une température de 17.9°C et un vent de 12.0 km/h.",
+      "tokens_entree": 54,
+      "tokens_sortie_approx": 19,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Bonjour, comment puis-je t'aider ?",
+      "reponse": "Bonjour ! Je suis là pour vous aider, pas l'inverse. Comment puis-je vous assister aujourd'hui ?",
+      "tokens_entree": 56,
+      "tokens_sortie_approx": 24,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il ?",
+      "reponse": "Il est 15h53. Nous sommes jeudi 11 juin 2026.",
+      "tokens_entree": 52,
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Explique-moi ce qu'est un réseau de neurones en deux phrases.",
+      "reponse": "Un réseau de neurones est un système informatique inspiré du fonctionnement du cerveau humain, composé de couches de neurones artificiels interconnectés qui traitent l'information. Ces réseaux apprennent à reconnaître des motifs et à effectuer des tâches complexes en ajustant leurs connexions internes à partir d'exemples d'entraînement.",
+      "tokens_entree": 62,
+      "tokens_sortie_approx": 84,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Lyon.",
+      "reponse": "À Lyon, il fait principalement dégagé avec une température de 21.3°C et un vent de 15.5 km/h.",
+      "tokens_entree": 54,
+      "tokens_sortie_approx": 23,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le machine learning ?",
+      "reponse": "Le machine learning est une branche de l'intelligence artificielle qui permet aux systèmes d'apprendre et de s'améliorer à partir de données sans être explicitement programmés. Il utilise des algorithmes pour identifier des modèles et faire des prédictions ou des décisions basées sur ces apprentissages.",
+      "tokens_entree": 56,
+      "tokens_sortie_approx": 76,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il exactement ?",
+      "reponse": "Il est 15h53. Nous sommes jeudi 11 juin 2026.",
+      "tokens_entree": 55,
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le deep learning ?",
+      "reponse": "Le deep learning est une technique d'intelligence artificielle qui utilise des réseaux de neurones artificiels pour apprendre à partir de grandes quantités de données, permettant de reconnaître des motifs complexes comme la reconnaissance d'images ou de la parole.",
+      "tokens_entree": 55,
+      "tokens_sortie_approx": 66,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Bordeaux.",
+      "reponse": "À Bordeaux, il fait partiellement nuageux avec une température de 22.0°C et un vent de 9.7 km/h.",
+      "tokens_entree": 55,
+      "tokens_sortie_approx": 24,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    }
+  ]
+}

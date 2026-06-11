@@ -1,0 +1,120 @@
+{
+  "backend": "huggingface_bitsandbytes_4bit",
+  "modele": "./langage/modeles/Qwen3.5-27B",
+  "quantification": "BitsAndBytes fp4 4-bit",
+  "dtype": "bfloat16",
+  "attn_implementation": "sdpa",
+  "max_new_tokens": 1000,
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "temps_chargement_s": 33.249,
+  "vram_avant_chargement_mb": 0.0,
+  "vram_apres_chargement_mb": 18223.1,
+  "vram_modele_mb": 18223.1,
+  "requetes": [
+    {
+      "texte": "Qu'est-ce que l'intelligence artificielle ?",
+      "temps_inference_s": 11.685,
+      "tokens_entree": 58,
+      "reponse": "L'intelligence artificielle est une technologie qui permet aux ordinateurs et aux machines de simuler l'intelligence humaine en apprenant, en raisonnant et en résolvant des problèmes. Elle peut être utilisée pour des tâches comme la reconnaissance vocale, la traduction automatique, ou l'analyse de données.",
+      "tokens_sortie_approx": 76,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quel temps fait-il à Paris ?",
+      "temps_inference_s": 10.163,
+      "tokens_entree": 54,
+      "reponse": "",
+      "tokens_sortie_approx": 0,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Bonjour, comment puis-je t'aider ?",
+      "temps_inference_s": 8.876,
+      "tokens_entree": 55,
+      "reponse": "Bonjour ! Je peux vous aider à connaître l'heure et la date actuelles, la météo, trouver des lieux à proximité, obtenir des informations sur les transports en commun, ou sauvegarder des notes et rappels. Que souhaitez-vous faire ?",
+      "tokens_sortie_approx": 57,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il ?",
+      "temps_inference_s": 8.929,
+      "tokens_entree": 52,
+      "reponse": "Il est 16h05, nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Explique-moi ce qu'est un réseau de neurones en deux phrases.",
+      "temps_inference_s": 11.748,
+      "tokens_entree": 62,
+      "reponse": "Un réseau de neurones est un système informatique inspiré du fonctionnement du cerveau humain, composé de nombreux nœuds interconnectés qui traitent l'information en parallèle. Ces réseaux sont particulièrement efficaces pour apprendre à partir de données et reconnaître des motifs complexes, ce qui les rend essentiels pour l'intelligence artificielle moderne.",
+      "tokens_sortie_approx": 90,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Lyon.",
+      "temps_inference_s": 10.785,
+      "tokens_entree": 53,
+      "reponse": "À Lyon, il fait principalement dégagé avec une température de 21,4°C et un vent de 14,8 km/h.",
+      "tokens_sortie_approx": 23,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le machine learning ?",
+      "temps_inference_s": 10.138,
+      "tokens_entree": 56,
+      "reponse": "Le machine learning (apprentissage automatique) est une branche de l'intelligence artificielle qui permet aux ordinateurs d'apprendre à partir de données sans être explicitement programmés pour chaque tâche. Il utilise des algorithmes pour identifier des modèles et faire des prédictions ou prendre des décisions autonomes.",
+      "tokens_sortie_approx": 80,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il exactement ?",
+      "temps_inference_s": 10.188,
+      "tokens_entree": 55,
+      "reponse": "Il est 16h05. Nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le deep learning ?",
+      "temps_inference_s": 9.806,
+      "tokens_entree": 55,
+      "reponse": "Le deep learning est une forme d'apprentissage automatique qui utilise des réseaux de neurones artificiels inspirés du cerveau humain. Il permet aux machines d'apprendre à partir de grandes quantités de données pour effectuer des tâches complexes comme la reconnaissance d'images ou la compréhension du langage.",
+      "tokens_sortie_approx": 77,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Bordeaux.",
+      "temps_inference_s": 9.055,
+      "tokens_entree": 54,
+      "reponse": "À Bordeaux, il fait partiellement nuageux avec une température de 22,1°C et un vent de 9,9 km/h.",
+      "tokens_sortie_approx": 24,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    }
+  ],
+  "temps_inference_moyen_s": 10.137,
+  "temps_inference_min_s": 8.876,
+  "temps_inference_max_s": 11.748,
+  "temps_total_s": 101.376
+}

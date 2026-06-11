@@ -1,0 +1,1 @@
+est ce que tu peux modifier les tests ? les rendre plus compléxes, avec potentiellement la nécéssité d'appeler plusieurs tools en même temps, d'analyser des images de menus et autres ou bien de résoudre des problémes compléxes, afin de pouvoir voir r'éellement la différence entre les deux approches 

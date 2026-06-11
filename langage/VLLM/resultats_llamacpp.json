@@ -1,0 +1,121 @@
+{
+  "backend": "llama_cpp_q4_k_m",
+  "modele": "Qwen3.5-27B-Q4_K_M.gguf",
+  "quantification": "GGUF Q4_K_M (4-bit)",
+  "dtype": "float16 (via GGUF)",
+  "n_gpu_layers": -1,
+  "max_model_len": 2048,
+  "max_tokens": 1000,
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "temps_chargement_s": 16.116,
+  "vram_avant_chargement_mb": 0.0,
+  "vram_apres_chargement_mb": 0.0,
+  "vram_modele_mb": 0.0,
+  "requetes": [
+    {
+      "texte": "Qu'est-ce que l'intelligence artificielle ?",
+      "temps_inference_s": 111.491,
+      "tokens_entree": 58,
+      "reponse": "L'intelligence artificielle est un domaine de l'informatique qui vise à créer des systèmes capables d'accomplir des tâches nécessitant normalement l'intelligence humaine, comme la reconnaissance d'images, la compréhension du langage ou la prise de décision. Ces systèmes apprennent à partir de données et peuvent s'améliorer avec l'expérience.",
+      "tokens_sortie_approx": 85,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quel temps fait-il à Paris ?",
+      "temps_inference_s": 112.647,
+      "tokens_entree": 54,
+      "reponse": "Il pleut légèrement à Paris avec une température de 17,2°C et un vent de 11,6 km/h.",
+      "tokens_sortie_approx": 20,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Bonjour, comment puis-je t'aider ?",
+      "temps_inference_s": 79.953,
+      "tokens_entree": 55,
+      "reponse": "Bonjour ! Je suis votre assistant personnel et je peux vous aider avec diverses tâches comme vérifier l'heure, la météo, trouver des lieux à proximité, ou vous donner des informations sur les transports. Comment puis-je vous assister aujourd'hui ?",
+      "tokens_sortie_approx": 61,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il ?",
+      "temps_inference_s": 116.667,
+      "tokens_entree": 52,
+      "reponse": "Il est 17h04, nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Explique-moi ce qu'est un réseau de neurones en deux phrases.",
+      "temps_inference_s": 111.381,
+      "tokens_entree": 62,
+      "reponse": "Un réseau de neurones est un système informatique inspiré du fonctionnement du cerveau humain, composé de couches de nœuds interconnectés qui traitent l'information. Il apprend à reconnaître des motifs et à effectuer des tâches complexes en ajustant automatiquement ses connexions internes à partir de données d'entraînement.",
+      "tokens_sortie_approx": 81,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Lyon.",
+      "temps_inference_s": 223.63,
+      "tokens_entree": 53,
+      "reponse": "À Lyon, il fait principalement dégagé avec une température de 22.1°C et un vent de 13.3 km/h.",
+      "tokens_sortie_approx": 23,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le machine learning ?",
+      "temps_inference_s": 97.253,
+      "tokens_entree": 56,
+      "reponse": "Le machine learning est une branche de l'intelligence artificielle qui permet aux ordinateurs d'apprendre à partir de données sans être explicitement programmés pour chaque tâche. Il utilise des algorithmes qui s'améliorent automatiquement avec l'expérience pour faire des prédictions ou prendre des décisions.",
+      "tokens_sortie_approx": 77,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il exactement ?",
+      "temps_inference_s": 115.625,
+      "tokens_entree": 55,
+      "reponse": "Il est 17h13. Nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le deep learning ?",
+      "temps_inference_s": 102.782,
+      "tokens_entree": 55,
+      "reponse": "Le deep learning est une branche de l'intelligence artificielle qui utilise des réseaux de neurones artificiels profonds pour apprendre à partir de grandes quantités de données. Il permet aux machines de reconnaître des motifs complexes et de réaliser des tâches comme la reconnaissance d'images, la traduction automatique ou la compréhension du langage naturel.",
+      "tokens_sortie_approx": 90,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Bordeaux.",
+      "temps_inference_s": 112.754,
+      "tokens_entree": 54,
+      "reponse": "À Bordeaux, il fait 22,2°C avec un ciel partiellement nuageux et un vent de 11 km/h.",
+      "tokens_sortie_approx": 21,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    }
+  ],
+  "temps_inference_moyen_s": 118.418,
+  "temps_inference_min_s": 79.953,
+  "temps_inference_max_s": 223.63,
+  "temps_total_s": 1184.186
+}

@@ -1,0 +1,121 @@
+{
+  "backend": "vllm_bitsandbytes_4bit",
+  "modele": "./langage/modeles/Qwen3.5-27B",
+  "quantification": "vLLM bitsandbytes 4-bit",
+  "dtype": "bfloat16",
+  "gpu_memory_utilization": 0.9,
+  "max_model_len": 8192,
+  "max_tokens": 1000,
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "temps_chargement_s": 70.488,
+  "vram_avant_chargement_mb": 0.0,
+  "vram_apres_chargement_mb": 0.0,
+  "vram_modele_mb": 0.0,
+  "requetes": [
+    {
+      "texte": "Qu'est-ce que l'intelligence artificielle ?",
+      "temps_inference_s": 8.495,
+      "tokens_entree": 58,
+      "reponse": "L'intelligence artificielle est la capacité d'une machine ou d'un logiciel à simuler l'intelligence humaine, comme l'apprentissage, le raisonnement ou la résolution de problèmes. Elle permet aux systèmes de traiter des données, de reconnaître des motifs et de prendre des décisions autonomes dans divers domaines.",
+      "tokens_sortie_approx": 78,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quel temps fait-il à Paris ?",
+      "temps_inference_s": 7.416,
+      "tokens_entree": 54,
+      "reponse": "Il fait couvert à Paris avec une température de 17.8°C et un vent de 12.0 km/h.",
+      "tokens_sortie_approx": 19,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Bonjour, comment puis-je t'aider ?",
+      "temps_inference_s": 6.213,
+      "tokens_entree": 55,
+      "reponse": "Bonjour ! Je peux vous aider à trouver des lieux à proximité, vérifier la météo, obtenir des informations sur les transports en commun, ou sauvegarder des rappels. Que souhaitez-vous faire ?",
+      "tokens_sortie_approx": 47,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il ?",
+      "temps_inference_s": 6.319,
+      "tokens_entree": 52,
+      "reponse": "Il est 16h01. Nous sommes jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 11,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Explique-moi ce qu'est un réseau de neurones en deux phrases.",
+      "temps_inference_s": 9.477,
+      "tokens_entree": 62,
+      "reponse": "Un réseau de neurones est un système informatique inspiré du cerveau humain, composé de couches de nœuds interconnectés qui traitent l'information. Il apprend à reconnaître des motifs complexes en ajustant les poids de ses connexions lors de l'entraînement sur des données.",
+      "tokens_sortie_approx": 68,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Lyon.",
+      "temps_inference_s": 8.042,
+      "tokens_entree": 53,
+      "reponse": "À Lyon, il fait principalement dégagé avec une température de 21.4°C et un vent de 14.8 km/h.",
+      "tokens_sortie_approx": 23,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le machine learning ?",
+      "temps_inference_s": 9.367,
+      "tokens_entree": 56,
+      "reponse": "Le machine learning est une branche de l'intelligence artificielle qui permet aux systèmes d'apprendre et de s'améliorer à partir de données sans être explicitement programmés. Il utilise des algorithmes pour identifier des modèles et faire des prédictions ou des décisions basées sur ces apprentissages.",
+      "tokens_sortie_approx": 76,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Quelle heure est-il exactement ?",
+      "temps_inference_s": 8.091,
+      "tokens_entree": 55,
+      "reponse": "Il est 16h02, jeudi 11 juin 2026.",
+      "tokens_sortie_approx": 8,
+      "tools_appeles": [
+        "get_current_time"
+      ],
+      "nb_tours": 2
+    },
+    {
+      "texte": "Qu'est-ce que le deep learning ?",
+      "temps_inference_s": 9.331,
+      "tokens_entree": 55,
+      "reponse": "Le deep learning est une branche de l'intelligence artificielle qui utilise des réseaux de neurones artificiels profonds pour apprendre à partir de grandes quantités de données. Il permet à des machines de reconnaître des motifs complexes comme la reconnaissance d'images, la traduction automatique ou la compréhension du langage naturel.",
+      "tokens_sortie_approx": 84,
+      "tools_appeles": [],
+      "nb_tours": 1
+    },
+    {
+      "texte": "Donne-moi la météo à Bordeaux.",
+      "temps_inference_s": 8.458,
+      "tokens_entree": 54,
+      "reponse": "À Bordeaux, il fait partiellement nuageux avec une température de 22.1°C et un vent de 9.9 km/h.",
+      "tokens_sortie_approx": 24,
+      "tools_appeles": [
+        "get_weather"
+      ],
+      "nb_tours": 2
+    }
+  ],
+  "temps_inference_moyen_s": 8.121,
+  "temps_inference_min_s": 6.213,
+  "temps_inference_max_s": 9.477,
+  "temps_total_s": 81.21
+}
