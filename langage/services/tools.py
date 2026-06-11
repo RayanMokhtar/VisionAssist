@@ -4,18 +4,13 @@ Tools — Outils invocables par l'agent LLM via tool calling.
 Chaque outil est décoré avec @tool (LangChain) et sera automatiquement
 exposé au LLM via son JSON Schema. Le LLM décide quand les appeler.
 
-Contexte utilisateur : les tools accèdent au user_id et session_id
-courants via les contextvars définis ci-dessous.
-
 Outils disponibles :
-    - get_current_time       : date et heure actuelle (Paris, via API)
-    - get_weather            : météo via OpenMeteo (gratuit, pas de clé API)
-    - search_nearby_place    : recherche de lieu via Nominatim/OSM (gratuit)
-    - get_transit_info       : horaires de transport en commun SNCF (RER, Train, Métro)
-    - save_note              : sauvegarde une note/rappel en BDD
-    - query_memory           : recherche RAG dans la mémoire long terme
-    - describe_current_scene : description visuelle (dépend du module vision)
-    - read_text_in_scene     : OCR sur la scène (dépend du module vision)
+    - get_current_time    : date et heure actuelle
+    - get_weather         : météo via OpenMeteo
+    - search_nearby_place : recherche de lieu via Nominatim/OSM
+    - get_transit_info    : horaires SNCF/IDF
+    - save_note           : sauvegarde une note/rappel en BDD
+    - query_memory        : recherche RAG dans la mémoire long terme
 """
 
 from __future__ import annotations
@@ -27,6 +22,8 @@ from typing import List
 
 import requests
 from langchain_core.tools import tool
+from langgraph.prebuilt import InjectedState
+from typing import Annotated
 
 import os
 from langage.database.engine import get_db
@@ -222,7 +219,7 @@ def search_nearby_place(query: str, latitude: float, longitude: float) -> str:
 
 
 @tool
-def save_note(content: str, category: str = "general") -> str:
+def save_note(content: str, category: str = "general", state: Annotated[dict, InjectedState] = None) -> str:
     """Sauvegarde une note ou un rappel important pour l'utilisateur.
     Utile quand l'utilisateur dit 'rappelle-moi que...', 'note que...',
     ou 'souviens-toi de...'.
@@ -232,8 +229,8 @@ def save_note(content: str, category: str = "general") -> str:
         category: Catégorie de la note ('rappel', 'lieu', 'contact', 'general').
     """
     logger.info("📝 [TOOL] save_note appelé : category='%s' content='%s'", category, content[:80])
-    user_id = current_user_id.get()
-    session_id = current_session_id.get()
+    user_id = (state or {}).get("user_id", "default_user")
+    session_id = (state or {}).get("session_id", "default_session")
 
     try:
         with get_db() as db:
@@ -263,7 +260,7 @@ def save_note(content: str, category: str = "general") -> str:
 
 
 @tool
-def query_memory(query: str) -> str:
+def query_memory(query: str, state: Annotated[dict, InjectedState] = None) -> str:
     """Recherche dans la mémoire long terme de l'utilisateur.
     Utile quand l'utilisateur demande 'qu'est-ce qu'on a fait hier ?',
     'on avait parlé de quoi ?', 'rappelle-moi ce que j'avais dit sur...'.
@@ -272,7 +269,7 @@ def query_memory(query: str) -> str:
         query: La question ou le sujet à rechercher dans la mémoire.
     """
     logger.info("🧠 [TOOL] query_memory appelé : query='%s'", query)
-    user_id = current_user_id.get()
+    user_id = (state or {}).get("user_id", "default_user")
 
     try:
         results = long_term_memory.search(
@@ -289,8 +286,6 @@ def query_memory(query: str) -> str:
         result = "Impossible d'accéder à la mémoire pour le moment."
         _log_tool("query_memory", result)
         return result
-
-
 
 @tool
 def get_transit_info(destination: str, latitude: float = None, longitude: float = None, origin: str = "") -> str:

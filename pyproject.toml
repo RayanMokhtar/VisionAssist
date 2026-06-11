@@ -46,7 +46,9 @@ server = [
     "transformers",
     "accelerate",
     "torchvision",
-    "tqdm"
+    "tqdm",
+    "faiss-cpu>=1.7.4",
+    "sentence-transformers>=2.7.0",
 ]
 
 #certains trucs se téléchargent pas sur pypi, mais sur l'index

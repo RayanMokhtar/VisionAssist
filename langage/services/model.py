@@ -12,6 +12,8 @@ from transformers import AutoProcessor, AutoModelForImageTextToText , BitsAndByt
 
 from langchain_core.messages import AIMessage,BaseMessage,HumanMessage,SystemMessage,ToolMessage
 from langchain_core.utils.function_calling import convert_to_openai_tool
+from langchain_huggingface import ChatHuggingFace, HuggingFacePipeline
+from transformers import pipeline
 
 from qwen_vl_utils import process_vision_info 
 
@@ -25,11 +27,13 @@ logger = logging.getLogger(__name__)
 class ModelService:
     """Service de chargement et d'accès au modèle LLM via Transformers."""
 
-    def __init__(self):
+    def __init__(self, model_id: str = None, load_in_4bit: bool = True):
         self.model = None
         self.processor = None
         self.est_charge = False
         self.config_agent = CONFIGURATION.qwen
+        self.model_id = model_id or self.config_agent.model_id
+        self.load_in_4bit = load_in_4bit
         self.load()
 
     def load(self) -> bool:
@@ -37,21 +41,24 @@ class ModelService:
         if self.est_charge:
             return True
 
-        model_id = self.config_agent.model_id
+        model_id = self.model_id
         logger.info("Chargement du modèle Transformers : %s...", model_id)
         
         dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
         logger.info("Format de bits du modèle: %s", dtype)
 
-        try:
-            quantization_config = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_compute_dtype=dtype
-            )
-            logger.info("Utilisation de BitsAndBytes (4-bit) pour optimiser la VRAM. device_map forcé sur 'cuda'.")
-        except ImportError:
-            quantization_config = None
-            logger.warning("BitsAndBytes non installé. Chargement en précision standard.")
+        quantization_config = None
+        if self.load_in_4bit:
+            try:
+                quantization_config = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=dtype
+                )
+                logger.info("Utilisation de BitsAndBytes (4-bit) pour optimiser la VRAM. device_map forcé sur 'cuda'.")
+            except ImportError:
+                logger.warning("BitsAndBytes non installé. Chargement en précision standard.")
+        else:
+            logger.info("Chargement en précision native (sans BitsAndBytes).")
 
         logger.info("Quantization config: %s", quantization_config)
         self.model = AutoModelForImageTextToText.from_pretrained(
@@ -64,9 +71,6 @@ class ModelService:
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.est_charge = True
         logger.info("LLM chargé avec succès.")
-
-    def get_chat_model(self):
-        raise NotImplementedError("Utilisez generate_with_tools directement en mode transformers.")
 
     def invoke_simple(self, prompt: str) -> str:
 
@@ -88,126 +92,89 @@ class ModelService:
         generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
         return self.processor.decode(generated_ids, skip_special_tokens=True)
 
-    def generate_with_tools(self, lc_messages: List[BaseMessage], tools: List[Any]) -> AIMessage:
-        logger.info(f"[ModelService] Préparation de {len(lc_messages)} messages pour le LLM.")
-        logger.debug("[ModelService] Étape 1/4 : Conversion des messages LangChain -> HuggingFace")
-        hf_messages = []
-        for m in lc_messages:
-            if isinstance(m, HumanMessage):
-                if isinstance(m.content, list):
-                    content_list = []
-                    for part in m.content:
-                        if part.get("type") == "text":
-                            content_list.append({"type": "text", "text": part["text"]})
-                        elif part.get("type") == "image_url":
-                            img_uri = part["image_url"]["url"]
-                            if img_uri.startswith("data:image") and "base64," in img_uri:
-                                header, b64_data = img_uri.split("base64,", 1)
-                                missing_padding = len(b64_data) % 4
-                                if missing_padding:
-                                    b64_data += "=" * (4 - missing_padding)
-                                img_uri = header + "base64," + b64_data
-                            content_list.append({"type": "image", "image": img_uri})
-                    hf_messages.append({"role": "user", "content": content_list})
-                else:
-                    hf_messages.append({"role": "user", "content": m.content})
-            elif isinstance(m, AIMessage):
-                if m.tool_calls:
-                    hf_messages.append({
-                        "role": "assistant", 
-                        "content": m.content or "",
-                        "tool_calls": [
-                            {
-                                "type": "function",
-                                "function": {
-                                    "name": tc["name"],
-                                    "arguments": tc["args"]
-                                }
-                            } for tc in m.tool_calls
-                        ]
-                    })
-                else:
-                    hf_messages.append({"role": "assistant", "content": m.content})
-            elif isinstance(m, ToolMessage):
-                # Qwen 2.5/3 attend le rôle 'tool' avec le nom et le contenu
-                hf_messages.append({
-                    "role": "tool", 
-                    "name": m.name, 
-                    "content": str(m.content)
-                })
-            elif isinstance(m, SystemMessage):
-                hf_messages.append({"role": "system", "content": m.content})
 
-        logger.debug(f"[ModelService] Étape 2/4 : Conversion de {len(tools)} outils.")
-        hf_tools = [convert_to_openai_tool(t) for t in tools]
+
+    def generer_reponse_pour_savoir_si_tool_necessaire_ou_pas(self, langchain_messages_du_graph: list, tools: list) -> AIMessage:
+        """
+        Prend l'historique LangChain, l'envoie à Qwen, et renvoie un AIMessage
+        compris par LangGraph (avec ou sans tool_calls).
+        """
         
-        # Free up cache before starting a big inference
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        qwen_messages_parses = []
+        for message in langchain_messages_du_graph:
+            if isinstance(message, HumanMessage):
+                # C'est ici qu'on gère tes images base64 ou tes textes
+                if isinstance(message.content, list):
+                    content_parts = []
+                    for part in message.content:
+                        if part.get("type") == "image_url":
+                            # Conversion LangChain (OpenAI) vers format Qwen-VL
+                            content_parts.append({
+                                "type": "image",
+                                "image": part["image_url"]["url"]
+                            })
+                        elif part.get("type") == "text":
+                            content_parts.append(part)
+                        else:
+                            content_parts.append(part)
+                    qwen_messages_parses.append({"role": "user", "content": content_parts})
+                else:
+                    qwen_messages_parses.append({"role": "user", "content": [{"type": "text", "text": message.content}]})
 
-        logger.info(f"[ModelService] {len(tools)} outils mis à disposition du LLM.")
-        logger.debug("[ModelService] Étape 3/4 : Application du chat_template (formatage textuel).")
-        try:
-            text_prompt = self.processor.apply_chat_template(
-                hf_messages, 
-                tools=hf_tools, 
-                tokenize=False, 
-                add_generation_prompt=True
+            elif isinstance(message, AIMessage):
+                qwen_messages_parses.append({"role": "assistant", "content": message.content})
+
+            elif isinstance(message, ToolMessage):
+                qwen_messages_parses.append({"role": "tool", "name": message.name, "content": str(message.content)})
+
+            elif isinstance(message, SystemMessage):
+                qwen_messages_parses.append({"role": "system", "content": message.content})
+
+        qwen_tools = [convert_to_openai_tool(t) for t in tools]
+
+        #qwen + inférence
+        text_prompt = self.processor.apply_chat_template(
+            qwen_messages_parses, 
+            tools=qwen_tools, 
+            tokenize=False, 
+            add_generation_prompt=True
+        )
+        
+        image_inputs, video_inputs = process_vision_info(qwen_messages_parses)
+        inputs = self.processor(
+            text=[text_prompt],
+            images=image_inputs,
+            videos=video_inputs,
+            padding=True,
+            return_tensors="pt"
+        ).to(self.model.device)
+
+        
+        with torch.no_grad():
+            output_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=2048,
+                do_sample=True,
+                temperature=0.7,
             )
-        except Exception as e:
-            logger.error("Erreur lors de l'appel à apply_chat_template. Messages: %s, Tools: %s", hf_messages, hf_tools)
-            raise e
             
-        logger.debug("[ModelService] Préparation des tenseurs (processing images/textes)...")
-        try:
-            image_inputs, video_inputs = process_vision_info(hf_messages)
-            inputs = self.processor(
-                text=[text_prompt],
-                images=image_inputs,
-                videos=video_inputs,
-                padding=True,
-                return_tensors="pt"
-            ).to(self.model.device)
-        except Exception as e:
-            logger.warning("Impossible de traiter l'image avec qwen_vl_utils: %s", e)
-            inputs = self.processor(text=[text_prompt], return_tensors="pt").to(self.model.device)
-
-        import time
-        logger.debug(f"[ModelService] Étape 4/4 : Lancement de l'inférence (model.generate) avec {inputs['input_ids'].shape[-1]} tokens en entrée...")
-        start_time = time.time()
-        try:
-            with torch.no_grad():
-                output_ids = self.model.generate(
-                    **inputs,
-                    max_new_tokens=self.config_agent.max_new_tokens,
-                    do_sample=self.config_agent.do_sample,
-                    temperature=self.config_agent.temperature,
-                )
-            
-            duree = time.time() - start_time
-            logger.debug(f"[ModelService] Inférence terminée avec succès en {duree:.2f} secondes.")
-        except torch.OutOfMemoryError as e:
-            logger.error(f"CUDA Out of memory lors de la génération: {e}. On vide le cache.")
-            torch.cuda.empty_cache()
-            return AIMessage(content="[Erreur Technique] Le modèle a manqué de mémoire vidéo (OOM). Veuillez relancer la requête ou réduire la taille de l'historique.", tool_calls=[])
-
         generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
-        response_text = self.processor.decode(generated_ids, skip_special_tokens=True)
+        reponse_brute = self.processor.decode(generated_ids, skip_special_tokens=True)
 
-        tool_calls = []
-        content = response_text
+        #parsing pour langchain
+        tool_calls_langchain = []
+        texte_nettoye = reponse_brute
 
-        logger.info("\n" + "="*50 + "\n[ModelService] RÉPONSE BRUTE DU MODÈLE :\n" + response_text + "\n" + "="*50)
+        texte_nettoye = self.nettoyer_reponse_llm_brute(reponse_brute, tool_calls_langchain)
 
-
-        reponse_nettoyee = ModelService.nettoyer_reponse_llm_brute(content,tool_calls)
-
-        logger.info("\n" + "="*50 + "\n[ModelService] RÉPONSE NETTOYÉE (affichée/lue à l'utilisateur) :\n" + reponse_nettoyee + "\n" + "="*50)
-
-        return AIMessage(content=reponse_nettoyee, tool_calls=tool_calls)
+        return AIMessage(
+            content=texte_nettoye, 
+            tool_calls=tool_calls_langchain
+            )
 
     @staticmethod
     def nettoyer_reponse_llm_brute(reponse_brute: str, tool_calls: Optional[List] = None) -> str:
+
         if tool_calls is None:
             tool_calls = []
             
@@ -259,7 +226,7 @@ class ModelService:
         # 4. Détecter un raisonnement interne non bailisé (anglais, style chain-of-thought)
         #    Si la réponse commence par des marqueurs de raisonnement, on cherche la vraie réponse.
         MARQUEURS_RAISONNEMENT = (
-            "The user", "Let me", "Let's", "Wait,", "Wait ", "Hmm", "However,",
+            "Thinking Process:", "Thinking Process", "The user", "Let me", "Let's", "Wait,", "Wait ", "Hmm", "However,",
             "Actually,", "Looking at", "I need to", "I should", "I must",
             "First,", "So,", "OK,", "Okay,", "Alright,",
         )
@@ -285,5 +252,61 @@ class ModelService:
         return content.strip()
 
 
-MODEL_SERVICE = ModelService()
+    def poser_question_sur_image(self, prompt: str, chemin_image: str) -> str:
 
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image", "image": chemin_image},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+
+        text_prompt = self.processor.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True 
+        )
+
+        image_inputs, video_inputs = process_vision_info(messages)  
+        print("images inputs ",image_inputs)
+        inputs = self.processor(
+            text=[text_prompt],
+            images=image_inputs,
+            videos=video_inputs,
+            padding=True,
+            return_tensors="pt"
+        ).to(self.model.device)
+
+        print("Génération en cours...")
+        with torch.no_grad():
+            output_ids = self.model.generate(
+                **inputs,
+                max_new_tokens=CONFIGURATION.qwen.max_new_tokens,
+                temperature=CONFIGURATION.qwen.temperature,
+                do_sample=CONFIGURATION.qwen.do_sample)
+            
+            
+        generated_ids = output_ids[0][inputs["input_ids"].shape[-1]:]
+        reponse_texte = self.processor.decode(generated_ids, skip_special_tokens=True)
+
+        return reponse_texte
+
+# Singleton paresseux : le modèle n'est chargé qu'au premier appel de get_model_service()
+# Cela évite de charger 18 Go en VRAM lors d'un simple `import` du module.
+_model_service_instance: ModelService | None = None
+
+def get_model_service(model_id: str = None, load_in_4bit: bool = True) -> ModelService:
+    global _model_service_instance
+    if _model_service_instance is None:
+        _model_service_instance = ModelService(model_id=model_id, load_in_4bit=load_in_4bit)
+    return _model_service_instance
+
+# Alias de compatibilité : les modules existants peuvent continuer à importer MODEL_SERVICE
+# sans modification. L'instanciation reste différée au premier accès via __getattr__.
+class _LazyProxy:
+    """Proxy transparent qui instancie ModelService au premier accès d'attribut."""
+    def __getattr__(self, name):
+        return getattr(get_model_service(), name)
+
+MODEL_SERVICE: ModelService = _LazyProxy()  # type: ignore

@@ -84,7 +84,7 @@ def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
         else : 
             raise ValueError("la valeur de ce topic est pas attendue",topic)
 
-        resultat_llm = INSTANCE_AGENT.handle(entree_agent)
+        resultat_llm = INSTANCE_AGENT.handle(entree_agent,True)
         if resultat_llm.response != None : 
             resultat_json = resultat_llm.model_dump_json()
             print("résultat json à publier",resultat_json)
