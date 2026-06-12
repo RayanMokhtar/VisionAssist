@@ -1,0 +1,108 @@
+[
+  {
+    "id": "54",
+    "content": "Utilisateur: je vais manger des pâtes a la créme ce soir  avec de la viande hachée\nAssistant: C'est un excellent choix pour ce soir ! Les pâtes à la crème avec de la viande hachée sont vraiment délicieuses. Bonne appétit !",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "58966e3f-13fe-4b55-916f-de7e9cd6541f",
+      "timestamp": "2026-06-12T12:43:14"
+    },
+    "_faiss_pos": 0
+  },
+  {
+    "id": "55",
+    "content": "Utilisateur: salut, tu peux me rappeller ce que je voulais manger ce soir ? \nAssistant: Désolé, je n'ai pas de souvenir de ce que vous vouliez manger ce soir dans nos conversations récentes.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "8488f5a4-0c92-4a8d-899f-98326d94bd9a",
+      "timestamp": "2026-06-12T12:47:46"
+    },
+    "_faiss_pos": 1
+  },
+  {
+    "id": "56",
+    "content": "Utilisateur: qu'est ce que je voulais manger ce soir déja ?\nAssistant: D'après nos conversations récentes, vous aviez dit que vous alliez manger des pâtes à la crème avec de la viande hachée ce soir.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "7acd7de5-09de-4133-9201-19ded836b723",
+      "timestamp": "2026-06-12T12:54:02"
+    },
+    "_faiss_pos": 2
+  },
+  {
+    "id": "57",
+    "content": "Utilisateur: peux tu me rappeler de quelle viande je vais mettre dans mes pates ce soir ?\nAssistant: D'après nos conversations récentes, vous aviez prévu de mettre de la **viande hachée** dans vos pâtes ce soir. Bonne appétit !",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "c445e5d6-dded-494e-9c29-791936f41cb2",
+      "timestamp": "2026-06-12T13:12:10"
+    },
+    "_faiss_pos": 3
+  },
+  {
+    "id": "58",
+    "content": "Utilisateur: je t'avais dit que j'allais manger quoi déja ?\nAssistant: D'après nos conversations, vous aviez dit que vous alliez manger des **pâtes à la crème avec de la viande hachée** ce soir.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "e070a84d-d04c-424d-9e96-81698a5d11bc",
+      "timestamp": "2026-06-12T13:15:53"
+    },
+    "_faiss_pos": 4
+  },
+  {
+    "id": "59",
+    "content": "Utilisateur: ma batterie de lipo 4000 a gonflée, est ce que je peux la percer pour laisser échaper le gaz ?\nAssistant: **Non, ne percez jamais une batterie LiPo gonflée !** C'est extrêmement dangereux.\n\nUne batterie gonflée est instable et peut exploser ou prendre feu si vous la percez, la percez ou la manipulez brutalement.\n\n**Ce que vous devez faire :**\n1. **Éloignez-vous** de la batterie immédiatement\n2. **Ne la chargez plus**\n3. **Ne la percez pas**\n4. **Déposez-la dans un centre de recyclage** ou chez un professionnel qui sait la détruire en sécurité\n5. Si elle est chaude ou dégage une odeur, appelez les pompiers (18 ou 112)\n\nVotre sécurité est prioritaire. Une batterie LiPo défectiveuse peut causer un incendie grave.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "e070a84d-d04c-424d-9e96-81698a5d11bc",
+      "timestamp": "2026-06-12T13:27:18"
+    },
+    "_faiss_pos": 5
+  },
+  {
+    "id": "60",
+    "content": "Utilisateur: cétait quoi déja la référence de ma lipo ? et elle avait quoi comme probléme ?\nAssistant: D'après nos échanges, vous aviez mentionné une **batterie LiPo de 4000 mAh** (probablement 4000 milliampères-heures) qui avait **gonflé**.\n\nJe n'ai pas de mémoire sur la référence exacte du fabricant ou le modèle précis, ni sur d'autres problèmes spécifiques mentionnés précédemment. La seule information stockée est qu'elle a gonflé.\n\nRappel important : Une batterie gonflée doit être traitée avec la plus grande prudence et déposée dans un centre de recyclage spécialisé.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "e070a84d-d04c-424d-9e96-81698a5d11bc",
+      "timestamp": "2026-06-12T13:29:32"
+    },
+    "_faiss_pos": 6
+  },
+  {
+    "id": "61",
+    "content": "Utilisateur: quel probléme récent je t'avais décris déja ?\nAssistant: D'après nos échanges récents, vous m'aviez décrit un problème avec votre **batterie LiPo de 4000 mAh** qui avait **gonflé**.\n\nJe n'ai pas d'informations sur une référence de modèle ou de fabricant précise, mais c'est le seul problème technique que vous m'ayez signalé récemment.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "82411fba-05d6-4ed9-b771-4469038a36c2",
+      "timestamp": "2026-06-12T13:39:38"
+    }
+  },
+  {
+    "id": "62",
+    "content": "Utilisateur: je vais manger quoi ce soir déja ?\nAssistant: C'est une bonne question ! Pour ce soir, vous pourriez préparer quelque chose de simple et réconfortant. Voici quelques idées :\n\n- Une omelette aux légumes\n- Des pâtes à la carbonara\n- Un plat de riz avec du poulet et des légumes\n- Une soupe avec un sandwich\n- Des sushis si vous aimez le japonais\n\nSouhaitez-vous que je recherche un restaurant ou une épicerie à proximité pour vous aider ?",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "17acfc1b-38ad-4056-925e-71ca3e7e9a4c",
+      "timestamp": "2026-06-12T13:47:42"
+    }
+  },
+  {
+    "id": "63",
+    "content": "Utilisateur: peux tu me rappeler ce que je voulais manger ce soir ?\nAssistant: D'après nos conversations récentes, vous aviez dit que vous alliez manger des pâtes à la crème avec de la viande hachée ce soir.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "17acfc1b-38ad-4056-925e-71ca3e7e9a4c",
+      "timestamp": "2026-06-12T13:49:25"
+    }
+  },
+  {
+    "id": "64",
+    "content": "Utilisateur: qu'est ce que je voulais manger déja ?\nAssistant: D'après nos conversations récentes, vous aviez dit que vous alliez manger des pâtes à la crème avec de la viande hachée ce soir.",
+    "metadata": {
+      "user_id": "test_user",
+      "session_id": "fbe4c9f6-8958-4e2d-8358-cb4bd6b17341",
+      "timestamp": "2026-06-12T13:54:32"
+    }
+  }
+]

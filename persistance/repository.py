@@ -124,6 +124,22 @@ class MessageRepository(BaseRepository):
         self.db.commit()
         return msg
 
+    def list_for_user_in_period(self, user_id: int, days_back: int = 7, limit: int = 200) -> List[Message]:
+        """Récupère les messages des N derniers jours pour un utilisateur.
+
+        Joint les sessions pour filtrer par user_id et par intervalle de dates.
+        """
+        from datetime import datetime, timedelta
+        cutoff = datetime.now() - timedelta(days=days_back)
+        return (
+            self.db.query(Message)
+            .join(SessionModel, Message.session_id == SessionModel.session_id)
+            .filter(SessionModel.user_id == user_id, Message.timestamp >= cutoff)
+            .order_by(Message.timestamp.asc())
+            .limit(limit)
+            .all()
+        )
+
     def delete(self, msg: Message) -> None:
         self.db.delete(msg)
         self.db.commit()

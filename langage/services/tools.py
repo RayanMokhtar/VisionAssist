@@ -9,8 +9,7 @@ Outils disponibles :
     - get_weather         : météo via OpenMeteo
     - search_nearby_place : recherche de lieu via Nominatim/OSM
     - get_transit_info    : horaires SNCF/IDF
-    - save_note           : sauvegarde une note/rappel en BDD
-    - query_memory        : recherche RAG dans la mémoire long terme
+    - query_memory        : recherche RAG dans les messages de conversation
 """
 
 from __future__ import annotations
@@ -18,18 +17,15 @@ from __future__ import annotations
 import datetime as _dt
 import logging
 import subprocess
-from typing import List
+from typing import List, Annotated
 
 import requests
 from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
-from typing import Annotated
 
 import os
-from langage.database.engine import get_db
-from langage.database.repositories import note_repo
 from langage.database.vector_store import vector_store
-from langage.memory.long_term import long_term_memory
+from persistance.repository import REPOSITORIES
 
 logger = logging.getLogger(__name__)
 
@@ -219,65 +215,57 @@ def search_nearby_place(query: str, latitude: float, longitude: float) -> str:
 
 
 @tool
-def save_note(content: str, category: str = "general", state: Annotated[dict, InjectedState] = None) -> str:
-    """Sauvegarde une note ou un rappel important pour l'utilisateur.
-    Utile quand l'utilisateur dit 'rappelle-moi que...', 'note que...',
-    ou 'souviens-toi de...'.
+def query_memory(query: str, days_back: int = 7, state: Annotated[dict, InjectedState] = None) -> str:
+    """Recherche dans la mémoire conversationnelle de l'utilisateur.
+    Utilise la recherche sémantique (RAG) sur les messages des sessions passées.
+    Utile quand l'utilisateur demande 'qu'est-ce qu'on a dit hier ?',
+    'rappelle-moi qui m'a demandé un stylo', 'on avait parlé de quoi ?'.
 
     Args:
-        content: Le contenu de la note à sauvegarder.
-        category: Catégorie de la note ('rappel', 'lieu', 'contact', 'general').
+        query: La question ou le sujet à rechercher dans les conversations passées.
+        days_back: Nombre de jours en arrière à parcourir (défaut 7). Si l'utilisateur mentionne 'il y a 3 jours', mettre 3.
     """
-    logger.info("📝 [TOOL] save_note appelé : category='%s' content='%s'", category, content[:80])
-    user_id = (state or {}).get("user_id", "default_user")
-    session_id = (state or {}).get("session_id", "default_session")
+    import datetime
+    logger.info("[TOOL] query_memory : query='%s' days_back=%d", query, days_back)
+    user_id = str((state or {}).get("user_id", "default_user"))
+    cutoff = datetime.datetime.now() - datetime.timedelta(days=days_back)
 
     try:
-        with get_db() as db:
-            note = note_repo.add_note(
-                db=db,
-                user_id=user_id,
-                content=content,
-                category=category,
-                session_id=session_id,
-            )
-            long_term_memory.index_user_note(
-                doc_id=note.id,
-                content=content,
-                user_id=user_id,
-                category=category,
-            )
-
-        result = f"Note sauvegardée avec succès : « {content[:80]} »"
-        _log_tool("save_note", result)
-        return result
-
-    except Exception as e:
-        logger.error("Erreur sauvegarde note : %s", e)
-        result = "Désolé, impossible de sauvegarder la note pour le moment."
-        _log_tool("save_note", result)
-        return result
-
-
-@tool
-def query_memory(query: str, state: Annotated[dict, InjectedState] = None) -> str:
-    """Recherche dans la mémoire long terme de l'utilisateur.
-    Utile quand l'utilisateur demande 'qu'est-ce qu'on a fait hier ?',
-    'on avait parlé de quoi ?', 'rappelle-moi ce que j'avais dit sur...'.
-
-    Args:
-        query: La question ou le sujet à rechercher dans la mémoire.
-    """
-    logger.info("🧠 [TOOL] query_memory appelé : query='%s'", query)
-    user_id = (state or {}).get("user_id", "default_user")
-
-    try:
-        results = long_term_memory.search(
+        # Recherche sémantique FAISS — filtre user_id dans les métadonnées
+        raw_results = vector_store.search(
+            collection_name="conversation_messages",
             query=query,
-            user_id=user_id,
-            n_results=5,
+            n_results=20,  # On en récupère plus pour filtrer ensuite par date
+            where={"user_id": user_id},
         )
-        result = long_term_memory.format_search_results(results)
+
+        # Filtrer côté Python sur la fenêtre temporelle
+        results = []
+        for r in raw_results:
+            ts_str = r.get("metadata", {}).get("timestamp", "")
+            try:
+                ts = datetime.datetime.fromisoformat(ts_str) if ts_str else datetime.datetime.min
+            except ValueError:
+                ts = datetime.datetime.min
+            if ts >= cutoff:
+                results.append(r)
+
+        results = results[:5]  # Garder les 5 meilleurs (déjà triés par pertinence FAISS)
+
+        if not results:
+            result = f"Aucun échange pertinent trouvé pour '{query}' dans les {days_back} derniers jours."
+            _log_tool("query_memory", result)
+            return result
+
+        # Formater les résultats pour le LLM
+        lines = []
+        for i, r in enumerate(results, 1):
+            date = r.get("metadata", {}).get("timestamp", "")[:16].replace("T", " ")
+            score = 1.0 - r.get("distance", 1.0)
+            prefix = f"[{date}] (pertinence: {score:.0%})" if date else f"(pertinence: {score:.0%})"
+            lines.append(f"{i}. {prefix} {r['content'][:400]}")
+
+        result = "Voici les échanges passés les plus pertinents :\n" + "\n".join(lines)
         _log_tool("query_memory", result)
         return result
 
@@ -580,6 +568,5 @@ def get_all_tools() -> List:
         get_weather,
         search_nearby_place,
         get_transit_info,
-        save_note,
         query_memory,
     ]

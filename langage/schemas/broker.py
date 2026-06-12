@@ -28,5 +28,5 @@ class AgentResponse(BaseModel):
     session_id: Optional[str] = ""
     user_id: str = "default"
     response: Optional[str] = None
-    tool_calls_made: List[str] = Field(default_factory=list)
+    tool_calls_made: List[dict] = Field(default_factory=list)
     error: Optional[str] = None

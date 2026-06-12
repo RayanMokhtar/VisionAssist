@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import os 
+import time
 import json
 import logging
-import uuid
-from typing import TypedDict, Annotated, List, Optional
+from typing import TypedDict, Annotated, Optional
 
-from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, ToolMessage, AIMessage
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
@@ -15,18 +14,18 @@ from langage.schemas.broker import BrokerRequest, AgentResponse
 from langage.services.model import MODEL_SERVICE, ModelService
 from langage.services.tools import get_all_tools
 from langage.memory.short_term import ConversationBuffer
-from langage.memory.long_term import long_term_memory
+from langage.database.vector_store import vector_store
 from persistance.repository import REPOSITORIES
 from persistance.models import Session as SessionModel
-from security.authentification_client import SessionAuthentifiee
 from configuration import CONFIGURATION
+
 logger = logging.getLogger(__name__)
 
 BASE_PROMPT = f"""Tu es {CONFIGURATION.nom_assistant}, un assistant vocal intelligent conçu pour aider une personne malvoyante.
 
 LANGUE : Tu DOIS répondre UNIQUEMENT en français. Ne réponds jamais en anglais, ni dans une autre langue.
 
-Tu peux utiliser tes outils : météo, lieux proches, prochains transports, notes, mémoire.
+Tu peux utiliser tes outils : météo, lieux proches, prochains transports, mémoire conversationnelle.
 
 RÈGLES STRICTES :
 1. RÉPONSE DIRECTE UNIQUEMENT. Donne immédiatement la réponse, sans jamais expliquer ta démarche.
@@ -36,161 +35,236 @@ RÈGLES STRICTES :
 
 Pour l'heure/date : utilise toujours l'outil get_current_time.
 Pour les transports : utilise toujours l'outil get_transit_info.
+Pour se souvenir d'une conversation passée : utilise l'outil query_memory.
 """
-
-
-BASE_PROMPT_SIMPLE = f"""Tu es un assistant vocal intelligent conçu pour aider une personne malvoyante. Tu DOIS répondre UNIQUEMENT en français de manière brève."""
 
 
 class AgentState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
     user_id: str
     session_id: str
-    tool_calls_made: list[str]
-
+    tool_calls_made: list[dict]
 
 
 class QwenAgent:
 
-    def __init__(self, model_service : ModelService):
+    def __init__(self, model_service: ModelService):
         self.model_service = model_service
         self.tools = get_all_tools()
-        self.graph = self.initialisation_graph()    
+        self.graph = self._build_graph()
 
-    def _appel_noeud(self, state: AgentState):
-
-        response = self.model_service.generer_reponse_pour_savoir_si_tool_necessaire_ou_pas(state["messages"], self.tools)
-
+    def _call_model(self, state: AgentState):
+        response = self.model_service.generer_reponse_pour_savoir_si_tool_necessaire_ou_pas(
+            state["messages"], self.tools
+        )
         if response.tool_calls:
-            logger.info(f"[Agent] Le modèle a décidé d'utiliser des outils : {[tc['name'] for tc in response.tool_calls]}")
+            logger.info("[Agent] Outils appelés : %s", [tc["name"] for tc in response.tool_calls])
             for tc in response.tool_calls:
-                state["tool_calls_made"].append(tc["name"])
+                state["tool_calls_made"].append({"name": tc["name"], "args": tc["args"]})
         else:
-            logger.info("[Agent] Le modèle a généré une réponse finale directe.")
-
+            logger.info("[Agent] Réponse directe générée.")
         return {"messages": [response]}
 
-    def _doit_poursuivre_si_tool_present(self,state: AgentState):
-        logger.debug("Vérification si on poursuit")
-        last_message = state["messages"][-1]
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            logger.info("On continue car tool_calls présents dans le message du modèle")
+    def _should_continue(self, state: AgentState):
+        last = state["messages"][-1]
+        if hasattr(last, "tool_calls") and last.tool_calls:
             return "tools"
-        else :
-            logger.info("Pas de tool_calls présents dans le message du modèle, on termine")
-            return END
+        return END
 
-
-    def initialisation_graph(self):
-
-        tool_node = ToolNode(self.tools)
-
+    def _build_graph(self):
         workflow = StateGraph(AgentState)
-        workflow.add_node("agent", self._appel_noeud)
-        workflow.add_node("tools", tool_node)
-
+        workflow.add_node("agent", self._call_model)
+        workflow.add_node("tools", ToolNode(self.tools))
         workflow.add_edge(START, "agent")
-        workflow.add_conditional_edges("agent", self._doit_poursuivre_si_tool_present, ["tools", END])
+        workflow.add_conditional_edges("agent", self._should_continue, ["tools", END])
         workflow.add_edge("tools", "agent")
-
         return workflow.compile()
 
     def _build_system_prompt(self, session_model: Optional[SessionModel]) -> SystemMessage:
-        prompt = BASE_PROMPT_SIMPLE
+        prompt = BASE_PROMPT
         if session_model:
             if session_model.resume:
                 prompt += f"\n\nCONTEXTE PRÉCÉDENT :\n{session_model.resume}"
             try:
-                if (user := REPOSITORIES.users.get(session_model.user_id)) and user.preferences:
+                user = REPOSITORIES.users.get(session_model.user_id)
+                if user and user.preferences:
                     prompt += f"\n\nPRÉFÉRENCES UTILISATEUR :\n{json.dumps(user.preferences, ensure_ascii=False)}"
             except Exception as e:
-                logger.warning(f"Erreur préférences (user={session_model.user_id}): {e}")
+                logger.warning("Erreur préférences (user=%s): %s", session_model.user_id, e)
         return SystemMessage(content=prompt)
 
-    def handle(self, request: BrokerRequest , mode_simple_sans_memoire : bool = False) -> AgentResponse:
-        
-        if mode_simple_sans_memoire :
-            logger.info("Mode SIMPLE SANS MÉMOIRE activé pour la requête %s", request.request_id)
+    def handle(self, request: BrokerRequest, mode_simple_sans_memoire: bool = False) -> AgentResponse:
+        if mode_simple_sans_memoire:
+            logger.info("Mode SIMPLE SANS MÉMOIRE : %s", request.request_id)
             reponse = self.model_service.poser_question_sur_image(request.text, request.image_url)
             return AgentResponse(
                 request_id=request.request_id,
                 session_id=request.session_authentifiee.session_id if request.session_authentifiee else "",
                 user_id=request.user_id,
-                response=reponse
-            )
-        else : 
-            logger.info("Réception requête Broker: %s", request.request_id)
-            
-            try:
-                session = REPOSITORIES.sessions.get(session_id=request.session_authentifiee.session_id) if request.session_authentifiee else None
-                user_id = session.user_id if session else request.user_id
-            except ValueError:
-                logger.warning(f"user_id invalide {request.user_id}, session mockée")
-
-
-            user_content = request.text
-            if request.image_url:
-                user_content += f"\n[Image attachée: {request.image_url}]"
-
-            # Charger l'historique AVANT de sauvegarder la requête actuelle
-            # => le buffer contient uniquement les échanges précédents, pas le message actuel
-            buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
-            historique = buffer.get_langchain_messages()
-
-            # Sauvegarder la requête actuelle en base pour la persistance
-            current_db_msg = REPOSITORIES.messages.create(
-                session_id=request.session_authentifiee.session_id,
-                requete=user_content
+                response=reponse,
             )
 
-            system_message = self._build_system_prompt(session_model=session)
+        logger.info("Réception requête Broker: %s", request.request_id)
 
-            # Construire le message utilisateur courant (toujours depuis request, jamais depuis le buffer)
-            if request.image_url:
-                img_b64 = request.image_url
-                base_text = request.text
-                current_user_msg = HumanMessage(content=[
-                    {"type": "image_url", "image_url": {"url": img_b64}},
-                    {"type": "text", "text": base_text},
-                ])
-            else:
-                current_user_msg = HumanMessage(content=request.text)
+        try:
+            session = REPOSITORIES.sessions.get(
+                session_id=request.session_authentifiee.session_id
+            ) if request.session_authentifiee else None
+        except ValueError:
+            logger.warning("user_id invalide %s, session mockée", request.user_id)
+            session = None
 
-            # [System] + [historique complet] + [message actuel]
-            messages_for_llm = [system_message] + historique + [current_user_msg]
+        user_content = request.text
+        if request.image_url:
+            user_content += f"\n[Image attachée: {request.image_url}]"
 
-            initial_state = {
-                "messages": messages_for_llm,
-                "user_id": request.user_id,
-                "session_id": request.session_authentifiee.session_id,
-                "tool_calls_made": []
-            }
+        buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
+        historique = buffer.get_langchain_messages()
+
+        current_db_msg = REPOSITORIES.messages.create(
+            session_id=request.session_authentifiee.session_id,
+            requete=user_content,
+        )
+
+        system_message = self._build_system_prompt(session_model=session)
+
+        if request.image_url:
+            current_user_msg = HumanMessage(content=[
+                {"type": "image_url", "image_url": {"url": request.image_url}},
+                {"type": "text", "text": request.text},
+            ])
+        else:
+            current_user_msg = HumanMessage(content=request.text)
+
+        initial_state = {
+            "messages": [system_message] + historique + [current_user_msg],
+            "user_id": request.user_id,
+            "session_id": request.session_authentifiee.session_id,
+            "tool_calls_made": [],
+        }
+
+        try:
+            final_state = self.graph.invoke(initial_state)
+            response_text = final_state["messages"][-1].content
+
+            REPOSITORIES.messages.update_response(current_db_msg, reponse=response_text)
 
             try:
-                print("début state messages ", initial_state["messages"])
-                final_state = self.graph.invoke(initial_state)
-                print("final state messages ", final_state["messages"])
-                last_message = final_state["messages"][-1]
-                response_text = last_message.content
-
-                REPOSITORIES.messages.update_response(current_db_msg, reponse=response_text)
-                
-                for tc in final_state["tool_calls_made"]:
-                    logger.info("Tool utilisé: %s", tc)
-
-                return AgentResponse(
-                    request_id=request.request_id,
-                    session_id=request.session_authentifiee.session_id,
-                    user_id=request.user_id,
-                    response=response_text,
-                    tool_calls_made=final_state["tool_calls_made"]
+                t0 = time.time()
+                vector_store.index_document(
+                    collection_name="conversation_messages",
+                    doc_id=str(current_db_msg.message_id),
+                    content=f"Utilisateur: {user_content}\nAssistant: {response_text}",
+                    metadata={
+                        "user_id": str(request.user_id),
+                        "session_id": str(request.session_authentifiee.session_id),
+                        "timestamp": current_db_msg.timestamp.isoformat() if current_db_msg.timestamp else "",
+                    },
                 )
-
+                logger.info("Indexation FAISS : %.2f s", time.time() - t0)
             except Exception as e:
-                logger.exception("Erreur lors de l'exécution de l'agent")
-                return AgentResponse(
-                    request_id=request.request_id,
-                    session_id=request.session_authentifiee.session_id,
-                    user_id=request.user_id,
-                    error=str(e)
+                logger.warning("Erreur indexation FAISS : %s", e)
+
+            for tc in final_state["tool_calls_made"]:
+                logger.info("Tool utilisé: %s", tc)
+
+            return AgentResponse(
+                request_id=request.request_id,
+                session_id=request.session_authentifiee.session_id,
+                user_id=request.user_id,
+                response=response_text,
+                tool_calls_made=final_state["tool_calls_made"],
+            )
+
+        except Exception as e:
+            logger.exception("Erreur lors de l'exécution de l'agent")
+            return AgentResponse(
+                request_id=request.request_id,
+                session_id=request.session_authentifiee.session_id,
+                user_id=request.user_id,
+                error=str(e),
+            )
+
+    def stream_handle(self, request: BrokerRequest):
+        """Yields intermediate state events from LangGraph, then final AgentResponse."""
+        logger.info("Début stream_handle pour requête: %s", request.request_id)
+
+        try:
+            session = REPOSITORIES.sessions.get(
+                session_id=request.session_authentifiee.session_id
+            ) if request.session_authentifiee else None
+        except ValueError:
+            session = None
+
+        user_content = request.text
+        if request.image_url:
+            user_content += f"\n[Image attachée: {request.image_url}]"
+
+        buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
+        historique = buffer.get_langchain_messages()
+
+        current_db_msg = REPOSITORIES.messages.create(
+            session_id=request.session_authentifiee.session_id,
+            requete=user_content,
+        )
+
+        system_message = self._build_system_prompt(session_model=session)
+
+        if request.image_url:
+            current_user_msg = HumanMessage(content=[
+                {"type": "image_url", "image_url": {"url": request.image_url}},
+                {"type": "text", "text": request.text},
+            ])
+        else:
+            current_user_msg = HumanMessage(content=request.text)
+
+        initial_state = {
+            "messages": [system_message] + historique + [current_user_msg],
+            "user_id": request.user_id,
+            "session_id": request.session_authentifiee.session_id,
+            "tool_calls_made": [],
+        }
+
+        try:
+            # Yield events from the graph
+            for event in self.graph.stream(initial_state):
+                yield {"type": "stream_event", "event": event}
+
+            # Retrieve final state by invoking again or using the last event
+            final_state = self.graph.invoke(initial_state)
+            response_text = final_state["messages"][-1].content
+
+            REPOSITORIES.messages.update_response(current_db_msg, reponse=response_text)
+
+            try:
+                t0 = time.time()
+                vector_store.index_document(
+                    collection_name="conversation_messages",
+                    doc_id=str(current_db_msg.message_id),
+                    content=f"Utilisateur: {user_content}\nAssistant: {response_text}",
+                    metadata={
+                        "user_id": str(request.user_id),
+                        "session_id": str(request.session_authentifiee.session_id),
+                        "timestamp": current_db_msg.timestamp.isoformat() if current_db_msg.timestamp else "",
+                    },
                 )
+            except Exception as e:
+                logger.warning("Erreur indexation FAISS : %s", e)
+
+            response_obj = AgentResponse(
+                request_id=request.request_id,
+                session_id=request.session_authentifiee.session_id,
+                user_id=request.user_id,
+                response=response_text,
+                tool_calls_made=final_state["tool_calls_made"],
+            )
+            yield {"type": "final_response", "response": response_obj}
+
+        except Exception as e:
+            logger.exception("Erreur lors de l'exécution en stream de l'agent")
+            yield {"type": "final_response", "response": AgentResponse(
+                request_id=request.request_id,
+                session_id=request.session_authentifiee.session_id,
+                user_id=request.user_id,
+                error=str(e),
+            )}
