@@ -7,3 +7,15 @@ Lancer l'ordinateur virtuel en lui donnant accès à ton micro et à ton dossier
 ./run.sh --device /dev/snd -v ~/Documents/VisionAssist:/VisionAssist $(./autotag faster-whisper)
 
 Une fois dedans, lancement code python
+
+
+
+
+
+
+# à faire 
+
+ajouter interruption quand tts parle pour que le son s'arrête 
+
+ajouter les images dans le folder de maniere dynamique (écriture toutes les 2secondes)
+

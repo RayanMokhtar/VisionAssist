@@ -155,20 +155,19 @@ class TextToSpeech:
 
 INSTANCE_TTS = TextToSpeech()
 
-
+CLIENT_BROKER_TTS = get_broker_client("tts-jetson") 
+CLIENT_BROKER_TTS.connexion()
 
 #à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
 def lancement_service_tts(client_id : str = "tts-jetson", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
-    broker = get_broker_client(client_id) # à vori si singelton ou pas 
-    broker.connexion()
-    broker.sabonner(topic_sur_ecoute, INSTANCE_TTS.fonction_trigger)
+    CLIENT_BROKER_TTS.sabonner(topic_sur_ecoute, INSTANCE_TTS.fonction_trigger)
 
     LOGGER.info("TTS en écoute sur topic %s...",topic_sur_ecoute)
     try:
         while True:
-            time.sleep(5)
+            time.sleep(1)
     except KeyboardInterrupt:
-        broker.deconnexion()
+        CLIENT_BROKER_TTS.deconnexion()
         LOGGER.info("TTS arrêté.")
 
 if __name__ == "__main__":

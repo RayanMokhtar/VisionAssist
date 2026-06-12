@@ -148,7 +148,7 @@ class SpeechToText:
                 )
                 # print("data : ",data)  data en little endian
                 energie = audioop.rms(data, 2)  # 2 octets par échantillon
-                # print("energie ",energie)
+                print("energie ",energie)
                 if not parole_detectee: 
                     pre_buffer.append(data)
                     if energie > self.audio_config.seuil_energie:
@@ -231,6 +231,8 @@ class SpeechToText:
                         print("message publié sur le broker : ",CLIENT_BROKER_STT)
                         print("état payload publié : ",pub )
                         actif = False
+                    else : 
+                        print("pas d'instruction claire pour l'assistant")
             except Exception as e : 
                 print("erreur inattenue dans ecoute continue stt",str(e))
             finally : 
