@@ -16,7 +16,7 @@ using namespace cv;
 #define runOnGPU JETSON==1
 #define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
 #define FALLBACK_AVEC_CHEMIN_VIDEO "../../data/vid3.mp4"
-#define USE_IMU 1
+#define USE_IMU 0
 #define MAXDISTANCE 100
 #define MAX_PERSISTANCE 10
 #define RAYON_DETECTION 150
@@ -521,7 +521,7 @@ Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& object
 //         cv::imshow("histogramme", img);
 //     }
 // }
-
+int histoId = 0;
 
 void drawHistogram(const std::vector<ObjectDetected>& objects)
 {
@@ -679,9 +679,8 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
         // Titre
         cv::putText(img,
-                    "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Nhb: " + std::to_string(norme_haut_bas) 
-                    + " Nd: " + std::to_string(norme_droite) + " Ng: " + std::to_string(norme_gauche) 
-                    + " Tnd: " + std::to_string(taux_null_droite) + " Tng: " + std::to_string(taux_null_gauche),
+                    "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Norme haut bas: " + std::to_string(norme_haut_bas) 
+                    + " Norme droite: " + std::to_string(norme_droite) + " Norme gauche: " + std::to_string(norme_gauche),
                     cv::Point(20, 30),
                     cv::FONT_HERSHEY_SIMPLEX,
                     0.8,
@@ -707,6 +706,8 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                     2);
 
         cv::imshow("histogramme", img);
+cv::imwrite("captures/histo_" + std::to_string(histoId) + ".png", img);
+histoId++;
     }
 }
 
@@ -985,7 +986,6 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
                 std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
             }
 
-
             object.ttc = 0.0;
         }
 
@@ -1113,7 +1113,7 @@ int main(int argc, char** argv)
             matOpticalFlow = drawOpticalFlow(deplacement);
             filtredFlow = drawOpticalFlowFiltered(deplacement);
         });
-        
+
         std::vector<YOLO::Detection> yoloDetection;
         
         std::thread threadYolo([&]() {
