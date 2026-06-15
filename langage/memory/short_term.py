@@ -20,6 +20,7 @@ from langchain_core.messages import (
 )
 from persistance.models import Message
 from persistance.repository import REPOSITORIES
+from configuration import CONFIGURATION
 
 logger = logging.getLogger(__name__)
 
@@ -35,10 +36,9 @@ class ConversationBuffer:
     def __init__(
         self,
         session_id: str,
-        max_messages: int = 1,
     ):
         self.session_id = session_id
-        self.max_messages = max_messages  # 4 échanges = ~8 msgs LangChain, limite VRAM
+        self.max_messages = CONFIGURATION.qwen.max_messages_en_memoire 
 
     def get_langchain_messages(self) -> List[BaseMessage]:
         """Charge les messages et les convertit en objets LangChain.
@@ -50,6 +50,7 @@ class ConversationBuffer:
             self.session_id,
             limit=self.max_messages,
         )
+        print("nombre de messages récupérés : ",db_messages)
         return self._convert_to_langchain(db_messages)
 
     def get_message_count(self) -> int:
@@ -59,11 +60,16 @@ class ConversationBuffer:
     @staticmethod
     def _convert_to_langchain(messages: List[Message]) -> List[BaseMessage]:
         """Convertit les messages ORM en objets LangChain."""
+        import re
         lc_messages: List[BaseMessage] = []
 
         for msg in messages:
             if msg.requete:
-                lc_messages.append(HumanMessage(content=msg.requete))
+                # On purge les images base64 de l'historique pour libérer la VRAM (OOM)
+                # L'agent n'a besoin que du texte des conversations passées
+                texte_nettoye = re.sub(r'\[Image attachée:.*?\]', '', msg.requete, flags=re.DOTALL).strip()
+                if texte_nettoye:
+                    lc_messages.append(HumanMessage(content=texte_nettoye))
             if msg.reponse:
                 lc_messages.append(AIMessage(content=msg.reponse))
 

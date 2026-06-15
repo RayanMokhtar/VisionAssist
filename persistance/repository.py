@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy.exc import NoResultFound
 
-from persistance.models import User, Carte, Session as SessionModel, Message, CardStatus
+from persistance.models import User, Carte, Message, CardStatus , Session as SessionModel
 from persistance.database import SESSION_ID
 
 class BaseRepository:

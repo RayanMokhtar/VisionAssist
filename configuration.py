@@ -56,7 +56,7 @@ class TopicConfig(BaseModel):
 
 class BrokerConfig(BaseModel):
     type_broker : Literal["RabbitMQ","mosquitto"] = "mosquitto"
-    host: str = "172.20.10.4"
+    host: str = "172.20.10.4" # adresse ip factice .... à cahgenr dans le .env
     port: int = Field(8883, ge=1, le=65535)
     keepalive: int = 60
     client_id: str = "visionassist-jetson" #TODO à modifier dans serveurito
@@ -65,7 +65,7 @@ class BrokerConfig(BaseModel):
     use_tls: bool = True
     ca_cert: Optional[str] = None
     qos: Literal[0, 1, 2] = 1
-    retain: bool = True
+    retain: bool = False
     topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
 
 
@@ -124,8 +124,7 @@ class QwenConfig(BaseModel):
     port: int = Field(8000,description="port du modele")
     max_image_size_mb: int = Field(10,description="taille max des images")
     device : Literal["cuda","cpu","auto"] = Field("cuda",description="device du modele")
-
-
+    max_messages_en_memoire : int = Field(0, gte=0 , le =100)
 
 class Configuration(BaseSettings):
     model_config = SettingsConfigDict(

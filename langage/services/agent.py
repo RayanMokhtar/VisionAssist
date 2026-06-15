@@ -4,8 +4,9 @@ import time
 import json
 import logging
 from typing import TypedDict, Annotated, Optional
+import re as regex
 
-from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage, AIMessage, ToolMessage
 from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import ToolNode
 from langgraph.graph.message import add_messages
@@ -25,13 +26,14 @@ BASE_PROMPT = f"""Tu es {CONFIGURATION.nom_assistant}, un assistant vocal intell
 
 LANGUE : Tu DOIS répondre UNIQUEMENT en français. Ne réponds jamais en anglais, ni dans une autre langue.
 
-Tu peux utiliser tes outils : météo, lieux proches, prochains transports, mémoire conversationnelle.
+Tu peux utiliser tes outils : météo, lieux proches, prochains transports, mémoire conversationnelle, besoin_image.
 
 RÈGLES STRICTES :
 1. RÉPONSE DIRECTE UNIQUEMENT. Donne immédiatement la réponse, sans jamais expliquer ta démarche.
 2. INTERDIT : 'Je dois...', 'L'utilisateur demande...', 'Wait,', 'Let me...', 'However,', ou tout raisonnement interne.
 3. Phrases courtes, naturelles, adaptées à la voix.
 4. Vouvoiement par défaut.
+5. VISION : Tu ne vois pas l'image par défaut. Si la question de l'utilisateur requiert de voir ce qu'il a devant lui (ex: "qu'est-ce que c'est ?", "lis ce texte"), tu DOIS appeler l'outil `besoin_image`.
 
 Pour l'heure/date : utilise toujours l'outil get_current_time.
 Pour les transports : utilise toujours l'outil get_transit_info.
@@ -44,6 +46,7 @@ class AgentState(TypedDict):
     user_id: str
     session_id: str
     tool_calls_made: list[dict]
+    pending_image_url: Optional[str]
 
 
 class QwenAgent:
@@ -63,6 +66,7 @@ class QwenAgent:
                 state["tool_calls_made"].append({"name": tc["name"], "args": tc["args"]})
         else:
             logger.info("[Agent] Réponse directe générée.")
+            
         return {"messages": [response]}
 
     def _should_continue(self, state: AgentState):
@@ -93,6 +97,35 @@ class QwenAgent:
                 logger.warning("Erreur préférences (user=%s): %s", session_model.user_id, e)
         return SystemMessage(content=prompt)
 
+
+    def nettoyer_texte_reponse(self, response_text: str) -> str:
+        """
+        Nettoie le texte généré par le LLM pour le rendre lisible par un TTS.
+        """
+        if not response_text:
+            return ""
+
+        # 1. Supprimer le bloc de raisonnement interne
+        # On coupe le texte au niveau de la balise de fin </think> et on garde uniquement la suite
+        if "</think>" in response_text:
+            response_text = response_text.split("</think>")[-1]
+        
+        # Par sécurité, on supprime aussi toute paire <tool_call>...<tool_call> qui pourrait rester
+        response_text = regex.sub(r'<tool_call>.*?<tool_call>', '', response_text, flags=regex.DOTALL)
+
+        # 2. Supprimer la syntaxe Markdown courante (gras, italique)
+        # Supprime les astérisques (*) et les underscores (_)
+        response_text = regex.sub(r'[*_]+', '', response_text)
+
+        # 3. Supprimer d'autres caractères Markdown (titres #, citations >)
+        response_text = regex.sub(r'[#>]+', '', response_text)
+
+        # 4. Nettoyer les espaces et les sauts de ligne multiples
+        # Remplace tous les blocs d'espaces/sauts de ligne par un espace unique
+        response_text = regex.sub(r'\s+', ' ', response_text).strip()
+
+        return response_text
+
     def handle(self, request: BrokerRequest, mode_simple_sans_memoire: bool = False) -> AgentResponse:
         if mode_simple_sans_memoire:
             logger.info("Mode SIMPLE SANS MÉMOIRE : %s", request.request_id)
@@ -105,6 +138,7 @@ class QwenAgent:
             )
 
         logger.info("Réception requête Broker: %s", request.request_id)
+        logger.info("Mode agent AVEC MÉMOIRE : %s", request.request_id)
 
         try:
             session = REPOSITORIES.sessions.get(
@@ -115,12 +149,14 @@ class QwenAgent:
             session = None
 
         user_content = request.text
+        print("image url:--------------------------------------------------------------------*/-*-*/*-/-*/-*/-*/n", request.image_url[:50])
         if request.image_url:
-            user_content += f"\n[Image attachée: {request.image_url}]"
+            user_content += "\n[Image attachée: "+request.image_url+"]"
 
         buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
         historique = buffer.get_langchain_messages()
 
+        print("historique : ",historique)
         current_db_msg = REPOSITORIES.messages.create(
             session_id=request.session_authentifiee.session_id,
             requete=user_content,
@@ -128,24 +164,22 @@ class QwenAgent:
 
         system_message = self._build_system_prompt(session_model=session)
 
-        if request.image_url:
-            current_user_msg = HumanMessage(content=[
-                {"type": "image_url", "image_url": {"url": request.image_url}},
-                {"type": "text", "text": request.text},
-            ])
-        else:
-            current_user_msg = HumanMessage(content=request.text)
+        # On n'injecte PAS l'image ici pour économiser la VRAM sur les requêtes simples
+        current_user_msg = HumanMessage(content=request.text)
 
         initial_state = {
             "messages": [system_message] + historique + [current_user_msg],
             "user_id": request.user_id,
             "session_id": request.session_authentifiee.session_id,
             "tool_calls_made": [],
+            "pending_image_url": request.image_url,
         }
 
         try:
             final_state = self.graph.invoke(initial_state)
             response_text = final_state["messages"][-1].content
+
+            reponse_nettoyee = self.nettoyer_texte_reponse(response_text)
 
             REPOSITORIES.messages.update_response(current_db_msg, reponse=response_text)
 
@@ -172,7 +206,7 @@ class QwenAgent:
                 request_id=request.request_id,
                 session_id=request.session_authentifiee.session_id,
                 user_id=request.user_id,
-                response=response_text,
+                response=reponse_nettoyee,
                 tool_calls_made=final_state["tool_calls_made"],
             )
 
@@ -210,19 +244,15 @@ class QwenAgent:
 
         system_message = self._build_system_prompt(session_model=session)
 
-        if request.image_url:
-            current_user_msg = HumanMessage(content=[
-                {"type": "image_url", "image_url": {"url": request.image_url}},
-                {"type": "text", "text": request.text},
-            ])
-        else:
-            current_user_msg = HumanMessage(content=request.text)
+        # On n'injecte PAS l'image ici pour économiser la VRAM sur les requêtes simples
+        current_user_msg = HumanMessage(content=request.text)
 
         initial_state = {
             "messages": [system_message] + historique + [current_user_msg],
             "user_id": request.user_id,
             "session_id": request.session_authentifiee.session_id,
             "tool_calls_made": [],
+            "pending_image_url": request.image_url,
         }
 
         try:

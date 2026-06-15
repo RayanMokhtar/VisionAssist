@@ -71,6 +71,7 @@ class ModelService:
                     parts = []
                     for part in msg.content:
                         if part.get("type") == "image_url":
+                            print("part")
                             parts.append({"type": "image", "image": part["image_url"]["url"]})
                         else:
                             parts.append(part)
@@ -104,6 +105,8 @@ class ModelService:
         reponse_brute = self.processor.decode(
             output_ids[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True
         )
+        del inputs, output_ids
+        torch.cuda.empty_cache()
 
         tool_calls: list = []
         texte = self.nettoyer_reponse_llm_brute(reponse_brute, tool_calls)
@@ -172,6 +175,7 @@ class ModelService:
         return content.strip()
 
     def poser_question_sur_image(self, prompt: str, chemin_image: str) -> str:
+        print( chemin_image,"image du model")
         messages = [{"role": "user", "content": [
             {"type": "image", "image": chemin_image},
             {"type": "text", "text": prompt},
@@ -192,8 +196,10 @@ class ModelService:
                 do_sample=CONFIGURATION.qwen.do_sample,
             )
 
-        return self.processor.decode(output_ids[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True)
-
+        result = self.processor.decode(output_ids[0][inputs["input_ids"].shape[-1]:], skip_special_tokens=True)
+        del inputs, output_ids
+        torch.cuda.empty_cache()
+        return result
 
 
 

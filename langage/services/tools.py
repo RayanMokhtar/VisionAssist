@@ -20,6 +20,8 @@ import subprocess
 from typing import List, Annotated
 
 import requests
+from langage.services.model import MODEL_SERVICE
+
 from langchain_core.tools import tool
 from langgraph.prebuilt import InjectedState
 
@@ -274,6 +276,34 @@ def query_memory(query: str, days_back: int = 7, state: Annotated[dict, Injected
         result = "Impossible d'accéder à la mémoire pour le moment."
         _log_tool("query_memory", result)
         return result
+
+@tool
+def besoin_image(instruction: str, state: Annotated[dict, InjectedState] = None) -> str:
+    """Utilise cet outil UNIQUEMENT si tu dois analyser ce qu'il y a devant l'utilisateur via la caméra.
+    Le système vision va regarder l'image et répondre à ton instruction.
+    
+    Args:
+        instruction: L'instruction précise pour le module de vision (ex: 'Décris la scène', 'Lis le texte sur l'étiquette', 'Quelle est la couleur de la voiture ?').
+    """
+    image_url = (state or {}).get("pending_image_url")
+    if not image_url:
+        result = "Aucune image de la caméra n'est disponible. Impossible d'analyser l'environnement."
+        _log_tool("besoin_image", result)
+        return result
+        
+    logger.info("👁️ [VISION] Analyse en cours : %s", instruction)
+    
+    try:
+        # Appel direct au modèle de vision pour décrire l'image
+        print("image du tool , ",image_url)
+        description = MODEL_SERVICE.poser_question_sur_image(instruction, image_url)
+        result = f"Résultat de l'analyse visuelle : {description}"
+    except Exception as e:
+        logger.error("Erreur lors de l'analyse visuelle : %s", e)
+        result = "Une erreur est survenue lors de l'analyse de l'image."
+        
+    _log_tool("besoin_image", result)
+    return result
 
 @tool
 def get_transit_info(destination: str, latitude: float = None, longitude: float = None, origin: str = "") -> str:
@@ -569,4 +599,5 @@ def get_all_tools() -> List:
         search_nearby_place,
         get_transit_info,
         query_memory,
+        besoin_image,
     ]
