@@ -16,7 +16,6 @@ using namespace cv;
 #define runOnGPU JETSON==1
 #define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
 #define FALLBACK_AVEC_CHEMIN_VIDEO "../../data/vid3.mp4"
-#define USE_IMU 0
 #define MAXDISTANCE 100
 #define MAX_PERSISTANCE 10
 #define RAYON_DETECTION 150
@@ -365,6 +364,9 @@ Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& ob
                 {
                     for (int i = x - step/2; i <= x + step/2; i++)
                     {
+                        if ((j < 0 || j >= deplacement.rows) || (i < 0 || i >= deplacement.cols))
+                            continue;
+
                         const cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
                         sum_u += p[0];
                         sum_v += p[1];
@@ -456,27 +458,6 @@ Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& object
 
         cv::putText(yoloDraw, fpsText, cv::Point(20, 40), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
     }
-
-    int x1 = yoloDraw.cols / 3;
-    int x2 = x1*2;
-    int y1 = yoloDraw.rows / 3;
-    int y2 = y1*2;
-
-    cv::Point p1(0, x1);
-    cv::Point p2(yoloDraw.rows, x1);
-    cv::line(yoloDraw, p1, p2, cv::Scalar(0, 255, 0), 1);
-
-    p1 = {0, x2};
-    p2 = {yoloDraw.rows, x2};
-    cv::line(yoloDraw, p1, p2, cv::Scalar(0, 255, 0), 1);
-
-    p1 = {y1, 0};
-    p2 = {y1, yoloDraw.cols};
-    cv::line(yoloDraw, p1, p2, cv::Scalar(0, 255, 0), 1);
-
-    p1 = {y2, 0};
-    p2 = {y2, yoloDraw.cols};
-    cv::line(yoloDraw, p1, p2, cv::Scalar(0, 255, 0), 1);
 
     return yoloDraw;
 }
@@ -953,18 +934,6 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
     }
 }
 
-#if USE_IMU
-void readImu(IMU imu) {
-    IMU::Vec3 accel = imu.readAccel();
-    int temp = imu.readTemp();
-
-    double accelNorm = std::sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
-
-    // std::cout << "Acceleration: " << "x = " << accel.x << " y = " << accel.y << " z = " << accel.z << " total = " << accelNorm << " m/s2" << std::endl;
-    // std::cout << "Temperature: " << temp << " °C" << std::endl;
-}
-#endif
-
 using Clock = std::chrono::high_resolution_clock;
 
 static double elapsedMs(
@@ -981,15 +950,7 @@ int main(int argc, char** argv)
     Mat frameOld;
     Mat frame;
     timeval start, end;
-#if USE_IMU
-    bool initImu;
-    IMU imu(initImu);
 
-    if (!initImu) {
-        std::cerr << "Impossible de lancer l'imu\n";
-        return -1;
-    }
-#endif
     VideoCapture cap;   
     
     beep(1);
@@ -1048,6 +1009,25 @@ int main(int argc, char** argv)
 
     std::cout << "version opencv " << CV_VERSION << std::endl;
 
+    cv::VideoWriter virtualCam;
+
+    std::string pipelineOut =
+        "appsrc is-live=true block=true format=time ! "
+        "video/x-raw,format=BGR,width=640,height=640,framerate=30/1 ! "
+        "videoconvert ! "
+        "video/x-raw,format=YUY2,width=640,height=640,framerate=30/1 ! "
+        "v4l2sink device=/dev/video1 sync=false";
+
+    virtualCam.open(pipelineOut, cv::CAP_GSTREAMER, 0, 30, cv::Size(640, 640), true);
+
+    if (!virtualCam.isOpened())
+    {
+        std::cerr << "Impossible d'ouvrir la camera virtuelle /dev/video1" << std::endl;
+        return -1;
+    }
+
+    int id = 0;
+
     for(;;)
     {
         auto tGlobalStart = Clock::now();
@@ -1061,6 +1041,8 @@ int main(int argc, char** argv)
         }
         
         cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
+
+        virtualCam.write(frame);
         
         Mat deplacement;
         Mat matOpticalFlow;
@@ -1078,9 +1060,6 @@ int main(int argc, char** argv)
         std::thread threadYolo([&]() {
             yoloDetection = yolo.exec(frame);
             objects = persistanceBetweenFrame(objectsNew, objects);
-#if USE_IMU
-            readImu(imu);
-#endif
         });
 
         threadFlow.join();
@@ -1141,6 +1120,11 @@ int main(int argc, char** argv)
         // std::cout << "Imshow        : " << imshowMs << " ms\n";
         // std::cout << "Copy frame    : " << copyMs << " ms\n";
         // std::cout << "===============================\n";
+
+        id++;
+        // cv::imwrite("opticalFlow/yolo_" + std::to_string(id) + ".png", yoloDraw);
+        // cv::imwrite("opticalFlow/frame_" + std::to_string(id) + ".png", frame);
+        // cv::imwrite("opticalFlow/opticalFlow_" + std::to_string(id) + ".png", sparseFlowDraw);
 
         //sleep(0.067);
 
