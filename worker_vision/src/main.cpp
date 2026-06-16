@@ -1009,6 +1009,25 @@ int main(int argc, char** argv)
 
     std::cout << "version opencv " << CV_VERSION << std::endl;
 
+    cv::VideoWriter virtualCam;
+
+    std::string pipelineOut =
+        "appsrc is-live=true block=true format=time ! "
+        "video/x-raw,format=BGR,width=640,height=640,framerate=30/1 ! "
+        "videoconvert ! "
+        "video/x-raw,format=YUY2,width=640,height=640,framerate=30/1 ! "
+        "v4l2sink device=/dev/video1 sync=false";
+
+    virtualCam.open(pipelineOut, cv::CAP_GSTREAMER, 0, 30, cv::Size(640, 640), true);
+
+    if (!virtualCam.isOpened())
+    {
+        std::cerr << "Impossible d'ouvrir la camera virtuelle /dev/video1" << std::endl;
+        return -1;
+    }
+
+    int id = 0;
+
     for(;;)
     {
         auto tGlobalStart = Clock::now();
@@ -1022,6 +1041,8 @@ int main(int argc, char** argv)
         }
         
         cv::cvtColor(frame, frame, cv::COLOR_BGRA2BGR);
+
+        virtualCam.write(frame);
         
         Mat deplacement;
         Mat matOpticalFlow;
@@ -1099,6 +1120,11 @@ int main(int argc, char** argv)
         // std::cout << "Imshow        : " << imshowMs << " ms\n";
         // std::cout << "Copy frame    : " << copyMs << " ms\n";
         // std::cout << "===============================\n";
+
+        id++;
+        // cv::imwrite("opticalFlow/yolo_" + std::to_string(id) + ".png", yoloDraw);
+        // cv::imwrite("opticalFlow/frame_" + std::to_string(id) + ".png", frame);
+        // cv::imwrite("opticalFlow/opticalFlow_" + std::to_string(id) + ".png", sparseFlowDraw);
 
         //sleep(0.067);
 
