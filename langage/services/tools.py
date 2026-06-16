@@ -301,21 +301,47 @@ def besoin_image(instruction: str, state: Annotated[dict, InjectedState] = None)
     from langage.services.model import MODEL_SERVICE
     logger.info("👁️ [VISION] Génération de la réponse finale basée sur : %s", instruction)
     
-    # Le prompt pour le VLM lui demande d'agir comme l'assistant final sans réfléchir à voix haute
+    # Le prompt pour le VLM lui demande d'agir comme l'assistant final
     prompt = (
         f"L'utilisateur te demande : '{user_query}'.\n"
         f"Consigne d'analyse : '{instruction}'.\n"
-        "IMPORTANT: Tu es un assistant vocal. Tu vas sûrement faire un raisonnement interne, mais "
-        "tu DOIS OBLIGATOIREMENT placer la phrase finale que le synthétiseur vocal prononcera "
-        "entre les balises <REPONSE> et </REPONSE>.\n"
-        "Exemple: <REPONSE>Bonjour, je vois une boîte de médicaments avec écrit Aspirine.</REPONSE>\n"
-        "Ne mets rien d'autre dans ces balises que le texte à prononcer."
+        "IMPORTANT: Tu es un assistant vocal. Tu DOIS répondre EXCLUSIVEMENT sous la forme d'un objet JSON valide. "
+        "Utilise le champ 'analyse_interne' pour ta réflexion, et le champ 'reponse_vocale' pour la phrase finale à prononcer.\n"
+        "Format exigé :\n"
+        "```json\n"
+        "{\n"
+        '  "analyse_interne": "ta réflexion détaillée ici",\n'
+        '  "reponse_vocale": "Bonjour, [ta réponse courte et naturelle à prononcer]"\n'
+        "}\n"
+        "```\n"
+        "Ne dis absolument rien d'autre en dehors du bloc JSON."
     )
     
     try:
         # Appel direct au modèle de vision pour générer la réponse finale
-        description = MODEL_SERVICE.poser_question_sur_image(prompt, image_url)
-        result = description
+        raw_output = MODEL_SERVICE.poser_question_sur_image(prompt, image_url)
+        
+        # Tentative d'extraction du JSON
+        import re
+        import json
+        
+        # Chercher un bloc JSON contenant "reponse_vocale"
+        match = re.search(r'\{.*"reponse_vocale"\s*:.*\}', raw_output, flags=re.DOTALL | re.IGNORECASE)
+        if match:
+            json_str = match.group(0)
+            try:
+                data = json.loads(json_str)
+                result = data.get("reponse_vocale", raw_output)
+            except json.JSONDecodeError:
+                # Si le JSON est malformé (ex: coupé par max_tokens), on tente de récupérer ce qui suit "reponse_vocale": "
+                fallback_match = re.search(r'"reponse_vocale"\s*:\s*"([^"]+)', raw_output, flags=re.IGNORECASE)
+                if fallback_match:
+                    result = fallback_match.group(1)
+                else:
+                    result = raw_output
+        else:
+            result = raw_output
+            
     except Exception as e:
         logger.error("Erreur lors de l'analyse visuelle : %s", e)
         result = "Une erreur est survenue lors de l'analyse de l'image."

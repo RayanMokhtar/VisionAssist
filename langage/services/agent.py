@@ -113,19 +113,13 @@ class QwenAgent:
         if not response_text:
             return ""
 
-        # 1. Extraction de la balise <REPONSE> (si le modèle a suivi les instructions)
-        match = regex.search(r'<REPONSE>(.*?)(?:</REPONSE>|$)', response_text, flags=regex.IGNORECASE | regex.DOTALL)
-        if match:
-            response_text = match.group(1).strip()
-            # On retourne directement car le texte extrait est censé être pur
-        else:
-            # Fallback historique : nettoyage des balises <think>
-            if "</think>" in response_text:
-                response_text = response_text.split("</think>")[-1]
-            elif "<think>" in response_text:
-                response_text = response_text.split("<think>")[0]
-                if not response_text.strip():
-                    response_text = "Je suis désolé, je n'ai pas pu terminer mon analyse."
+        # 1. Fallback historique : nettoyage des balises <think> au cas où l'agent principal les génère
+        if "</think>" in response_text:
+            response_text = response_text.split("</think>")[-1]
+        elif "<think>" in response_text:
+            response_text = response_text.split("<think>")[0]
+            if not response_text.strip():
+                response_text = "Je suis désolé, je n'ai pas pu terminer mon analyse."
         
         # Par sécurité, on supprime aussi toute paire <tool_call>...<tool_call> qui pourrait rester
         response_text = regex.sub(r'<tool_call>.*?<tool_call>', '', response_text, flags=regex.DOTALL)
