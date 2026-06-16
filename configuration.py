@@ -34,7 +34,7 @@ class AudioConfig(BaseModel):
     taille_chunk : int = 1024
     device_index: Optional[int] = None
     silence_duree_max_secondes: float = 2.0
-    duree_max_enregistrement_theorique: float = 20
+    duree_max_enregistrement_theorique: float = 120
     seuil_energie: int = 600 #pour le RMS
     pre_roll_parole_avant_enregistrement_secondes: float = 1.6
 
@@ -64,7 +64,7 @@ class BrokerConfig(BaseModel):
     password: Optional[str] = None
     use_tls: bool = True
     ca_cert: Optional[str] = None
-    qos: Literal[0, 1, 2] = 1
+    qos: Literal[0, 1, 2] = 2
     retain: bool = False
     topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
 

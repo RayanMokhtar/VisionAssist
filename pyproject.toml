@@ -33,6 +33,7 @@ jetson = [
     "opencv-python",
     "onnxruntime>=1.17.0,<1.18.0"
 ]
+
 server = [
     "fastapi>=0.136.1",
     "uvicorn>=0.47.0",

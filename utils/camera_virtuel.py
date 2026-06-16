@@ -1,4 +1,5 @@
 import cv2
+from configuration import CONFIGURATION
 
 camera_pas_recup : bool = True
 
@@ -23,6 +24,7 @@ while True:
         continue
 
     cv2.imshow("camera virtuelle", frame)
+    cv2.imwrite(f"{CONFIGURATION.paths.image_path}/last_image_path.png" , frame)
 
     if cv2.waitKey(1) == 27:
         break

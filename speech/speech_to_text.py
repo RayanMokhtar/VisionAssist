@@ -5,6 +5,7 @@ import wave
 import pyaudio
 import audioop
 import collections
+import cv2
 
 
 from typing import Callable, Optional , Literal 
@@ -222,10 +223,29 @@ class SpeechToText:
         return fichier_temporaire_stockage.name
     
 
-        
+    
     @staticmethod
-    def image_en_base64(image_file: str = "last_image_path.png") -> str:
-        image_path = f"{CONFIGURATION.paths.image_path}/{image_file}"
+    def get_image_actuelle():
+        cap = cv2.VideoCapture("/dev/video1")
+        print(f"Caméra ouverte : {cap.isOpened()}")
+
+        ret, frame = cap.read()
+        if not ret or frame is None:
+            print("Erreur : Frame non lue par OpenCV")
+            cap.release()
+            return None # On quitte la fonction pour éviter le crash
+
+        chemin_sauvegarde = f"{CONFIGURATION.paths.image_path}/last_image_path.png"
+        frame_optimisee = cv2.resize(frame, (200,200) , interpolation=cv2.INTER_AREA)
+        cv2.imwrite(chemin_sauvegarde, frame_optimisee)
+        cap.release()        
+        return chemin_sauvegarde
+
+
+
+    @staticmethod
+    def image_en_base64() -> str:
+        image_path = SpeechToText.get_image_actuelle()
 
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
@@ -306,9 +326,9 @@ class SpeechToText:
 INSTANCE_STT = SpeechToText()
 # resultat = INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
 
-# if __name__ == "__main__":
-#     INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
-    # res = INSTANCE_STT.image_en_base64()
+if __name__ == "__main__":
+    # INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
+    res = INSTANCE_STT.image_en_base64()
     # print("res ",res)
 
 

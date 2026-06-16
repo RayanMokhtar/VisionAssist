@@ -148,7 +148,7 @@ class TextToSpeech:
         if texte : 
             LOGGER.info(f"tts demandé pour synthetiser ce texte : {texte}")
             resultat = self.pipeline(texte,"audio_agent.wav")
-            print("resultat pour ",texte)
+            print("resultat pour tts :",texte)
             #TODO : à voir si on publie dans le broker ou pas ??   
         else : 
             LOGGER.warning("Message TTS sans texte")
@@ -163,20 +163,19 @@ CLIENT_BROKER_TTS = get_broker_client("tts")
 
 def lancement_service_tts(topic_sur_ecoute: str = CONFIGURATION.broker.topics.tts_topic): 
     CLIENT_BROKER_TTS.connexion()
-
     CLIENT_BROKER_TTS.sabonner(topic_sur_ecoute, INSTANCE_TTS.fonction_trigger)
 
     LOGGER.info(f"TTS en écoute sur le topic : {topic_sur_ecoute}...")
     
+    stop_event = threading.Event()
+    
     try:
-        while True:
-            time.sleep(0.5) 
+        stop_event.wait()
             
     except KeyboardInterrupt:
         LOGGER.info("Arrêt manuel demandé par l'utilisateur (Ctrl+C).")
         
     finally:
-        # Le bloc finally garantit que même si le script plante, on se déconnecte proprement du broker
         CLIENT_BROKER_TTS.deconnexion()
         LOGGER.info("TTS déconnecté du broker et arrêté.")
 
