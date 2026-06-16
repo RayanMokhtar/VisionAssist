@@ -147,6 +147,7 @@ OpticalFlow::OpticalFlow()
     matDepl.create(640,640,CV_32FC2);
 }
 
+//int id= 0;
 Mat OpticalFlow::exec(const Mat& frame, const Mat& frameOld)
 {
     niveauGris(frame, frameGris);
@@ -156,6 +157,8 @@ Mat OpticalFlow::exec(const Mat& frame, const Mat& frameOld)
     sobelY(frameGris, frameSobelY);
 
     diffIntensite(frameGris, frameGrisOld, frameDiffIntensite);
+
+
 
     matDepl.setTo(cv::Scalar(0,0));
 
@@ -207,6 +210,13 @@ Mat OpticalFlow::exec(const Mat& frame, const Mat& frameOld)
             }
         }
     }
+
+    // cv::imwrite("./sobelx/sobelx_" + std::to_string(id) + ".png", frameSobelX);
+    // cv::imwrite("./sobely/sobely_" + std::to_string(id) + ".png", frameSobelY);
+    // cv::imwrite("./diff/diff_" + std::to_string(id) + ".png", frameDiffIntensite);
+    // cv::imwrite("./flux/f" + std::to_string(id) + ".png", frameDiffIntensite);
+
+    //id++;
 
     // cv::Mat matOpticalFlow(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 

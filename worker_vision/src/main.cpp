@@ -16,20 +16,23 @@ using namespace cv;
 #define runOnGPU JETSON==1
 #define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
 #define FALLBACK_AVEC_CHEMIN_VIDEO "../../data/vid3.mp4"
-#define USE_IMU 1
+#define USE_IMU 0
 #define MAXDISTANCE 100
 #define MAX_PERSISTANCE 10
 #define RAYON_DETECTION 150
 #define PI 3.14159265
 
 #define SEUIL_FILTRAGE 1.2
-#define SEUIL_DECISION_BRUIT 12
+#define SEUIL_DECISION_BRUIT 15
 #define SEUIL_DECISION_AVANT_ARRIERE 30
-#define MAX_FRAMES_DECISION 3
+#define MAX_FRAMES_DECISION 5
+#define SEUIL_DANGER 120
 
 enum Decisions {
     RIEN,
     DEVANT,
+    AVANT, 
+    ARRIERE,
     GAUCHE,
     DROITE,
     NB_DECISIONS
@@ -52,6 +55,7 @@ struct ObjectDetected
     std::vector<Decisions> decisions;
     float ttc = 0;
     Decisions decision = RIEN;
+    float normeHisto = 0.0;
 };
 
 int globalId = 0;
@@ -117,6 +121,7 @@ void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDe
             objectNew.trajectory.push_back(objectNew.centreGravity);
             objectNew.velocity = objectOldRef->velocity;
             objectNew.velocity.push_back(objectNew.vect);
+            objectNew.normeHisto = objectOldRef->normeHisto;
 
             objectNew.decisions = objectOldRef->decisions;
             objectNew.ttc = objectOldRef->ttc;
@@ -476,48 +481,6 @@ Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& object
     return yoloDraw;
 }
 
-// void drawHistogram(const std::vector<ObjectDetected>& objects)
-// {
-//     int width = 1800;
-//     int height = 640;
-//     int margin = 20;
-
-//     for (const ObjectDetected& object : objects)
-//     {
-//         cv::Mat img(height, width, CV_8UC3, cv::Scalar(255, 255, 255));
-
-//         int maxVal = 1;
-//         for (int i = 0; i < 360; i++)
-//             maxVal = std::max(maxVal, object.histo[i]);
-
-//         float binWidth = (float)(width - 2 * margin) / 360.0f;
-
-//         for (int i = 0; i < 360; i++)
-//         {
-//             int x1 = margin + (int)(i * binWidth);
-//             int x2 = margin + (int)((i + 1) * binWidth);
-
-//             int barHeight = (int)((float)object.histo[i] / maxVal * (height - 2 * margin));
-
-//             cv::Point p1(x1, height - margin);
-//             cv::Point p2(x2, height - margin - barHeight);
-
-//             cv::rectangle(img, p1, p2, cv::Scalar(0, 0, 0), cv::FILLED);
-//         }
-
-//         cv::line(img, cv::Point(margin, height - margin),
-//                 cv::Point(width - margin, height - margin),
-//                 cv::Scalar(0, 0, 255), 1);
-
-//         std::string fpsText = "class name: " + object.className;
-
-//         cv::putText(img, fpsText, cv::Point(20, 40), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-
-//         cv::imshow("histogramme", img);
-//     }
-// }
-
-
 void drawHistogram(const std::vector<ObjectDetected>& objects)
 {
     int width = 1800;
@@ -566,9 +529,12 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
         }
 
         float norme = 0.0; 
-        float taux_haut_bas = 0.0;
-        float taux_droite = 0.0;
-        float taux_gauche = 0.0;
+        float norme_haut_bas = 0.0;
+        float norme_droite = 0.0;
+        float norme_gauche = 0.0;
+        // float taux_haut_bas = 0.0;
+        // float taux_droite = 0.0;
+        // float taux_gauche = 0.0;
         float taux_null_droite = 0.0;
         float taux_null_gauche = 0.0;
 
@@ -590,11 +556,14 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
             norme += object.histo[i];
             if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
-                taux_haut_bas += object.histo[i];
+                //taux_haut_bas += object.histo[i];
+                norme_haut_bas += object.histo[i];
             } else if (i > 135 && i <= 225) {
-                taux_gauche += object.histo[i];
+                //taux_gauche += object.histo[i];
+                norme_gauche += object.histo[i];
             } else {
-                taux_droite += object.histo[i];
+                //taux_droite += object.histo[i];
+                norme_droite += object.histo[i];
             }
 
             if (i < 90 || i > 270) {
@@ -604,19 +573,22 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
             }
         }
 
-        taux_haut_bas /= norme;
-        taux_droite /= norme;
-        taux_gauche /= norme;
+        norme_haut_bas /= 180;
+        norme_droite /= 90;
+        norme_gauche /= 90;
+        // taux_haut_bas /= norme;
+        // taux_droite /= norme;
+        // taux_gauche /= norme;
         taux_null_droite /= norme;
         taux_null_gauche /= norme;
         norme /= 360.0;
 
-        taux_haut_bas *= 100;
-        taux_droite *= 100;
-        taux_gauche *= 100;
+        // taux_haut_bas *= 100;
+        // taux_droite *= 100;
+        // taux_gauche *= 100;
         taux_null_droite *= 100;
         taux_null_gauche *= 100;
-        taux_haut_bas /= 2;
+        // taux_haut_bas /= 2;
 
         // Axe X + graduations
         for (int angle = 0; angle <= 360; angle += 30)
@@ -665,9 +637,8 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
         // Titre
         cv::putText(img,
-                    "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Thb: " + std::to_string(taux_haut_bas) 
-                    + " Td: " + std::to_string(taux_droite) + " Tg: " + std::to_string(taux_gauche) 
-                    + " Tnd: " + std::to_string(taux_null_droite) + " Tng: " + std::to_string(taux_null_gauche),
+                    "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Norme haut bas: " + std::to_string(norme_haut_bas) 
+                    + " Norme droite: " + std::to_string(norme_droite) + " Norme gauche: " + std::to_string(norme_gauche),
                     cv::Point(20, 30),
                     cv::FONT_HERSHEY_SIMPLEX,
                     0.8,
@@ -740,14 +711,7 @@ void beep(int secondes)
 
     gpiod_line_set_value(line, 1);
 
-    while (std::chrono::steady_clock::now() < fin)
-    {
-        // gpiod_line_set_value(line, 1);
-        // std::this_thread::sleep_for(std::chrono::microseconds(250));
-
-        // gpiod_line_set_value(line, 0);
-        // std::this_thread::sleep_for(std::chrono::microseconds(250));
-    }
+    std::this_thread::sleep_for(std::chrono::seconds(secondes));
 
     gpiod_line_set_value(line, 0);
 
@@ -757,15 +721,18 @@ void beep(int secondes)
 
 std::atomic<bool> beepRunning(false);
 
-void startBeepAsync(int secondes)
+void startBeepAsync(int nbBeep)
 {
-    if (beepRunning)
+    if (beepRunning.exchange(true))
         return;
 
-    beepRunning = true;
+    std::thread([nbBeep]() {
+        for (int i = 0; i < nbBeep; i++)
+        {
+            beep(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        }
 
-    std::thread([secondes]() {
-        beep(secondes);
         beepRunning = false;
     }).detach();
 }
@@ -817,11 +784,15 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 
         float somme =  0.0;
 
-        float taux_haut_bas = 0.0;
-        float taux_droite = 0.0;
-        float taux_gauche = 0.0;
+        // float taux_haut_bas = 0.0;
+        // float taux_droite = 0.0;
+        // float taux_gauche = 0.0;
+        float norme_haut_bas = 0.0;
+        float norme_droite = 0.0;
+        float norme_gauche = 0.0;
         float taux_null_droite = 0.0;
         float taux_null_gauche = 0.0;
+
 
         // Histogramme
         for (int i = 0; i < 360; i++)
@@ -829,11 +800,14 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             somme += object.histo[i];
 
             if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
-                taux_haut_bas += object.histo[i];
+                //taux_haut_bas += object.histo[i];
+                norme_haut_bas += object.histo[i];
             } else if (i > 135 && i <= 225) {
-                taux_gauche += object.histo[i];
+                //taux_gauche += object.histo[i];
+                norme_gauche += object.histo[i];
             } else {
-                taux_droite += object.histo[i];
+                //taux_droite += object.histo[i];
+                norme_droite += object.histo[i];
             }
 
             if (i < 90 || i > 270) {
@@ -843,47 +817,65 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             }
         }
 
-        taux_haut_bas /= somme;
-        taux_droite /= somme;
-        taux_gauche /= somme;
+        // taux_haut_bas /= somme;
+        // taux_droite /= somme;
+        // taux_gauche /= somme;
+        norme_haut_bas /= 180;
+        norme_droite /= 90;
+        norme_gauche /= 90;
         taux_null_droite /= somme;
         taux_null_gauche /= somme;
         float norme = somme / 360.0;
 
-        taux_haut_bas *= 100;
-        taux_droite *= 100;
-        taux_gauche *= 100;
+        // norme_haut_bas /= 2;
+
+        // taux_haut_bas *= 100;
+        // taux_droite *= 100;
+        // taux_gauche *= 100;
         taux_null_droite *= 100;
         taux_null_gauche *= 100;
 
-        taux_haut_bas /= 2;
-        
-        float maxTaux = taux_haut_bas;
+        // taux_haut_bas /= 2;
+
+        //std::cout << "norme " << norme << std::endl;
+
+        //float maxTaux = taux_haut_bas;
+        float maxTaux = norme_haut_bas;
         Decisions directionMax;
-        
-        if (abs(taux_null_gauche - taux_null_droite) <= SEUIL_DECISION_BRUIT) {
+
+        if ((norme_gauche <= SEUIL_DECISION_BRUIT) && (norme_droite <= SEUIL_DECISION_BRUIT) && ((norme_haut_bas/2) <= SEUIL_DECISION_BRUIT)) {
             directionMax = RIEN;
         } else {
             directionMax = DEVANT;
 
-            if (taux_haut_bas > maxTaux) {
-                maxTaux = taux_haut_bas;
+            if (norme_haut_bas > maxTaux) {
+                maxTaux = norme_haut_bas;
                 directionMax = DEVANT;
             }
 
-            if (taux_droite > maxTaux) {
-                maxTaux = taux_droite;
+            if (norme_droite > maxTaux) {
+                maxTaux = norme_droite;
                 directionMax = DROITE;
             }
 
-            if (taux_gauche > maxTaux) {
-                maxTaux = taux_gauche;
+            if (norme_gauche > maxTaux) {
+                maxTaux = norme_gauche;
                 directionMax = GAUCHE;
             }
-        }
+
+            if (directionMax == DEVANT) {
+                float diff = norme - object.normeHisto;
+
+                if (diff > 0)
+                    directionMax = AVANT;
+                else
+                    directionMax = ARRIERE;
+            }
+         }
 
         object.decisions.push_back(directionMax);
 
+        object.normeHisto = norme;
         // if (abs(taux_gauche - taux_droite) <= SEUIL_DECISION_BRUIT) {
         //     //std::cout << "walou" << std::endl;
         //     object.decisions.push_back(RIEN);
@@ -923,8 +915,10 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 
             if (finalDecision == RIEN)
                 std::cout << "DECISION FINAL ==> walou" << std::endl;
-            else if (finalDecision == DEVANT)
-                std::cout << "DECISION FINAL ==> tout droit" << std::endl;
+            else if (finalDecision == ARRIERE)
+                std::cout << "DECISION FINAL ==> ARRIERE" << std::endl;
+            else if (finalDecision == AVANT)
+                std::cout << "DECISION FINAL ==> AVANT " << std::endl;
             else if (finalDecision == GAUCHE)
                 std::cout << "DECISION FINAL ==> ça part vers la gauche" << std::endl;
             else if (finalDecision == DROITE)
@@ -933,17 +927,27 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             object.decision = finalDecision;
 
             object.decisions.clear();
+            //object.decisions.erase(object.decisions.begin());
 
             float ttcFinal = object.ttc / (float) MAX_FRAMES_DECISION;
 
-            std::cout<< "norme ==> " << norme << std::endl;
+            // std::cout<< "norme ==> " << norme << std::endl;
 
-            if (norme > 100 && finalDecision!= RIEN) {
+            if ((norme_gauche > SEUIL_DANGER) && (norme_droite > SEUIL_DANGER) && (norme_haut_bas > SEUIL_DANGER) && (finalDecision != RIEN)) {
                 std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+
+            //     if (finalDecision == AVANT) {
+            //         startBeepAsync(1);
+            //     } else if (finalDecision == GAUCHE) {
+            //         startBeepAsync(2);
+            //     } else if (finalDecision == DROITE) {
+            //         startBeepAsync(3);
+            //     }
             }
 
             object.ttc = 0.0;
         }
+
 
         std::cout << "----------------------" << std::endl;
     }
@@ -956,8 +960,8 @@ void readImu(IMU imu) {
 
     double accelNorm = std::sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
 
-    //std::cout << "Acceleration: " << "x = " << accel.x << " y = " << accel.y << " z = " << accel.z << " total = " << accelNorm << " m/s2" << std::endl;
-    //std::cout << "Temperature: " << temp << " °C" << std::endl;
+    // std::cout << "Acceleration: " << "x = " << accel.x << " y = " << accel.y << " z = " << accel.z << " total = " << accelNorm << " m/s2" << std::endl;
+    // std::cout << "Temperature: " << temp << " °C" << std::endl;
 }
 #endif
 
@@ -1003,7 +1007,7 @@ int main(int argc, char** argv)
 
     cap.open(pipeline, CAP_GSTREAMER);
     #endif
-    
+
     // si problème récupérationl video ? on teste avec webcam classqieu (marche avec linux , sinon test video dans le capture ... )
     if (!cap.isOpened()) {
         std::cerr << "Pipeline GStreamer nvidia failed test avec webcam...\n";
@@ -1043,7 +1047,7 @@ int main(int argc, char** argv)
     Point pointRef(frameOld.cols/2, frameOld.rows);
 
     std::cout << "version opencv " << CV_VERSION << std::endl;
-    
+
     for(;;)
     {
         auto tGlobalStart = Clock::now();
@@ -1068,7 +1072,7 @@ int main(int argc, char** argv)
             matOpticalFlow = drawOpticalFlow(deplacement);
             filtredFlow = drawOpticalFlowFiltered(deplacement);
         });
-        
+
         std::vector<YOLO::Detection> yoloDetection;
         
         std::thread threadYolo([&]() {
@@ -1095,7 +1099,7 @@ int main(int argc, char** argv)
 
         auto tDrawStart = Clock::now();
         Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
-        //Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
+        Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
         auto tBeforeYoloDraw = Clock::now();
 
         double globalMsTemp = elapsedMs(tGlobalStart, tBeforeYoloDraw);
@@ -1110,7 +1114,7 @@ int main(int argc, char** argv)
         cv::imshow("yolo", yoloDraw);
         cv::imshow("flux optique", matOpticalFlow);
         cv::imshow("flux optique filtrés", filtredFlow);
-        //cv::imshow("sparse", sparseFlowDraw);
+        cv::imshow("sparse", sparseFlowDraw);
         cv::imshow("deplacement", meanFlowDraw);
         auto tImshowEnd = Clock::now();
 
