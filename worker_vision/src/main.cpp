@@ -481,48 +481,6 @@ Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& object
     return yoloDraw;
 }
 
-// void drawHistogram(const std::vector<ObjectDetected>& objects)
-// {
-//     int width = 1800;
-//     int height = 640;
-//     int margin = 20;
-
-//     for (const ObjectDetected& object : objects)
-//     {
-//         cv::Mat img(height, width, CV_8UC3, cv::Scalar(255, 255, 255));
-
-//         int maxVal = 1;
-//         for (int i = 0; i < 360; i++)
-//             maxVal = std::max(maxVal, object.histo[i]);
-
-//         float binWidth = (float)(width - 2 * margin) / 360.0f;
-
-//         for (int i = 0; i < 360; i++)
-//         {
-//             int x1 = margin + (int)(i * binWidth);
-//             int x2 = margin + (int)((i + 1) * binWidth);
-
-//             int barHeight = (int)((float)object.histo[i] / maxVal * (height - 2 * margin));
-
-//             cv::Point p1(x1, height - margin);
-//             cv::Point p2(x2, height - margin - barHeight);
-
-//             cv::rectangle(img, p1, p2, cv::Scalar(0, 0, 0), cv::FILLED);
-//         }
-
-//         cv::line(img, cv::Point(margin, height - margin),
-//                 cv::Point(width - margin, height - margin),
-//                 cv::Scalar(0, 0, 255), 1);
-
-//         std::string fpsText = "class name: " + object.className;
-
-//         cv::putText(img, fpsText, cv::Point(20, 40), cv::FONT_HERSHEY_SIMPLEX, 1.0, cv::Scalar(0, 255, 0), 2);
-
-//         cv::imshow("histogramme", img);
-//     }
-// }
-int histoId = 0;
-
 void drawHistogram(const std::vector<ObjectDetected>& objects)
 {
     int width = 1800;
@@ -706,8 +664,6 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                     2);
 
         cv::imshow("histogramme", img);
-cv::imwrite("captures/histo_" + std::to_string(histoId) + ".png", img);
-histoId++;
     }
 }
 
@@ -755,14 +711,7 @@ void beep(int secondes)
 
     gpiod_line_set_value(line, 1);
 
-    while (std::chrono::steady_clock::now() < fin)
-    {
-        // gpiod_line_set_value(line, 1);
-        // std::this_thread::sleep_for(std::chrono::microseconds(250));
-
-        // gpiod_line_set_value(line, 0);
-        // std::this_thread::sleep_for(std::chrono::microseconds(250));
-    }
+    std::this_thread::sleep_for(std::chrono::seconds(secondes));
 
     gpiod_line_set_value(line, 0);
 
@@ -772,15 +721,18 @@ void beep(int secondes)
 
 std::atomic<bool> beepRunning(false);
 
-void startBeepAsync(int secondes)
+void startBeepAsync(int nbBeep)
 {
-    if (beepRunning)
+    if (beepRunning.exchange(true))
         return;
 
-    beepRunning = true;
+    std::thread([nbBeep]() {
+        for (int i = 0; i < nbBeep; i++)
+        {
+            beep(1);
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        }
 
-    std::thread([secondes]() {
-        beep(secondes);
         beepRunning = false;
     }).detach();
 }
@@ -891,7 +843,6 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
         float maxTaux = norme_haut_bas;
         Decisions directionMax;
 
-        
         if ((norme_gauche <= SEUIL_DECISION_BRUIT) && (norme_droite <= SEUIL_DECISION_BRUIT) && ((norme_haut_bas/2) <= SEUIL_DECISION_BRUIT)) {
             directionMax = RIEN;
         } else {
@@ -984,6 +935,14 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
 
             if ((norme_gauche > SEUIL_DANGER) && (norme_droite > SEUIL_DANGER) && (norme_haut_bas > SEUIL_DANGER) && (finalDecision != RIEN)) {
                 std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+
+            //     if (finalDecision == AVANT) {
+            //         startBeepAsync(1);
+            //     } else if (finalDecision == GAUCHE) {
+            //         startBeepAsync(2);
+            //     } else if (finalDecision == DROITE) {
+            //         startBeepAsync(3);
+            //     }
             }
 
             object.ttc = 0.0;
@@ -1048,7 +1007,7 @@ int main(int argc, char** argv)
 
     cap.open(pipeline, CAP_GSTREAMER);
     #endif
-    
+
     // si problème récupérationl video ? on teste avec webcam classqieu (marche avec linux , sinon test video dans le capture ... )
     if (!cap.isOpened()) {
         std::cerr << "Pipeline GStreamer nvidia failed test avec webcam...\n";
@@ -1140,7 +1099,7 @@ int main(int argc, char** argv)
 
         auto tDrawStart = Clock::now();
         Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
-        //Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
+        Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
         auto tBeforeYoloDraw = Clock::now();
 
         double globalMsTemp = elapsedMs(tGlobalStart, tBeforeYoloDraw);
@@ -1155,7 +1114,7 @@ int main(int argc, char** argv)
         cv::imshow("yolo", yoloDraw);
         cv::imshow("flux optique", matOpticalFlow);
         cv::imshow("flux optique filtrés", filtredFlow);
-        //cv::imshow("sparse", sparseFlowDraw);
+        cv::imshow("sparse", sparseFlowDraw);
         cv::imshow("deplacement", meanFlowDraw);
         auto tImshowEnd = Clock::now();
 
