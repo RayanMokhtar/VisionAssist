@@ -30,6 +30,7 @@ jetson = [
     "paho-mqtt>=2.0.0",
     "torch",
     "transformers",
+    "opencv-python",
     "onnxruntime>=1.17.0,<1.18.0"
 ]
 server = [

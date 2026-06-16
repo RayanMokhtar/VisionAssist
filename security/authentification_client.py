@@ -92,8 +92,8 @@ def lancement_scripts_terminaux():
         # J'ai retiré le 2>/dev/null temporairement pour que tu puisses voir les erreurs 
         # dans les nouvelles fenêtres qui vont s'ouvrir. Tu pourras les remettre plus tard !
         scripts_linux = [
-            f'"{chemin_python_absolu}" -m speech.text_to_speech', 
-            f'"{chemin_python_absolu}" -m speech.speech_to_text',
+            # f'"{chemin_python_absolu}" -m speech.text_to_speech', 
+            # f'"{chemin_python_absolu}" -m speech.speech_to_text',
             # f'"{dossier_racine_absolu}/worker_vision/build/main"' 
         ]
     
@@ -120,6 +120,25 @@ def lancement_scripts_terminaux():
                 print(f"Erreur lors du lancement Windows de {cmd} : {e}")
 
 
+
+def lancement_worker_vision():
+    print("Lancement du worker_vision...")
+    
+    # 1. On trouve les dossiers
+    dossier_racine = Path(__file__).resolve().parent.parent 
+    dossier_build_absolu = str(dossier_racine / "worker_vision" / "build")
+    
+    chemin_activate = str(dossier_racine / ".venv" / "bin" / "activate")
+
+    if CONFIGURATION.environnement == "linux": 
+        cmd_vision = f"source {chemin_activate} && deactivate && ./main"
+        
+        try:
+            commande_complete = ["gnome-terminal", "--", "bash", "-c", f"{cmd_vision}; exec bash"]
+            subprocess.Popen(commande_complete, preexec_fn=os.setpgrp, cwd=dossier_build_absolu)
+            print(f"Terminal Linux lancé dans {dossier_build_absolu}")
+        except Exception as e:
+            print(f"Erreur : {e}")
 
 
 def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optional[SessionAuthentifiee]:
@@ -224,7 +243,7 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
         return None
 
 #ajouter le required_auth comme décorateur dans la méthode du llm où on doit soumettre nos trucs
-
+   
 SESSION_UTILISATEUR = SessionAuthentifiee(
     user_id="user_123",
     card_id="card_456",
@@ -248,7 +267,9 @@ if __name__ == "__main__":
 
 
     print("session_authentification après : ", SESSION_UTILISATEUR) 
-    process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,),name="STT_WORKER")
+    lancement_worker_vision()
+    process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,), name="STT_WORKER")
     process_tts = Thread(target=lancement_service_tts,name="TTS_WORKER")
     process_stt.start() ; process_tts.start()
+    
     # lancement_scripts_terminaux()
