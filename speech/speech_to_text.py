@@ -8,7 +8,7 @@ import collections
 
 
 from typing import Callable, Optional , Literal 
-
+from speech.text_to_speech import INSTANCE_TTS
 
 from pydantic import BaseModel, Field
 from faster_whisper import WhisperModel
@@ -60,6 +60,7 @@ class SpeechToText:
         self.audio_config = CONFIGURATION.audio
         self.modele = MODELE_STT         
         self.charger_modele()      
+        self.chemin_bip = CONFIGURATION.paths.bip_chemin
 
     def charger_modele(self) -> None:
         if self.modele is None : 
@@ -110,9 +111,37 @@ class SpeechToText:
         return result
 
 
-    
+    def jouer_bip_sonore(self) -> None :
+        """Joue un son pour indiquer à l'utilisateur qu'il peut parler."""            
+        try:
+
+            wf = wave.open(self.chemin_bip, 'rb')
+            p = pyaudio.PyAudio()
+            stream = p.open(
+                format=p.get_format_from_width(wf.getsampwidth()),
+                channels=wf.getnchannels(),
+                rate=wf.getframerate(),
+                output=True
+            )
+            
+            data = wf.readframes(1024)
+
+            while data:
+                stream.write(data)
+                data = wf.readframes(1024)
+                               
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+        except Exception as e:
+            print(f"Erreur lors de la lecture du bip : {e}")
+
+
+
     def enregistrer_audio_microphone_apres_activation(self) -> Optional[str]:
-        print("micro en écoute ...")
+        print("préparation du micro ...")
+        self.jouer_bip_sonore()
+        print("Micro en écoute... Parlez maintenant !")
         audio = pyaudio.PyAudio()
         # for i in range(audio.get_device_count()):
         #     print("audio",audio.get_device_info_by_index(i))
@@ -229,6 +258,7 @@ class SpeechToText:
                             message_payload['session_authentifiee'] = session_utilisateur.model_dump()
                         pub = CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
                         print("message publié sur le broker : ",CLIENT_BROKER_STT)
+                        INSTANCE_TTS.pipeline("Veuillez patienter, je suis entrain de traiter votre demande")
                         print("état payload publié : ",pub )
                         actif = False
                     else : 
@@ -251,6 +281,7 @@ class SpeechToText:
                 pin_potentiel = extraire_pin_4_chiffres(texte)
                 return pin_potentiel
             except Exception as e : 
+
                 print("erreur inattenue dans pipeline authentification stt",str(e))
                 return None
             finally : 
@@ -279,3 +310,7 @@ INSTANCE_STT = SpeechToText()
 #     INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
     # res = INSTANCE_STT.image_en_base64()
     # print("res ",res)
+
+
+# voix saccadée ça coupe au milieu 
+#le vous pouvez parler le biup .. 

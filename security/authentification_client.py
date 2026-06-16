@@ -29,7 +29,7 @@ DEMANDE_INSERTION_PIN = "BONJOUR , Veuillez insérer votre pinne de 4 chiffres l
 CODE_PIN_ERRONE = "Code pinne erroné"
 CARTE_BLOQUEE = "La carte est bloquée après 3 tentatives veuillez vous rapprocher de l'administrateur désormais"
 MESSAGE_ATTENTE = "Merci de patienter pendant que je vérifie votre carte et prépare tout pour vous"
-MESSAGE_BIENVENUE = "BONJOUR BONJOUR BONJOUR"
+MESSAGE_BIENVENUE = "BONJOUR BONJOUR"
 
 class SessionAuthentifiee(BaseModel):
     user_id: Optional[str] = None, 
@@ -211,7 +211,7 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
             prenom=prenom_utilisateur,
             session_id=session_id
         )
-        INSTANCE_TTS.pipeline(f"{MESSAGE_BIENVENUE} {prenom_utilisateur} moi c'est {CONFIGURATION.nom_assistant}. comment puis je vous aider aujourd'hui ?" , ficher_tts_sortie)
+        INSTANCE_TTS.pipeline(f"{MESSAGE_BIENVENUE} {prenom_utilisateur} moi c'est {CONFIGURATION.nom_assistant}, je serai votre assistant, commencez à parler une fois le bip" , ficher_tts_sortie)
         print(f"Session authentifiée créée avec ID: {session_id}")
         #création de la session 
         # session = REPOSITORIES.sessions.create(user_id=response_authentification_apres_hmac.get("user_id"), card_id=response_authentification_apres_hmac.get("card_id"), session_id=session_id)
@@ -247,7 +247,7 @@ if __name__ == "__main__":
 
 
 
-    print("session_authentification après : ", SESSION_UTILISATEUR)
+    print("session_authentification après : ", SESSION_UTILISATEUR) 
     process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,),name="STT_WORKER")
     process_tts = Thread(target=lancement_service_tts,name="TTS_WORKER")
     process_stt.start() ; process_tts.start()

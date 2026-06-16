@@ -33,9 +33,9 @@ class AudioConfig(BaseModel):
     canaux_ecoute : int = 1 # 2 si stéréo 
     taille_chunk : int = 1024
     device_index: Optional[int] = None
-    silence_duree_max_secondes: float = 1.2
+    silence_duree_max_secondes: float = 2.0
     duree_max_enregistrement_theorique: float = 20
-    seuil_energie: int = 300 #pour le RMS
+    seuil_energie: int = 600 #pour le RMS
     pre_roll_parole_avant_enregistrement_secondes: float = 1.6
 
 
@@ -65,7 +65,7 @@ class BrokerConfig(BaseModel):
     use_tls: bool = True
     ca_cert: Optional[str] = None
     qos: Literal[0, 1, 2] = 1
-    retain: bool = True
+    retain: bool = False
     topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
 
 
@@ -73,6 +73,7 @@ class PathConfig(BaseModel):
     data_dir: str = str(ROOT_DIR / "data")
     stt_file: str = "./data/stt_history.jsonl"
     tts_file: str = "./data/tts_history.jsonl"
+    bip_chemin : str = "./data/bip.wav"
     events_file: str = "./data/events.jsonl"
     server_file: str = "./data/server_exchanges.jsonl"
     log_file: str = "./logs/visionassist.log"

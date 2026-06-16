@@ -97,6 +97,7 @@ class TextToSpeech:
         chemin_sortie = f'{self.dossier_sortie}/{nom_fichier_sortie}'
         print("chemin_sortie : ",chemin_sortie)
         with wave.open(chemin_sortie, "wb") as f:
+            print("synthese texte ",texte,"en cours")
             self.modele.synthesize_wav(texte,f)
 
         t1 = time.perf_counter()
@@ -130,7 +131,7 @@ class TextToSpeech:
            audio.terminate()
 
 
-    def pipeline(self, texte: str, nom_fichier_sortie : str = "test.wav", supprimer_fichier: bool = False) -> TTSResult:
+    def pipeline(self, texte: str, nom_fichier_sortie : str = "test.wav", supprimer_fichier: bool = True) -> TTSResult:
         print(f"[{multiprocessing.current_process().name}] mode écoute active en cours ...")
         resultat = self.synthetiser(texte, nom_fichier_sortie=nom_fichier_sortie)
         try:
@@ -146,7 +147,8 @@ class TextToSpeech:
         print("message recu en tts :",message_recu)
         if texte : 
             LOGGER.info(f"tts demandé pour synthetiser ce texte : {texte}")
-            resultat = self.pipeline(texte)
+            resultat = self.pipeline(texte,"audio_agent.wav")
+            print("resultat pour ",texte)
             #TODO : à voir si on publie dans le broker ou pas ??   
         else : 
             LOGGER.warning("Message TTS sans texte")
@@ -155,21 +157,30 @@ class TextToSpeech:
 
 INSTANCE_TTS = TextToSpeech()
 
-CLIENT_BROKER_TTS = get_broker_client("tts-jetson") 
-CLIENT_BROKER_TTS.connexion()
+CLIENT_BROKER_TTS = get_broker_client("tts") 
 
-#à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
-def lancement_service_tts(client_id : str = "tts-jetson", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
+
+
+def lancement_service_tts(topic_sur_ecoute: str = CONFIGURATION.broker.topics.tts_topic): 
+    CLIENT_BROKER_TTS.connexion()
+
     CLIENT_BROKER_TTS.sabonner(topic_sur_ecoute, INSTANCE_TTS.fonction_trigger)
 
-    LOGGER.info("TTS en écoute sur topic %s...",topic_sur_ecoute)
+    LOGGER.info(f"TTS en écoute sur le topic : {topic_sur_ecoute}...")
+    
     try:
         while True:
-            time.sleep(1)
+            time.sleep(0.5) 
+            
     except KeyboardInterrupt:
+        LOGGER.info("Arrêt manuel demandé par l'utilisateur (Ctrl+C).")
+        
+    finally:
+        # Le bloc finally garantit que même si le script plante, on se déconnecte proprement du broker
         CLIENT_BROKER_TTS.deconnexion()
-        LOGGER.info("TTS arrêté.")
+        LOGGER.info("TTS déconnecté du broker et arrêté.")
 
-if __name__ == "__main__":
-    lancement_service_tts()
-# lancement_service_tts()
+
+# if __name__ == "__main__":
+#     lancement_service_tts()
+# # lancement_service_tts()
