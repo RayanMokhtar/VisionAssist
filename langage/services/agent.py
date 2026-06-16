@@ -33,7 +33,7 @@ RÈGLES STRICTES :
 2. INTERDIT : 'Je dois...', 'L'utilisateur demande...', 'Wait,', 'Let me...', 'However,', ou tout raisonnement interne.
 3. Phrases courtes, naturelles, adaptées à la voix.
 4. Vouvoiement par défaut.
-5. VISION : Tu ne vois pas l'image par défaut. Si la question de l'utilisateur requiert de voir ce qu'il a devant lui (ex: "qu'est-ce que c'est ?", "lis ce texte"), tu DOIS appeler l'outil `besoin_image`.
+5. VISION : Tu ne vois pas l'image par défaut. Si la question de l'utilisateur requiert de voir ce qu'il a devant lui (ex: "qu'est-ce que c'est ?", "lis ce texte"), .
 
 Pour l'heure/date : utilise toujours l'outil get_current_time.
 Pour les transports : utilise toujours l'outil get_transit_info.
@@ -75,13 +75,21 @@ class QwenAgent:
             return "tools"
         return END
 
+    def _route_after_tools(self, state: AgentState):
+        messages = state["messages"]
+        last_msg = messages[-1] if messages else None
+        # Si le dernier message vient de 'besoin_image', l'outil a généré la réponse finale
+        if getattr(last_msg, "name", "") == "besoin_image":
+            return END
+        return "agent"
+
     def _build_graph(self):
         workflow = StateGraph(AgentState)
         workflow.add_node("agent", self._call_model)
         workflow.add_node("tools", ToolNode(self.tools))
         workflow.add_edge(START, "agent")
         workflow.add_conditional_edges("agent", self._should_continue, ["tools", END])
-        workflow.add_edge("tools", "agent")
+        workflow.add_conditional_edges("tools", self._route_after_tools, ["agent", END])
         return workflow.compile()
 
     def _build_system_prompt(self, session_model: Optional[SessionModel]) -> SystemMessage:
@@ -105,10 +113,19 @@ class QwenAgent:
         if not response_text:
             return ""
 
-        # 1. Supprimer le bloc de raisonnement interne
-        # On coupe le texte au niveau de la balise de fin </think> et on garde uniquement la suite
-        if "</think>" in response_text:
-            response_text = response_text.split("</think>")[-1]
+        # 1. Extraction de la balise <REPONSE> (si le modèle a suivi les instructions)
+        match = regex.search(r'<REPONSE>(.*?)(?:</REPONSE>|$)', response_text, flags=regex.IGNORECASE | regex.DOTALL)
+        if match:
+            response_text = match.group(1).strip()
+            # On retourne directement car le texte extrait est censé être pur
+        else:
+            # Fallback historique : nettoyage des balises <think>
+            if "</think>" in response_text:
+                response_text = response_text.split("</think>")[-1]
+            elif "<think>" in response_text:
+                response_text = response_text.split("<think>")[0]
+                if not response_text.strip():
+                    response_text = "Je suis désolé, je n'ai pas pu terminer mon analyse."
         
         # Par sécurité, on supprime aussi toute paire <tool_call>...<tool_call> qui pourrait rester
         response_text = regex.sub(r'<tool_call>.*?<tool_call>', '', response_text, flags=regex.DOTALL)
@@ -149,14 +166,12 @@ class QwenAgent:
             session = None
 
         user_content = request.text
-        print("image url:--------------------------------------------------------------------*/-*-*/*-/-*/-*/-*/n", request.image_url[:50])
         if request.image_url:
             user_content += "\n[Image attachée: "+request.image_url+"]"
 
         buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
         historique = buffer.get_langchain_messages()
 
-        print("historique : ",historique)
         current_db_msg = REPOSITORIES.messages.create(
             session_id=request.session_authentifiee.session_id,
             requete=user_content,

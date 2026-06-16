@@ -175,7 +175,7 @@ class ModelService:
         return content.strip()
 
     def poser_question_sur_image(self, prompt: str, chemin_image: str) -> str:
-        print( chemin_image,"image du model")
+        #print( chemin_image,"image du model")
         messages = [{"role": "user", "content": [
             {"type": "image", "image": chemin_image},
             {"type": "text", "text": prompt},

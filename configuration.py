@@ -64,7 +64,7 @@ class BrokerConfig(BaseModel):
     password: Optional[str] = None
     use_tls: bool = True
     ca_cert: Optional[str] = None
-    qos: Literal[0, 1, 2] = 1
+    qos: Literal[0, 1, 2] = 2
     retain: bool = False
     topics:TopicConfig=Field(default_factory=TopicConfig,description="configuration topics")
 

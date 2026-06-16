@@ -1,3 +1,4 @@
+import threading
 import time
 import wave
 from typing import Literal, Optional
@@ -61,8 +62,8 @@ def transformer_message_broker_en_entree_agent(message_recu : str | dict , texte
 
 def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
     MESSAGE_AVERTISSEMENT = "erreur potentielle dans la récupération du message faites attention"
+    print("dans le trigger de l'agent")
     try : 
-        print("ATTENDS tu as recu ça",message_recu)
         resultat_llm = ""
         print("type message recu",type(message_recu))
         if isinstance(message_recu, dict):
@@ -73,7 +74,7 @@ def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
         else :
             raise ValueError("le message reçu n'est ni une string ni un dict",type(message_recu))
         if topic == CONFIGURATION.broker.topics.llm_topic_ecoute_stt :
-            print("agent a recu quelque chose : ",message_recu)
+            #print("agent a recu quelque chose : ",message_recu)
             texte = message_recu.get("resultat_stt","").get("texte","")
             image = message_recu.get("resultat_stt","").get("image","")
             entree_agent : BrokerRequest = transformer_message_broker_en_entree_agent(message_recu,texte,image)
@@ -100,17 +101,26 @@ def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
 
 #à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
 def lancement_service_llm(topic_sur_ecoute : str = CONFIGURATION.broker.topics.llm_topic_ecoute_stt):
-    print("agent en cours de lancement ...")
+    print("Agent en cours de lancement ...")
+    
     CLIENT_BROKER_LLM.connexion()
-    CLIENT_BROKER_LLM.sabonner(topic_sur_ecoute,fonction_trigger_declenchement_llm)
+    
+    print("apres connexion")
+    CLIENT_BROKER_LLM.sabonner(topic_sur_ecoute, fonction_trigger_declenchement_llm)
 
-    LOGGER.info("llm en écoute sur topic %s...",topic_sur_ecoute)
+    LOGGER.info("LLM en écoute sur le topic %s...", topic_sur_ecoute)
+    
+    stop_event = threading.Event()
+    
     try:
-        while True:
-            time.sleep(1)
+        stop_event.wait() 
+        
     except KeyboardInterrupt:
+        LOGGER.info("Interruption clavier détectée. Arrêt du script...")
+        
+    finally:
         CLIENT_BROKER_LLM.deconnexion()
-        LOGGER.info("llm cli arrêté.")
+        LOGGER.info("Client LLM arrêté proprement.")
 
 
 #lancement_llm seuleemnt sur stt

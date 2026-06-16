@@ -280,24 +280,42 @@ def query_memory(query: str, days_back: int = 7, state: Annotated[dict, Injected
 @tool
 def besoin_image(instruction: str, state: Annotated[dict, InjectedState] = None) -> str:
     """Utilise cet outil UNIQUEMENT si tu dois analyser ce qu'il y a devant l'utilisateur via la caméra.
-    Le système vision va regarder l'image et répondre à ton instruction.
     
-    Args:
-        instruction: L'instruction précise pour le module de vision (ex: 'Décris la scène', 'Lis le texte sur l'étiquette', 'Quelle est la couleur de la voiture ?').
+    IMPORTANT : Tu dois me transmettre l'instruction exacte de ce que le module vision doit chercher pour l'utilisateur.
+    Le module vision répondra DIRECTEMENT à l'utilisateur, ce sera le dernier mot de la conversation.
     """
     image_url = (state or {}).get("pending_image_url")
     if not image_url:
-        result = "Aucune image de la caméra n'est disponible. Impossible d'analyser l'environnement."
+        result = "Aucune image de la caméra n'est disponible. Demande à l'utilisateur d'activer sa caméra."
         _log_tool("besoin_image", result)
         return result
         
-    logger.info("👁️ [VISION] Analyse en cours : %s", instruction)
+    messages = (state or {}).get("messages", [])
+    user_query = "la demande de l'utilisateur"
+    # Recherche du dernier message humain dans l'historique
+    for msg in reversed(messages):
+        if getattr(msg, "type", "") == "human":
+            user_query = msg.content
+            break
+            
+    from langage.services.model import MODEL_SERVICE
+    logger.info("👁️ [VISION] Génération de la réponse finale basée sur : %s", instruction)
+    
+    # Le prompt pour le VLM lui demande d'agir comme l'assistant final sans réfléchir à voix haute
+    prompt = (
+        f"L'utilisateur te demande : '{user_query}'.\n"
+        f"Consigne d'analyse : '{instruction}'.\n"
+        "IMPORTANT: Tu es un assistant vocal. Tu vas sûrement faire un raisonnement interne, mais "
+        "tu DOIS OBLIGATOIREMENT placer la phrase finale que le synthétiseur vocal prononcera "
+        "entre les balises <REPONSE> et </REPONSE>.\n"
+        "Exemple: <REPONSE>Bonjour, je vois une boîte de médicaments avec écrit Aspirine.</REPONSE>\n"
+        "Ne mets rien d'autre dans ces balises que le texte à prononcer."
+    )
     
     try:
-        # Appel direct au modèle de vision pour décrire l'image
-        print("image du tool , ",image_url)
-        description = MODEL_SERVICE.poser_question_sur_image(instruction, image_url)
-        result = f"Résultat de l'analyse visuelle : {description}"
+        # Appel direct au modèle de vision pour générer la réponse finale
+        description = MODEL_SERVICE.poser_question_sur_image(prompt, image_url)
+        result = description
     except Exception as e:
         logger.error("Erreur lors de l'analyse visuelle : %s", e)
         result = "Une erreur est survenue lors de l'analyse de l'image."
