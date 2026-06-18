@@ -24,6 +24,16 @@ using namespace cv;
 #define MAX_FRAMES_DECISION 5
 #define SEUIL_DANGER 120
 
+#define RESET   "\033[0m"
+#define GRIS    "\033[90m"
+#define ROUGE   "\033[91m"
+#define VERT    "\033[92m"
+#define JAUNE   "\033[93m"
+#define BLEU    "\033[94m"
+#define MAGENTA "\033[95m"
+#define CYAN    "\033[96m"
+#define BG_ROUGE "\033[41m\033[97m"
+
 enum Decisions {
     RIEN,
     DEVANT,
@@ -82,6 +92,54 @@ bool isDynamicClass(const std::string& className) {
     return dynamicClasses.count(className) > 0;
 }
 
+std::string decisionColor(Decisions decision)
+{
+    switch (decision)
+    {
+        case RIEN:
+            return RESET;
+
+        case AVANT:
+            return ROUGE;
+
+        case ARRIERE:
+            return VERT;
+
+        case GAUCHE:
+            return JAUNE;
+
+        case DROITE:
+            return BLEU;
+
+        default:
+            return RESET;
+    }
+}
+
+std::string decisionText(Decisions decision)
+{
+    switch (decision)
+    {
+        case RIEN:
+            return "[ ---------- ] Rien";
+
+        case AVANT:
+            return "[ ^^^^^^^^^^ ] Rapprochement";
+
+        case ARRIERE:
+            return "[ vvvvvvvvvv ] Eloignement";
+
+        case GAUCHE:
+            return "[ <<<<<<<<<< ] Gauche";
+
+        case DROITE:
+            return "[ >>>>>>>>>> ] Droite";
+
+        default:
+            return "[ ?????????? ] INCONNU";
+    }
+}
+
 void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDetected>& objectsCopy) {
     if (objectsCopy.empty())
         return;
@@ -129,8 +187,6 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
     std::vector<ObjectDetected> objectsNew;
 
     for (const YOLO::Detection& detect : yoloDetection) {
-        // if (detect.className == "person")
-        //     continue;
 
         float sum_u = 0, sum_v = 0;
         int count = 0;
@@ -658,23 +714,15 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew) {
                 }
             }
 
-            if (finalDecision == RIEN)
-                std::cout << "DECISION FINAL ==> RIEN" << std::endl;
-            else if (finalDecision == ARRIERE)
-                std::cout << "DECISION FINAL ==> mouvement vers l'ARRIERE vvvvvvvvv" << std::endl;
-            else if (finalDecision == AVANT)
-                std::cout << "DECISION FINAL ==> mouvement vers l'AVANT ^^^^^^^^^" << std::endl;
-            else if (finalDecision == GAUCHE)
-                std::cout << "DECISION FINAL ==> mouvement vers la GAUCHE >>>>>>>>>" << std::endl;
-            else if (finalDecision == DROITE)
-                std::cout << "DECISION FINAL ==> mouvement vers la DROITE <<<<<<<<<" << std::endl;
+            std::cout << decisionColor(finalDecision) << "DECISION FINALE ==> " << "classe: " << object.className << " | id: " << object.id << " | " << decisionText(finalDecision) << RESET << std::endl;
 
             object.decision = finalDecision;
 
             object.decisions.clear();
 
             if ((norme_gauche > SEUIL_DANGER) && (norme_droite > SEUIL_DANGER) && (norme_haut_bas > SEUIL_DANGER) && (finalDecision != RIEN)) {
-                std::cout<< "DAAAAAAAAAAAANNNNNNNNNNNGGGGGGGGGGGGEEEEEEEEEEEERRRRRRRRRRRR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+                
+                std::cout << BG_ROUGE << " !!! DAAAAAAAAAAAANNNNNNNNNNNGGGGGGGGGGGGEEEEEEEEEEEERRRRRRRRRRRR !!! " << RESET << std::endl;
 
                 if (finalDecision == AVANT) {
                     startBeepAsync(1);
@@ -685,8 +733,6 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew) {
                 }
             }
         }
-
-        std::cout << "----------------------" << std::endl;
     }
 }
 
@@ -815,6 +861,10 @@ int main(int argc, char** argv) {
         tracker(objectsNew, objects);
 
         decisionMaking(objectsNew);
+
+        auto now = std::chrono::system_clock::now();
+        std::time_t t = std::chrono::system_clock::to_time_t(now);
+        std::cout << std::put_time(std::localtime(&t), "%H:%M:%S") << std::endl;
 
         Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
         Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
