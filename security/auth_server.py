@@ -15,6 +15,7 @@ from configuration import CONFIGURATION
 from persistance.models import User, Carte
 from persistance.repository import REPOSITORIES
 from security.jwt_service import create_access_token, create_refresh_token
+from security.schema import SessionAuthentifiee
 
 TOPICS = CONFIGURATION.broker.topics
 AUTH_CLIENT_REQUEST_SECURITY = TOPICS.security_client_request_topic
@@ -28,6 +29,12 @@ CHALLENGES = {}
 # ==========================================
 # UTILITAIRES DE SÉCURITÉ ET CRYPTOGRAPHIE
 # ==========================================
+
+
+def logique_creation_session_agent_ia(reponse_authentification_apres_hmac : dict) -> SessionAuthentifiee :
+    session_id = uuid.uuid4()
+    session_repo = REPOSITORIES.sessions.create(session_id=session_id, user_id=reponse_authentification_apres_hmac.get("user_id"), card_id=reponse_authentification_apres_hmac.get("card_id"))
+    return session_id
 
 def get_fernet():
     cle = CONFIGURATION.security.cle_chiffrement_cartes
@@ -197,7 +204,8 @@ class Authentification:
                 refresh_token = create_refresh_token(user_id=user_id, card_id=card_id)
                 verification_de_la_carte["access_token"] = access_token
                 verification_de_la_carte["refresh_token"] = refresh_token
-                
+                session_id = logique_creation_session_agent_ia(verification_de_la_carte)
+                verification_de_la_carte["session_id"] = str(session_id)
                 publish_response_securite(broker, request, verification_de_la_carte)
             else : 
                 print("Erreur mise à jour dernière connexion utilisateur")

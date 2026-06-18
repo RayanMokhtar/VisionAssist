@@ -11,7 +11,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from security.authentification_client import SessionAuthentifiee
+from security.schema import SessionAuthentifiee
 
 class BrokerRequest(BaseModel):
     model_config = {"arbitrary_types_allowed": True}

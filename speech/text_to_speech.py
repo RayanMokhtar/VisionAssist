@@ -14,8 +14,7 @@ from piper import PiperVoice , SynthesisConfig
 from pydantic import BaseModel, Field
 
 from configuration import CONFIGURATION
-from broker.service import get_broker_client 
-from broker.broker_interface import IBroker 
+from broker.service import get_broker_client
 
 
 ### TTS piper : https://arxiv.org/html/2512.08006v1

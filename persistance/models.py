@@ -128,4 +128,4 @@ class Message(Base):
     contexte = Column(MutableDict.as_mutable(JSON_TYPE), nullable=True, default=dict)  
     session = relationship("Session", back_populates="messages")
     def __repr__(self):
-        return f"<Message message_id={self.message_id} session_id={self.session_id} ts={self.timestamp}>"
+        return f"<Message message_id={self.message_id} session_id={self.session_id} ts={self.timestamp}> mssage={self.requete} reponse={self.reponse}"

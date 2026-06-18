@@ -237,9 +237,10 @@ def query_memory(query: str, days_back: int = 7, state: Annotated[dict, Injected
         raw_results = vector_store.search(
             collection_name="conversation_messages",
             query=query,
-            n_results=20,  # On en récupère plus pour filtrer ensuite par date
+            n_results=8,
             where={"user_id": user_id},
         )
+        print("raw_results",raw_results)
 
         # Filtrer côté Python sur la fenêtre temporelle
         results = []
@@ -266,8 +267,9 @@ def query_memory(query: str, days_back: int = 7, state: Annotated[dict, Injected
             score = 1.0 - r.get("distance", 1.0)
             prefix = f"[{date}] (pertinence: {score:.0%})" if date else f"(pertinence: {score:.0%})"
             lines.append(f"{i}. {prefix} {r['content'][:400]}")
-
+            
         result = "Voici les échanges passés les plus pertinents :\n" + "\n".join(lines)
+        print("résultat query_memory", result)
         _log_tool("query_memory", result)
         return result
 
@@ -298,7 +300,6 @@ def besoin_image(instruction: str, state: Annotated[dict, InjectedState] = None)
             user_query = msg.content
             break
             
-    from langage.services.model import MODEL_SERVICE
     logger.info("👁️ [VISION] Génération de la réponse finale basée sur : %s", instruction)
     
     # Le prompt pour le VLM lui demande d'agir comme l'assistant final

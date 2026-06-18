@@ -5,18 +5,16 @@ from typing import Literal, Optional
 import logging
 import uuid
 
-from pydantic import BaseModel, Field
 
 import json
 
 from configuration import CONFIGURATION
 from broker.service import get_broker_client 
-from broker.broker_interface import IBroker 
 
 from langage.schemas.broker import BrokerRequest
 from langage.services.model import MODEL_SERVICE
 from langage.services.agent import QwenAgent
-from security.authentification_client import SessionAuthentifiee
+from security.schema import SessionAuthentifiee
 
 LOGGER = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ def fonction_trigger_declenchement_llm(topic , message_recu : str | dict ):
     print("dans le trigger de l'agent")
     try : 
         resultat_llm = ""
-        print("type message recu",type(message_recu))
+        print("type message recu",message_recu,"\n")
         if isinstance(message_recu, dict):
             print("message déjà parsé en dict")
         elif isinstance(message_recu, str):

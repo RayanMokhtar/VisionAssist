@@ -247,9 +247,10 @@ class SpeechToText:
             if type == "micro":
                 os.unlink(chemin_fichier)
 
-INSTANCE_STT = SpeechToText()
 # resultat = INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
 
-if __name__ == "__main__":
+INSTANCE_STT = SpeechToText()
+
+if __name__ == "__main__":    
     INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
   

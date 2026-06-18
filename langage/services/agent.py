@@ -161,7 +161,7 @@ class QwenAgent:
 
         user_content = request.text
         if request.image_url:
-            user_content += "\n[Image attachée: "+request.image_url+"]"
+            user_content += "\n[Image attachée par l'utilisateur]"
 
         buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
         historique = buffer.get_langchain_messages()
@@ -173,17 +173,17 @@ class QwenAgent:
 
         system_message = self._build_system_prompt(session_model=session)
 
-        # On n'injecte PAS l'image ici pour économiser la VRAM sur les requêtes simples
         current_user_msg = HumanMessage(content=request.text)
 
         initial_state = {
-            "messages": [system_message] + historique + [current_user_msg],
+            "messages": [system_message] + historique + [current_user_msg], # somme de listes 
             "user_id": request.user_id,
             "session_id": request.session_authentifiee.session_id,
             "tool_calls_made": [],
             "pending_image_url": request.image_url,
         }
 
+        print("état initial => ",initial_state.get("messages"),"\n")
         try:
             final_state = self.graph.invoke(initial_state)
             response_text = final_state["messages"][-1].content
@@ -241,7 +241,7 @@ class QwenAgent:
 
         user_content = request.text
         if request.image_url:
-            user_content += f"\n[Image attachée: {request.image_url}]"
+            user_content += "\n[Image attachée par l'utilisateur]"
 
         buffer = ConversationBuffer(str(request.session_authentifiee.session_id))
         historique = buffer.get_langchain_messages()

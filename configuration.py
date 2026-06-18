@@ -113,7 +113,7 @@ class SecurityConfig(BaseModel):
 
 
 class QwenConfig(BaseModel):
-    model_id: str = Field("./langage/modeles/Qwen3.5-27B",description="model id")
+    model_id: str = Field("./langage/modeles/Qwen3.5-9B",description="model id")
     load_in_4bit: bool = Field(True,description="booleen chargement en 4 bits")
     max_new_tokens: int = Field(1000,description="taille max de la reponse")
     temperature: float = Field(0.7,description="temperature du modele")
@@ -124,7 +124,7 @@ class QwenConfig(BaseModel):
     port: int = Field(8000,description="port du modele")
     max_image_size_mb: int = Field(10,description="taille max des images")
     device : Literal["cuda","cpu","auto"] = Field("cuda",description="device du modele")
-    max_messages_en_memoire : int = Field(0, gte=0 , le =100)
+    max_messages_en_memoire : int = Field(5, gte=0 , le =100)
 
 class Configuration(BaseSettings):
     model_config = SettingsConfigDict(

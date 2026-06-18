@@ -21,7 +21,7 @@ from langchain_core.messages import (
 from persistance.models import Message
 from persistance.repository import REPOSITORIES
 from configuration import CONFIGURATION
-
+    
 logger = logging.getLogger(__name__)
 
 
