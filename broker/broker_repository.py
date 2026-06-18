@@ -24,12 +24,14 @@ class MqttClientBroker(IBroker):
             self.client.username_pw_set(conf_broker.username, conf_broker.password)
         
         if conf_broker.use_tls:
-            self.client.tls_set()
+            self.client.tls_set(ca_certs=conf_broker.ca_cert)
+            self.client.tls_insecure_set(False)
         
         self.est_connecte = False
         self.abonnement_topic_callback : dict[str, Callable] = {}
     
     def connexion(self):
+        print("configuration broker : ", self.conf)
         self.client.on_connect = self._wrapper_connexion_personnalisee
         self.client.on_message = self._wrapper_lors_envoi_message
         
@@ -43,9 +45,11 @@ class MqttClientBroker(IBroker):
         logger.info("Déconnecté du broker")
     
     def publier(self, topic: str, payload: Any) -> bool:
+        print("publier dans broker : ", topic, payload , "avec configuration : ", self.conf)
         try:
             if isinstance(payload, (dict, list)):
                 payload = json.dumps(payload, ensure_ascii=False)
+            print("publication topic : ", topic, "payload : ", payload)
             result = self.client.publish(topic, str(payload), qos=self.conf.qos, retain=self.conf.retain)
             result.wait_for_publish(timeout=5.0)
             return result.rc == mqtt.MQTT_ERR_SUCCESS

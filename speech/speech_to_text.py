@@ -3,17 +3,29 @@ import tempfile
 import time
 import wave
 import pyaudio
+import audioop
+import collections
+import cv2
+
 
 from typing import Callable, Optional , Literal 
-
+from speech.text_to_speech import INSTANCE_TTS
 
 from pydantic import BaseModel, Field
 from faster_whisper import WhisperModel
+from speech.utils import  trouver_index_audio_par_nom
 
 from configuration import CONFIGURATION
+from broker.service import get_broker_client 
+from security.utils import extraire_pin_4_chiffres
 
+import base64
+import multiprocessing
+
+audio_lock = multiprocessing.Lock()
 
 #Lien de la cdoc de doc de la librairie faster_whisper :  https://github.com/SYSTRAN/faster-whisper
+
 
 class STTSegment(BaseModel):
     debut: float
@@ -36,10 +48,12 @@ class STTResult(BaseModel):
     def __str__(self) -> str:# pour afficher l'objet
         return f"[{self.language} {self.language_probability:.0%} | {self.duration_ms}ms] {self.texte} , segments : \n {self.segments}" 
 
+print("configuration  dans stt,",CONFIGURATION.broker)
+
 
 MODELE_STT = WhisperModel(CONFIGURATION.stt.model_name,device=CONFIGURATION.stt.device,compute_type=CONFIGURATION.stt.quantization_modele)
 
-
+CLIENT_BROKER_STT = get_broker_client(client_id="stt-jetson")
 
 class SpeechToText:
 
@@ -48,10 +62,13 @@ class SpeechToText:
         self.audio_config = CONFIGURATION.audio
         self.modele = MODELE_STT         
         self.charger_modele()      
+        self.chemin_bip = CONFIGURATION.paths.bip_chemin
+        self.input_device_index = trouver_index_audio_par_nom(self.audio_config.nom_micro_entree, "input")
+        self.output_device_index = trouver_index_audio_par_nom(self.audio_config.nom_enceinte_sortie, "output")
 
     def charger_modele(self) -> None:
         if self.modele is None : 
-            print("chargement modele stt")
+            print("chargement modele stt selon conf ", self.stt_configuration)
             self.modele = WhisperModel(
                 self.stt_configuration.model_name,
                 device=self.stt_configuration.device,
@@ -97,42 +114,215 @@ class SpeechToText:
 
         return result
 
-    def enregistrer_audio_microphone(self, duree_record: int = 5) -> str:
-        print("enregistrement audio en cours : ")
-        #ouvrir streamaudio , enregistrer depuis micrphone ... 
+
+    def jouer_bip_sonore(self) -> None :
+        """Joue un son pour indiquer à l'utilisateur qu'il peut parler."""            
+        try:
+            wf = wave.open(self.chemin_bip, 'rb')
+            p = pyaudio.PyAudio()
+            
+            stream_kwargs = {
+                "format": p.get_format_from_width(wf.getsampwidth()),
+                "channels": wf.getnchannels(),
+                "rate": wf.getframerate(),
+                "output": True
+            }
+            if self.output_device_index is not None:
+                stream_kwargs["output_device_index"] = self.output_device_index
+
+            stream = p.open(**stream_kwargs)
+            
+            data = wf.readframes(1024)
+            while data:
+                stream.write(data)
+                data = wf.readframes(1024)
+                               
+            stream.stop_stream()
+            stream.close()
+            p.terminate()
+        except Exception as e:
+            print(f"Erreur lors de la lecture du bip : {e}")
+
+
+
+    def enregistrer_audio_microphone_apres_activation(self) -> Optional[str]:
+        print("préparation du micro ...")
+        
+        INSTANCE_TTS.pipeline("Je suis toujours à votre écoute")
+        print("Micro en écoute... Parlez maintenant !")
         audio = pyaudio.PyAudio()
-        stream = audio.open(
-            format=pyaudio.paInt16, #chaqueéchantillon sur 16 bits 
-            channels=self.audio_config.canaux_ecoute,
-            rate=self.audio_config.taux_echantillonnage_hz,
-            input=True,#micro en lecture
-            input_device_index=self.audio_config.device_index,
-            frames_per_buffer=self.audio_config.taille_chunk,
+        # for i in range(audio.get_device_count()):
+        #     print("audio",audio.get_device_info_by_index(i))
+        
+        with audio_lock :
+            stream_kwargs = {
+                "format": pyaudio.paInt16,
+                "channels": self.audio_config.canaux_ecoute,
+                "rate": self.audio_config.taux_echantillonnage_hz,
+                "input": True,
+                "frames_per_buffer": self.audio_config.taille_chunk
+            }
+            if self.input_device_index is not None:
+                stream_kwargs["input_device_index"] = self.input_device_index
+
+            stream = audio.open(**stream_kwargs)
+        
+        #duree chunk : 64 ms car c la taille d'un chunk 1024 / taille échantillon valeur par seconde
+        chunk_duree_secondes = self.audio_config.taille_chunk / self.audio_config.taux_echantillonnage_hz
+        silence_chunks_max = int(self.audio_config.silence_duree_max_secondes / chunk_duree_secondes)
+        max_chunks = int(self.audio_config.duree_max_enregistrement_theorique / chunk_duree_secondes)
+        pre_roll_chunks = int(self.audio_config.pre_roll_parole_avant_enregistrement_secondes / chunk_duree_secondes)
+
+        pre_buffer = collections.deque(maxlen=pre_roll_chunks)
+        frames = []
+        
+        print(" taille file buffer : ",pre_buffer)
+        print("silence chunks ",silence_chunks_max)
+        parole_detectee = False
+        silence_chunks = 0
+
+        try:
+            for _ in range(max_chunks):
+                data = stream.read(
+                    self.audio_config.taille_chunk,
+                    exception_on_overflow=False
+                )
+                # print("data : ",data)  data en little endian
+                energie = audioop.rms(data, 2)  # 2 octets par échantillon
+                print("energie ",energie)
+                if not parole_detectee: 
+                    pre_buffer.append(data)
+                    if energie > self.audio_config.seuil_energie:
+                        print("parole détectée")
+                        parole_detectee = True
+                        frames.extend(pre_buffer) #ajout du début (taille fixe de la file car les nouveaux éléments se poussent)
+                        frames.append(data)
+                    continue
+
+                frames.append(data)
+
+                if energie < self.audio_config.seuil_energie:
+                    silence_chunks += 1
+                else:
+                    silence_chunks = 0 #reprise de parole
+
+                if silence_chunks >= silence_chunks_max:
+                    print("fin de parole détectée")
+                    break
+        finally:
+            stream.stop_stream()
+            stream.close()
+            audio.terminate()
+
+        fichier_temporaire_stockage = tempfile.NamedTemporaryFile(
+            suffix=".wav",
+            delete=False
         )
 
-        nb_chunks_obtenus = int((self.audio_config.taux_echantillonnage_hz / self.audio_config.taille_chunk) * duree_record) #combien de chunk : sur un seconde * nbr seconde
+        # Vérifier si des frames ont été enregistrées
+        if not frames or len(frames) < 10:  # Au moins quelques frames
+            print("Aucune parole détectée - fichier vide non retourné")
+            os.unlink(fichier_temporaire_stockage.name)
+            return None
 
-        #lire flux audio  nb_chunks fois , si buffer plain continue quand meme 
-        frames = [stream.read(self.audio_config.taille_chunk, exception_on_overflow=False) for _ in range(nb_chunks_obtenus)]
-
-        stream.stop_stream()
-        stream.close()
-        audio.terminate()
-        print("enregistrement fini ")
-        #écriture dans un fichier temporaire
-        fichier_temporaire_stockage = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)#suppression après via le unlink
         with wave.open(fichier_temporaire_stockage.name, "wb") as f:
-            #écriture entête pour fastWhisper
             f.setnchannels(self.audio_config.canaux_ecoute)
             f.setsampwidth(audio.get_sample_size(pyaudio.paInt16))
             f.setframerate(self.audio_config.taux_echantillonnage_hz)
-            f.writeframes(b"".join(frames))#écritures des frames
+            f.writeframes(b"".join(frames))
 
         return fichier_temporaire_stockage.name
+    
 
-    def pipeline(self, type: Literal["micro", "fichier"] = "micro", duree_record: Optional[int] = 5, chemin_fichier_audio: Optional[str] = None) -> STTResult:
+    
+    @staticmethod
+    def get_image_actuelle():
+        cap = cv2.VideoCapture("/dev/video1")
+        print(f"Caméra ouverte : {cap.isOpened()}")
+
+        ret, frame = cap.read()
+        if not ret or frame is None:
+            print("Erreur : Frame non lue par OpenCV")
+            cap.release()
+            return None # On quitte la fonction pour éviter le crash
+
+        chemin_sauvegarde = f"{CONFIGURATION.paths.image_path}/last_image_path.png"
+        frame_optimisee = cv2.resize(frame, (200,200) , interpolation=cv2.INTER_AREA)
+        cv2.imwrite(chemin_sauvegarde, frame_optimisee)
+        cap.release()        
+        return chemin_sauvegarde
+
+
+
+    @staticmethod
+    def image_en_base64() -> str:
+        image_path = SpeechToText.get_image_actuelle()
+
+        with open(image_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+
+        return f"data:image/png;base64,{b64}"
+            
+
+    #après authentification on l'active, quand il a rentré le pin ...sinon enregistrer_audio_microphone_apres_activation
+    def ecouter_en_continu_avec_mot_activation(self,session_utilisateur : Optional[str] = None ) -> None : 
+        print(f"[{multiprocessing.current_process().name}] mode écoute active en cours ...")
+        actif = False
+        CLIENT_BROKER_STT.connexion()
+        while True : 
+            print("dans la boucle")
+            chemin_audio = self.enregistrer_audio_microphone_apres_activation()
+            if chemin_audio is None : 
+                continue
+            try : 
+                resultat = self.transcrire_fichier_audio(chemin_fichier_audio=chemin_audio)
+                texte = resultat.texte.lower().strip()
+                print("texte renvoyé par écoute : ",texte)
+                if not texte : 
+                    continue
+                if not actif :  
+                    if CONFIGURATION.nom_assistant.lower() in texte:
+                        actif = True
+                        print("assistant activé car présent dans texte : ",texte)
+                        message_payload = {"resultat_stt":{"texte":texte.replace(CONFIGURATION.nom_assistant.lower(),""),"image":INSTANCE_STT.image_en_base64()}}
+                        if session_utilisateur is not None : 
+                            message_payload['session_authentifiee'] = session_utilisateur.model_dump()
+                        pub = CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
+                        print("message publié sur le broker : ",CLIENT_BROKER_STT)
+                        INSTANCE_TTS.pipeline("oui, Veuillez patienter, je suis entrain de traiter votre demande")
+                        print("état payload publié : ",pub )
+                        actif = False
+                    else : 
+                        print("pas d'instruction claire pour l'assistant")
+            except Exception as e : 
+                print("erreur inattenue dans ecoute continue stt",str(e))
+            finally : 
+                os.unlink(chemin_audio)
+
+
+    def pipeline_authentification_stt(self , nombre_tentatives : int = 0): #pour tester on garde à 1 mais sera à injecter
+        while nombre_tentatives <= CONFIGURATION.security.max_tentatives_avant_blocage_carte_gemalto : 
+            chemin_audio = self.enregistrer_audio_microphone_apres_activation()
+            if chemin_audio is None : 
+                continue
+            try : 
+                resultat = self.transcrire_fichier_audio(chemin_fichier_audio=chemin_audio)
+                texte = resultat.texte.strip()
+                print("résultat transcript ",texte)
+                pin_potentiel = extraire_pin_4_chiffres(texte)
+                return pin_potentiel
+            except Exception as e : 
+
+                print("erreur inattenue dans pipeline authentification stt",str(e))
+                return None
+            finally : 
+                os.unlink(chemin_audio)
+            
+
+
+    def pipeline(self, type: Literal["micro", "fichier"] = "micro", chemin_fichier_audio: Optional[str] = None) -> STTResult:
         if type == "micro":
-            chemin_fichier = self.enregistrer_audio_microphone(duree_record)
+            chemin_fichier = self.enregistrer_audio_microphone_apres_activation()
         elif type == "fichier":
             chemin_fichier = chemin_fichier_audio
         else:
@@ -144,7 +334,14 @@ class SpeechToText:
             if type == "micro":
                 os.unlink(chemin_fichier)
 
-instance_stt = SpeechToText()
-resultat = instance_stt.pipeline(type="micro", duree_record=10)
+INSTANCE_STT = SpeechToText()
+# resultat = INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
 
-  
+if __name__ == "__main__":
+    # INSTANCE_STT.ecouter_en_continu_avec_mot_activation()
+    res = INSTANCE_STT.image_en_base64()
+    # print("res ",res)
+
+
+# voix saccadée ça coupe au milieu 
+#le vous pouvez parler le biup .. 

@@ -16,6 +16,13 @@ from pydantic import BaseModel, Field
 from configuration import CONFIGURATION
 from broker.service import get_broker_client 
 from broker.broker_interface import IBroker 
+import multiprocessing
+
+from speech.utils import trouver_index_audio_par_nom
+
+
+
+
 
 
 ### TTS piper : https://arxiv.org/html/2512.08006v1
@@ -35,8 +42,8 @@ logging.basicConfig(
     level=logging.INFO, 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  
     handlers=[
-        logging.StreamHandler(), #console 
-        logging.FileHandler(CONFIGURATION.paths.log_file), #fichier log
+        logging.StreamHandler() #console 
+        # logging.FileHandler(CONFIGURATION.paths.log_file), #fichier log
     ]
 )
 
@@ -54,16 +61,23 @@ class TTSResult(BaseModel):
     def __str__(self) -> str:
         return f"[{self.texte} {self.chemin_fichier_audio} | {self.duree_secondes} s]" 
 
-def charger_modele(configuration_tts=configuration_tts):
-    if os.path.exists(configuration_tts.chemin_modele):
-        print(f"{configuration_tts.chemin_modele}")
-        #doc : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_PYTHON.md
-        modele  = PiperVoice.load(configuration_tts.chemin_modele, config_path=configuration_tts.configuration_modele)
-        LOGGER.info("Modèle chargé" ) 
-        return modele
-    else : 
-        LOGGER.error("modele pas chargé ??")
 
+def charger_modele(configuration_tts=configuration_tts):
+    
+    if os.path.exists(configuration_tts.chemin_modele):
+        try : 
+            print(f"Chemin du modèle tts : {configuration_tts.chemin_modele}")
+            #doc : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/API_PYTHON.md
+            modele  = PiperVoice.load(configuration_tts.chemin_modele, config_path=configuration_tts.configuration_modele)
+            LOGGER.info("Modèle chargé" ) 
+            return modele
+        except Exception as e:
+            LOGGER.error(f"Erreur lors du chargement du modèle : {e}")
+    else : 
+        print("chemin du modele tts non trouvé : ",configuration_tts.chemin_modele , "chemin actuel : ", os.getcwd())
+        LOGGER.error(f"Modèle pas chargé ?? Chemin cherché : {configuration_tts.chemin_modele}")
+
+        
 MODELE_TTS = charger_modele()
 
 
@@ -75,17 +89,20 @@ class TextToSpeech:
         self.modele = MODELE_TTS
         os.makedirs(self.configuration_tts.dossier_sortie, exist_ok=True)
         self.dossier_sortie = self.configuration_tts.dossier_sortie
+        self.output_device_index = trouver_index_audio_par_nom(self.audio_config.nom_enceinte_sortie, "output")
 
     def synthetiser(self, texte: str , nom_fichier_sortie : str) -> TTSResult:
-    
+        
+        print("synthese du texte en cours")
         if not texte.strip():
-            raise ValueError("Texte vide — rien à synthétiser.")
+            raise ValueError("Texte vide rien à synthétiser.")
 
         t0 = time.perf_counter()
 
         chemin_sortie = f'{self.dossier_sortie}/{nom_fichier_sortie}'
         print("chemin_sortie : ",chemin_sortie)
         with wave.open(chemin_sortie, "wb") as f:
+            print("synthese texte ",texte,"en cours")
             self.modele.synthesize_wav(texte,f)
 
         t1 = time.perf_counter()
@@ -97,18 +114,21 @@ class TextToSpeech:
         return resultat
 
     def lire_audio(self, chemin_fichier: str) -> None:
-    
         audio = pyaudio.PyAudio()
         try:
            with wave.open(chemin_fichier, "rb") as f:
-               stream = audio.open(
-                   format=audio.get_format_from_width(f.getsampwidth()),
-                   channels=f.getnchannels(),
-                   rate=f.getframerate(),
-                   output=True,
-                   output_device_index=self.audio_config.device_index,
-                   frames_per_buffer=self.audio_config.taille_chunk,
-               )
+               stream_kwargs = {
+                   "format": audio.get_format_from_width(f.getsampwidth()),
+                   "channels": f.getnchannels(),
+                   "rate": f.getframerate(),
+                   "output": True,
+                   "frames_per_buffer": self.audio_config.taille_chunk
+               }
+               if self.output_device_index is not None:
+                   stream_kwargs["output_device_index"] = self.output_device_index
+
+               stream = audio.open(**stream_kwargs)
+               
                data = f.readframes(self.audio_config.taille_chunk)
                while data:
                    stream.write(data)
@@ -119,7 +139,8 @@ class TextToSpeech:
            audio.terminate()
 
 
-    def pipeline(self, texte: str, nom_fichier_sortie : str = "test.wav", supprimer_fichier: bool = False) -> TTSResult:
+    def pipeline(self, texte: str, nom_fichier_sortie : str = "test.wav", supprimer_fichier: bool = True) -> TTSResult:
+        print(f"[{multiprocessing.current_process().name}] mode écoute active en cours ...")
         resultat = self.synthetiser(texte, nom_fichier_sortie=nom_fichier_sortie)
         try:
             self.lire_audio(resultat.chemin_fichier_audio)
@@ -130,30 +151,43 @@ class TextToSpeech:
     
     def fonction_trigger(self , topic , message_recu : str):
         MESSAGE_AVERTISSEMENT = "erreur potentielle dans la récupération du message faites attention"
-        texte = message_recu.get("resultat_llm","")
+        texte = message_recu.get("response","")
+        print("message recu en tts :",message_recu)
         if texte : 
             LOGGER.info(f"tts demandé pour synthetiser ce texte : {texte}")
-            resultat = self.pipeline(texte)
+            resultat = self.pipeline(texte,"audio_agent.wav")
+            print("resultat pour tts :",texte)
             #TODO : à voir si on publie dans le broker ou pas ??   
         else : 
             LOGGER.warning("Message TTS sans texte")
             resultat = self.pipeline(MESSAGE_AVERTISSEMENT)
 
 
-#à faire basculer dans le init , et par ailleurs le topic sur écoute on pourrait ajouter le yolo si on veut une réponse rapide sans passer par le llm ? à voir ou juste un buzzer ? 
-def lancement_service_tts(client_id : str = "tts", topic_sur_ecoute : str = CONFIGURATION.broker.topics.tts_topic):
-    broker = get_broker_client(client_id) # à vori si singelton ou pas 
-    TTS = TextToSpeech()
-    broker.connexion()
-    broker.sabonner(topic_sur_ecoute,TTS.fonction_trigger)
+INSTANCE_TTS = TextToSpeech()
 
-    LOGGER.info("TTS en écoute sur topic %s...",topic_sur_ecoute)
+CLIENT_BROKER_TTS = get_broker_client("tts") 
+
+
+
+def lancement_service_tts(topic_sur_ecoute: str = CONFIGURATION.broker.topics.tts_topic): 
+    CLIENT_BROKER_TTS.connexion()
+    CLIENT_BROKER_TTS.sabonner(topic_sur_ecoute, INSTANCE_TTS.fonction_trigger)
+
+    LOGGER.info(f"TTS en écoute sur le topic : {topic_sur_ecoute}...")
+    
+    stop_event = threading.Event()
+    
     try:
-        while True:
-            time.sleep(1)
+        stop_event.wait()
+            
     except KeyboardInterrupt:
-        broker.deconnexion()
-        LOGGER.info("TTS arrêté.")
+        LOGGER.info("Arrêt manuel demandé par l'utilisateur (Ctrl+C).")
+        
+    finally:
+        CLIENT_BROKER_TTS.deconnexion()
+        LOGGER.info("TTS déconnecté du broker et arrêté.")
 
 
-lancement_service_tts()
+# if __name__ == "__main__":
+#     lancement_service_tts()
+# # lancement_service_tts()

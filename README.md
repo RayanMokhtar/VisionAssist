@@ -15,7 +15,7 @@ https://medium.com/@pinaki.brahma/improve-llm-based-response-through-parent-chil
 
 
 
-
+python3 -m piper.download_voices fr_FR-siwis-medium INSTALLER PIPER 
 ## docs tts : 
 
 
@@ -31,6 +31,7 @@ https://arxiv.org/pdf/2106.06103
 lien vers la démo : https://rhasspy.github.io/piper-samples/demo.html
 
 
+python3 -m piper.download_voices fr_FR-siwis-medium INSTALLER PIPER 
 
 
 entrainement : finetuning modele : https://github.com/OHF-Voice/piper1-gpl/blob/main/docs/TRAINING.md
@@ -76,6 +77,26 @@ installer le broker mosquitto via l'installer https://mosquitto.org/download/ : 
 
  mosquitto_pub -h 127.0.0.1 -p 1883 -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
  mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v
+ ajouter allow_anonymous dans broker
+ listener 1883 0.0.0.0 dans etc config
+
+
+ ### Carte Gemalto  : 
+ sudo apt install pcscd pcsc-tools swig python3-dev libpcsclite-dev
+ 
+ pip install pyscard (Dans un venv)
+
+Vérifier que le lecteur est détecté :
+pcsc_scan
+mosquitto_pub -h 127.0.0.1 -p 1883 -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
+mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v
+
+sudo apt install mosquitto-clients
+
+mosquitto -c /etc/mosquitto/mosquitto.conf
+
+commande driver : 
+    sudo apt install --reinstall linux-modules-extra-$(uname -r)
 
 sudo apt install -y nvidia-driver-550# maj driver 
 
@@ -87,4 +108,30 @@ sudo apt install -y nvidia-driver-550# maj driver
 
 
  commande lancement vllm : vllm serve ./langage/modeles/Qwen3.5-27B-4bit-bitsandbytes --max-model-len 8192 --gpu-memory-utilization 0.95 --enforce-eager
+ mosquitto_pub -h 127.0.0.1 -p 1883 -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
+ mosquitto_sub -h 127.0.0.1 -p 1883 -t "#" -v
 
+sudo apt install -y nvidia-driver-550# maj driver 
+
+// vllm doc suggère : uv
+ pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu129 // à tester si ça marche pas
+
+ commande lancement vllm : vllm serve ./langage/modeles/Qwen3.5-27B-4bit-bitsandbytes --max-model-len 8192 --gpu-memory-utilization 0.95 --enforce-eager
+
+
+
+
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx
+wget https://huggingface.co/rhasspy/piper-voices/resolve/main/fr/fr_FR/siwis/medium/fr_FR-siwis-medium.onnx.json
+
+sudo apt-get install espeak-ng
+
+    "length_scale": 1.2, pour ralentir la parole ... selon préférences utilisateurs ... 
+
+
+mosquitto_sub -h 172.30.137.124 -p 8883   --cafile /etc/mosquitto/certs/ca.crt   -t "#" -v
+
+mosquitto_pub -h 172.30.137.124 -p 8883  --cafile /etc/mosquitto/certs/ca.crt -t "results/stt" -m '{"session_id":"123","resultat_stt":{"texte":"bonjour"}}' -q 1
+
+
+ sudo modprobe v4l2loopback devices=1 video_nr=1 card_label="CameraVirtuelle"

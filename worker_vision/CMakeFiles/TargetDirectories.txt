@@ -1,0 +1,3 @@
+/home/visionassist/Documents/VisionAssist/worker_vision/CMakeFiles/main.dir
+/home/visionassist/Documents/VisionAssist/worker_vision/CMakeFiles/edit_cache.dir
+/home/visionassist/Documents/VisionAssist/worker_vision/CMakeFiles/rebuild_cache.dir

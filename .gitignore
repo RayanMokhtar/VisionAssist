@@ -1,3 +1,4 @@
+data/
 env/
 /data
 *.egg-info
@@ -12,7 +13,7 @@ logs/
 *.log
 worker_vision/build/
 modeles/
-api/
+# api/
 langage/modeles/
 =======
 # Environments
@@ -29,6 +30,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+*.egg-info
 # C extensions
 *.so
 
@@ -56,7 +58,7 @@ modeles/
 .ipynb_checkpoints
 
 # VS Code
-.vscode/
+.vsco1de/
 
 # Mac
 .DS_Store

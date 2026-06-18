@@ -1,163 +1,201 @@
 #include "Yolo.h"
 
-std::vector<std::string> Yolo::load_class_list()
+YOLO::YOLO(const std::string &onnxModelPath, const cv::Size &modelInputShape, const std::string &classesTxtFile, const bool &runWithCuda)
 {
-    std::vector<std::string> class_list;
-    std::ifstream ifs("../YoloUtils/classes.txt");
-    std::string line;
-    while (getline(ifs, line))
-    {
-        class_list.push_back(line);
-    }
-    return class_list;
+    modelPath = onnxModelPath;
+    modelShape = modelInputShape;
+    classesPath = classesTxtFile;
+    cudaEnabled = runWithCuda;
+
+    loadOnnxNetwork();
 }
 
-void Yolo::load_net(cv::dnn::Net &net, bool is_cuda)
+std::vector<YOLO::Detection> YOLO::runYOLO(const cv::Mat &input)
 {
-    auto result = cv::dnn::readNet("../YoloUtils/yolov5s.onnx");
-    if (is_cuda)
-    {
-        std::cout << "Attempty to use CUDA\n";
-        result.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
-        result.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA_FP16);
-    }
-    else
-    {
-        std::cout << "Running on CPU\n";
-        result.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
-        result.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
-    }
-    net = result;
-}
+    cv::Mat modelInput = input;
+    int pad_x, pad_y;
+    float scale;
+    if (letterBoxForSquare && modelShape.width == modelShape.height)
+        modelInput = formatToSquare(modelInput, &pad_x, &pad_y, &scale);
 
-cv::Mat Yolo::format_yolov5(const cv::Mat &source) {
-    int col = source.cols;
-    int row = source.rows;
-    int _max = MAX(col, row);
-    cv::Mat result = cv::Mat::zeros(_max, _max, CV_8UC3);
-    source.copyTo(result(cv::Rect(0, 0, col, row)));
-    return result;
-}
-
-void Yolo::detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &output, const std::vector<std::string> &className) {
     cv::Mat blob;
-
-    auto input_image = format_yolov5(image);
-    
-    cv::dnn::blobFromImage(input_image, blob, 1./255., cv::Size(INPUT_WIDTH, INPUT_HEIGHT), cv::Scalar(), true, false);
+    cv::dnn::blobFromImage(modelInput, blob, 1.0/255.0, modelShape, cv::Scalar(), true, false);
     net.setInput(blob);
+
     std::vector<cv::Mat> outputs;
     net.forward(outputs, net.getUnconnectedOutLayersNames());
 
-    float x_factor = input_image.cols / INPUT_WIDTH;
-    float y_factor = input_image.rows / INPUT_HEIGHT;
-    
+    int rows = outputs[0].size[1];
+    int dimensions = outputs[0].size[2];
+
+    bool yolov8 = false;
+
+    if (dimensions > rows)
+    {
+        yolov8 = true;
+        rows = outputs[0].size[2];
+        dimensions = outputs[0].size[1];
+
+        outputs[0] = outputs[0].reshape(1, dimensions);
+        cv::transpose(outputs[0], outputs[0]);
+    }
     float *data = (float *)outputs[0].data;
 
-    const int dimensions = 85;
-    const int rows = 25200;
-    
     std::vector<int> class_ids;
     std::vector<float> confidences;
     std::vector<cv::Rect> boxes;
 
-    for (int i = 0; i < rows; ++i) {
+    for (int i = 0; i < rows; ++i)
+    {
+        if (yolov8)
+        {
+            float *classes_scores = data+4;
 
-        float confidence = data[4];
-        if (confidence >= CONFIDENCE_THRESHOLD) {
-
-            float * classes_scores = data + 5;
-            cv::Mat scores(1, className.size(), CV_32FC1, classes_scores);
+            cv::Mat scores(1, classes.size(), CV_32FC1, classes_scores);
             cv::Point class_id;
-            double max_class_score;
-            minMaxLoc(scores, 0, &max_class_score, 0, &class_id);
-            if (max_class_score > SCORE_THRESHOLD) {
+            double maxClassScore;
 
-                confidences.push_back(confidence);
+            minMaxLoc(scores, 0, &maxClassScore, 0, &class_id);
 
+            if (maxClassScore > modelScoreThreshold)
+            {
+                confidences.push_back(maxClassScore);
                 class_ids.push_back(class_id.x);
 
                 float x = data[0];
                 float y = data[1];
                 float w = data[2];
                 float h = data[3];
-                int left = int((x - 0.5 * w) * x_factor);
-                int top = int((y - 0.5 * h) * y_factor);
-                int width = int(w * x_factor);
-                int height = int(h * y_factor);
+
+                int left = int((x - 0.5 * w - pad_x) / scale);
+                int top = int((y - 0.5 * h - pad_y) / scale);
+
+                int width = int(w / scale);
+                int height = int(h / scale);
+
                 boxes.push_back(cv::Rect(left, top, width, height));
             }
+        }
+        else // yolov5
+        {
+            float confidence = data[4];
 
+            if (confidence >= modelConfidenceThreshold)
+            {
+                float *classes_scores = data+5;
+
+                cv::Mat scores(1, classes.size(), CV_32FC1, classes_scores);
+                cv::Point class_id;
+                double max_class_score;
+
+                minMaxLoc(scores, 0, &max_class_score, 0, &class_id);
+
+                if (max_class_score > modelScoreThreshold)
+                {
+                    confidences.push_back(confidence);
+                    class_ids.push_back(class_id.x);
+
+                    float x = data[0];
+                    float y = data[1];
+                    float w = data[2];
+                    float h = data[3];
+
+                    int left = int((x - 0.5 * w - pad_x) / scale);
+                    int top = int((y - 0.5 * h - pad_y) / scale);
+
+                    int width = int(w / scale);
+                    int height = int(h / scale);
+
+                    boxes.push_back(cv::Rect(left, top, width, height));
+                }
+            }
         }
 
-        data += 85;
+        data += dimensions;
     }
 
     std::vector<int> nms_result;
-    cv::dnn::NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, nms_result);
-    for (int i = 0; i < nms_result.size(); i++) {
+    cv::dnn::NMSBoxes(boxes, confidences, modelScoreThreshold, modelNMSThreshold, nms_result);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    std::vector<YOLO::Detection> detections{};
+    for (unsigned long i = 0; i < nms_result.size(); ++i)
+    {
         int idx = nms_result[i];
-        Detection result;
+
+        YOLO::Detection result;
         result.class_id = class_ids[idx];
         result.confidence = confidences[idx];
+
+        std::uniform_int_distribution<int> dis(100, 255);
+        result.color = cv::Scalar(dis(gen),
+                                  dis(gen),
+                                  dis(gen));
+
+        result.className = classes[result.class_id];
         result.box = boxes[idx];
-        output.push_back(result);
+
+        detections.push_back(result);
+    }
+
+    return detections;
+}
+
+void YOLO::loadClassesFromFile()
+{
+    std::ifstream inputFile(classesPath);
+    if (inputFile.is_open())
+    {
+        std::string classLine;
+        while (std::getline(inputFile, classLine))
+            classes.push_back(classLine);
+        inputFile.close();
     }
 }
 
-Yolo::Yolo() {
-
-    class_list = load_class_list();
-
-    load_net(net, is_cuda);
-
-std::cout << cv::cuda::getCudaEnabledDeviceCount() << std::endl;
-std::cout << net.empty() << std::endl;
-std::cout << cv::getBuildInformation() << std::endl;
-std::cout << "OpenCV Version: " << cv::getVersionString() << std::endl;
-std::cout << "OpenCV Path: " << std::endl;
-system("ldd your_executable | grep opencv");
+void YOLO::loadOnnxNetwork()
+{
+    net = cv::dnn::readNetFromONNX(modelPath);
+    if (cudaEnabled)
+    {
+        std::cout << "\nRunning on CUDA" << std::endl;
+        net.setPreferableBackend(cv::dnn::DNN_BACKEND_CUDA);
+        net.setPreferableTarget(cv::dnn::DNN_TARGET_CUDA);
+    }
+    else
+    {
+        std::cout << "\nRunning on CPU" << std::endl;
+        net.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
+        net.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+    }
 }
 
-std::vector<Yolo::Detection> Yolo::exec(Mat frame)
-{ 
-    std::vector<Detection> output;
-    detect(frame, net, output, class_list);
+cv::Mat YOLO::formatToSquare(const cv::Mat &source, int *pad_x, int *pad_y, float *scale)
+{
+    int col = source.cols;
+    int row = source.rows;
+    int m_inputWidth = modelShape.width;
+    int m_inputHeight = modelShape.height;
 
-    frame_count++;
+    *scale = std::min(m_inputWidth / (float)col, m_inputHeight / (float)row);
+    int resized_w = col * *scale;
+    int resized_h = row * *scale;
+    *pad_x = (m_inputWidth - resized_w) / 2;
+    *pad_y = (m_inputHeight - resized_h) / 2;
 
-    int detections = output.size();
+    cv::Mat resized;
+    cv::resize(source, resized, cv::Size(resized_w, resized_h));
+    cv::Mat result = cv::Mat::zeros(m_inputHeight, m_inputWidth, source.type());
+    resized.copyTo(result(cv::Rect(*pad_x, *pad_y, resized_w, resized_h)));
+    resized.release();
+    return result;
+}
 
-    for (int i = 0; i < detections; ++i)
-    {
-        auto detection = output[i];
-        auto box = detection.box;
-        auto classId = detection.class_id;
-        const auto color = colors[classId % colors.size()];
-        cv::rectangle(frame, box, color, 3);
+std::vector<YOLO::Detection> YOLO::exec(const cv::Mat &frame)
+{
+        std::vector<YOLO::Detection> output = runYOLO(frame);
 
-        cv::rectangle(frame, cv::Point(box.x, box.y - 20), cv::Point(box.x + box.width, box.y), color, cv::FILLED);
-        cv::putText(frame, class_list[classId].c_str(), cv::Point(box.x, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
-    }
-
-    if (frame_count >= 30)
-    {
-        auto end = std::chrono::high_resolution_clock::now();
-        fps = frame_count * 1000.0 / std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-
-        frame_count = 0;
-        start = std::chrono::high_resolution_clock::now();
-    }
-
-    if (fps > 0)
-    {
-        std::ostringstream fps_label;
-        fps_label << std::fixed << std::setprecision(2);
-        fps_label << "FPS: " << fps;
-        std::string fps_label_str = fps_label.str();
-
-        cv::putText(frame, fps_label_str.c_str(), cv::Point(10, 25), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 0, 255), 2);
-    }
-    
-    return output;
+        return output;
 }

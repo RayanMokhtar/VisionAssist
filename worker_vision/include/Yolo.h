@@ -1,49 +1,52 @@
 #ifndef YOLO_H
 #define YOLO_H
 
+// Cpp native
 #include <fstream>
-
-#include <opencv2/opencv.hpp>
 #include <vector>
 #include <string>
-#include <chrono>
+#include <random>
 
-using namespace cv;
+#include <opencv2/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/dnn.hpp>
 
-class Yolo{
-    public :
+class YOLO
+{
+    public:
         struct Detection
         {
-            int class_id;
-            float confidence;
-            cv::Rect box;
+            int class_id{0};
+            std::string className{};
+            float confidence{0.0};
+            cv::Scalar color{};
+            cv::Rect box{};
         };
-        Yolo();
-        std::vector<Detection> exec(Mat frame);
-        std::chrono::time_point<std::chrono::high_resolution_clock> start;
+
+        YOLO(const std::string &onnxModelPath, const cv::Size &modelInputShape = {640, 640}, const std::string &classesTxtFile = "", const bool &runWithCuda = true);
+        std::vector<YOLO::Detection> exec(const cv::Mat &frame);
+
+    private:
+        void loadClassesFromFile();
+        void loadOnnxNetwork();
+        cv::Mat formatToSquare(const cv::Mat &source, int *pad_x, int *pad_y, float *scale);
         
-    
-    private :
-        int frame_count = 0;
-        float fps = -1;
+        std::string modelPath{};
+        std::string classesPath{};
+        bool cudaEnabled{};
+        
+        std::vector<std::string> classes{"person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light", "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow", "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee", "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard", "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple", "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch", "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard", "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase", "scissors", "teddy bear", "hair drier", "toothbrush"};
+        
+        std::vector<YOLO::Detection> runYOLO(const cv::Mat &input);
+        cv::Size2f modelShape{};
+        
+        float modelConfidenceThreshold {0.2};
+        float modelScoreThreshold      {0.4};
+        float modelNMSThreshold        {0.4};
+        
+        bool letterBoxForSquare = true;
+        
         cv::dnn::Net net;
-        std::vector<std::string> class_list;
-
-        const std::vector<cv::Scalar> colors = {cv::Scalar(255, 255, 0), cv::Scalar(0, 255, 0), cv::Scalar(0, 255, 255), cv::Scalar(255, 0, 0)};
-        bool is_cuda = true;
-
-        const float INPUT_WIDTH = 640.0;
-        const float INPUT_HEIGHT = 640.0;
-        const float SCORE_THRESHOLD = 0.2;
-        const float NMS_THRESHOLD = 0.4;
-        const float CONFIDENCE_THRESHOLD = 0.4;
-
-        std::vector<int> nms_result;
-
-        std::vector<std::string> load_class_list();
-        void load_net(cv::dnn::Net &net, bool is_cuda);
-        cv::Mat format_yolov5(const cv::Mat &source);
-        void detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &output, const std::vector<std::string> &className);
 };
 
-#endif
+#endif // YOLO_H
