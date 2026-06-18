@@ -29,13 +29,16 @@ class TTSConfig(BaseModel):
     dossier_sortie: str = str(ROOT_DIR / "data/tts/sortie_modeles")
     
 class AudioConfig(BaseModel):
-    taux_echantillonnage_hz: int = 16000  #recommandé pour le tts à voir si on unifie pas
-    canaux_ecoute : int = 1 # 2 si stéréo 
+    taux_echantillonnage_hz: int = 16000
+    canaux_ecoute : int = 1 
     taille_chunk : int = 1024
-    device_index: Optional[int] = None
+    
+    nom_micro_entree: Optional[str] = "jabra"     
+    nom_enceinte_sortie: Optional[str] = "pulse" 
+    
     silence_duree_max_secondes: float = 2.0
-    duree_max_enregistrement_theorique: float = 120
-    seuil_energie: int = 600 #pour le RMS
+    duree_max_enregistrement_theorique: float = 2000
+    seuil_energie: int = 600
     pre_roll_parole_avant_enregistrement_secondes: float = 1.6
 
 

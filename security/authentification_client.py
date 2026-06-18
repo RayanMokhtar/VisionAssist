@@ -32,7 +32,7 @@ MESSAGE_ATTENTE = "Merci de patienter pendant que je vérifie votre carte et pr�
 MESSAGE_BIENVENUE = "BONJOUR BONJOUR"
 
 class SessionAuthentifiee(BaseModel):
-    user_id: Optional[str] = None, 
+    user_id: Optional[int] = None, 
     card_id: Optional[str] = None, 
     access_token: Optional[str] = None, 
     refresh_token: Optional[str] = None, 
@@ -218,17 +218,19 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
 
     prenom_utilisateur = response_authentification_apres_hmac.get("prenom")
     access_token , refresh_token = response_authentification_apres_hmac.get("access_token") , response_authentification_apres_hmac.get("refresh_token")
+    session_id = response_authentification_apres_hmac.get("session_id")
     
     print("is carte valide :", is_carte_valide)
     if is_carte_valide : 
-        session_id = logique_creation_session_agent_ia(response_authentification_apres_hmac)
+        print("session_id = ",session_id)
         session_authentifiee = SessionAuthentifiee(
             user_id=response_authentification_apres_hmac.get("user_id"),
             card_id=response_authentification_apres_hmac.get("card_id"),
             access_token=access_token,
             refresh_token=refresh_token,
             prenom=prenom_utilisateur,
-            session_id=session_id
+            session_id=str(session_id),
+            expire_at=176000000# par défaut
         )
         INSTANCE_TTS.pipeline(f"{MESSAGE_BIENVENUE} {prenom_utilisateur} moi c'est {CONFIGURATION.nom_assistant}, je serai votre assistant, commencez à parler une fois le bip" , ficher_tts_sortie)
         print(f"Session authentifiée créée avec ID: {session_id}")
@@ -244,32 +246,30 @@ def pipeline_authentification(ficher_tts_sortie : str = "synthese.wav") -> Optio
 
 #ajouter le required_auth comme décorateur dans la méthode du llm où on doit soumettre nos trucs
    
-SESSION_UTILISATEUR = SessionAuthentifiee(
-    user_id="user_123",
-    card_id="card_456",
-    access_token="access_token_mock_abc123",
-    refresh_token="refresh_token_mock_def456",
-    prenom="Jean",
-    session_id="c30c6528-400c-408e-8c2a-dd1e4d701a36",
-    expire_at=1760000000.0  # timestamp futur simulé
-)
+# SESSION_UTILISATEUR = SessionAuthentifiee(
+#     user_id="user_123",
+#     card_id="card_456",
+#     access_token="access_token_mock_abc123",
+#     refresh_token="refresh_token_mock_def456",
+#     prenom="Jean",
+#     session_id="c30c6528-400c-408e-8c2a-dd1e4d701a36",
+#     expire_at=1760000000.0  # timestamp futur simulé
+# )
+    
+SESSION_UTILISATEUR = None
 
 if __name__ == "__main__":
-    # print("session_authentification avant : ", SESSION_UTILISATEUR)
-    # SESSION_UTILISATEUR = pipeline_authentification()
-    # if SESSION_UTILISATEUR is not None :
-    #     print("session_authentification après : ", SESSION_UTILISATEUR)
-    #     process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,),name="STT_WORKER")
-    #     process_tts = Thread(target=lancement_service_tts,name="TTS_WORKER")
-    #     process_stt.start() ; process_tts.start()
-    #     print("STT + TTS lancés en parallèle")
+    print("session_authentification avant : ", SESSION_UTILISATEUR)
+    SESSION_UTILISATEUR = pipeline_authentification()
+    if SESSION_UTILISATEUR is not None and SESSION_UTILISATEUR :
+        print("session_authentification après : ", SESSION_UTILISATEUR) 
+        lancement_worker_vision()
+        process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,), name="STT_WORKER")
+        process_tts = Thread(target=lancement_service_tts,name="TTS_WORKER")
+        process_stt.start() ; process_tts.start()
+    
 
 
 
-    print("session_authentification après : ", SESSION_UTILISATEUR) 
-    lancement_worker_vision()
-    process_stt = Thread(target=INSTANCE_STT.ecouter_en_continu_avec_mot_activation, args=(SESSION_UTILISATEUR,), name="STT_WORKER")
-    process_tts = Thread(target=lancement_service_tts,name="TTS_WORKER")
-    process_stt.start() ; process_tts.start()
     
     # lancement_scripts_terminaux()

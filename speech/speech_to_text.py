@@ -13,6 +13,7 @@ from speech.text_to_speech import INSTANCE_TTS
 
 from pydantic import BaseModel, Field
 from faster_whisper import WhisperModel
+from speech.utils import  trouver_index_audio_par_nom
 
 from configuration import CONFIGURATION
 from broker.service import get_broker_client 
@@ -62,6 +63,8 @@ class SpeechToText:
         self.modele = MODELE_STT         
         self.charger_modele()      
         self.chemin_bip = CONFIGURATION.paths.bip_chemin
+        self.input_device_index = trouver_index_audio_par_nom(self.audio_config.nom_micro_entree, "input")
+        self.output_device_index = trouver_index_audio_par_nom(self.audio_config.nom_enceinte_sortie, "output")
 
     def charger_modele(self) -> None:
         if self.modele is None : 
@@ -115,18 +118,21 @@ class SpeechToText:
     def jouer_bip_sonore(self) -> None :
         """Joue un son pour indiquer à l'utilisateur qu'il peut parler."""            
         try:
-
             wf = wave.open(self.chemin_bip, 'rb')
             p = pyaudio.PyAudio()
-            stream = p.open(
-                format=p.get_format_from_width(wf.getsampwidth()),
-                channels=wf.getnchannels(),
-                rate=wf.getframerate(),
-                output=True
-            )
+            
+            stream_kwargs = {
+                "format": p.get_format_from_width(wf.getsampwidth()),
+                "channels": wf.getnchannels(),
+                "rate": wf.getframerate(),
+                "output": True
+            }
+            if self.output_device_index is not None:
+                stream_kwargs["output_device_index"] = self.output_device_index
+
+            stream = p.open(**stream_kwargs)
             
             data = wf.readframes(1024)
-
             while data:
                 stream.write(data)
                 data = wf.readframes(1024)
@@ -141,20 +147,25 @@ class SpeechToText:
 
     def enregistrer_audio_microphone_apres_activation(self) -> Optional[str]:
         print("préparation du micro ...")
-        self.jouer_bip_sonore()
+        
+        INSTANCE_TTS.pipeline("Je suis toujours à votre écoute")
         print("Micro en écoute... Parlez maintenant !")
         audio = pyaudio.PyAudio()
         # for i in range(audio.get_device_count()):
         #     print("audio",audio.get_device_info_by_index(i))
+        
         with audio_lock :
-            stream = audio.open(
-                format=pyaudio.paInt16,
-                channels=self.audio_config.canaux_ecoute,
-                rate=self.audio_config.taux_echantillonnage_hz, #humain entre 300 et 3400hz
-                input=True,
-                input_device_index=self.audio_config.device_index,
-                frames_per_buffer=self.audio_config.taille_chunk,
-            )
+            stream_kwargs = {
+                "format": pyaudio.paInt16,
+                "channels": self.audio_config.canaux_ecoute,
+                "rate": self.audio_config.taux_echantillonnage_hz,
+                "input": True,
+                "frames_per_buffer": self.audio_config.taille_chunk
+            }
+            if self.input_device_index is not None:
+                stream_kwargs["input_device_index"] = self.input_device_index
+
+            stream = audio.open(**stream_kwargs)
         
         #duree chunk : 64 ms car c la taille d'un chunk 1024 / taille échantillon valeur par seconde
         chunk_duree_secondes = self.audio_config.taille_chunk / self.audio_config.taux_echantillonnage_hz
@@ -278,7 +289,7 @@ class SpeechToText:
                             message_payload['session_authentifiee'] = session_utilisateur.model_dump()
                         pub = CLIENT_BROKER_STT.publier(CONFIGURATION.broker.topics.stt_topic,message_payload)
                         print("message publié sur le broker : ",CLIENT_BROKER_STT)
-                        INSTANCE_TTS.pipeline("Veuillez patienter, je suis entrain de traiter votre demande")
+                        INSTANCE_TTS.pipeline("oui, Veuillez patienter, je suis entrain de traiter votre demande")
                         print("état payload publié : ",pub )
                         actif = False
                     else : 

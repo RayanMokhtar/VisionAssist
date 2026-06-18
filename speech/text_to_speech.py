@@ -18,6 +18,10 @@ from broker.service import get_broker_client
 from broker.broker_interface import IBroker 
 import multiprocessing
 
+from speech.utils import trouver_index_audio_par_nom
+
+
+
 
 
 
@@ -85,12 +89,13 @@ class TextToSpeech:
         self.modele = MODELE_TTS
         os.makedirs(self.configuration_tts.dossier_sortie, exist_ok=True)
         self.dossier_sortie = self.configuration_tts.dossier_sortie
+        self.output_device_index = trouver_index_audio_par_nom(self.audio_config.nom_enceinte_sortie, "output")
 
     def synthetiser(self, texte: str , nom_fichier_sortie : str) -> TTSResult:
         
         print("synthese du texte en cours")
         if not texte.strip():
-            raise ValueError("Texte vide — rien à synthétiser.")
+            raise ValueError("Texte vide rien à synthétiser.")
 
         t0 = time.perf_counter()
 
@@ -109,18 +114,21 @@ class TextToSpeech:
         return resultat
 
     def lire_audio(self, chemin_fichier: str) -> None:
-    
         audio = pyaudio.PyAudio()
         try:
            with wave.open(chemin_fichier, "rb") as f:
-               stream = audio.open(
-                   format=audio.get_format_from_width(f.getsampwidth()),
-                   channels=f.getnchannels(),
-                   rate=f.getframerate(),
-                   output=True,
-                   output_device_index=self.audio_config.device_index,
-                   frames_per_buffer=self.audio_config.taille_chunk,
-               )
+               stream_kwargs = {
+                   "format": audio.get_format_from_width(f.getsampwidth()),
+                   "channels": f.getnchannels(),
+                   "rate": f.getframerate(),
+                   "output": True,
+                   "frames_per_buffer": self.audio_config.taille_chunk
+               }
+               if self.output_device_index is not None:
+                   stream_kwargs["output_device_index"] = self.output_device_index
+
+               stream = audio.open(**stream_kwargs)
+               
                data = f.readframes(self.audio_config.taille_chunk)
                while data:
                    stream.write(data)
