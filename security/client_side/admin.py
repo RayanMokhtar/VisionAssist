@@ -93,7 +93,7 @@ def mqtt_request(action: str, payload: dict, timeout=10):
     raise TimeoutError("timeout reponse MQTT auth")
 
 
-def enrollement_card(conn, csc0, message_broker):
+def enrollement_card(conn, csc0):
     print("\n" + "=" * 70)
     print("ENROLLEMENT CARTE")
     print("=" * 70)
@@ -111,6 +111,8 @@ def enrollement_card(conn, csc0, message_broker):
     if not is_sw_ok(sw1, sw2):
         print(f"CSC0 refuse SW={sw1:02X}{sw2:02X}")
         return
+
+    message_broker = demander_infos_utilisateur()
 
     try:
         response = mqtt_request("prepare-card", message_broker)
@@ -203,6 +205,96 @@ def demander_infos_utilisateur():
     return message
 
 
+def demander_card_id():
+    card_id = input("card_id: ").strip().upper()
+    if not card_id:
+        print("[-] card_id requis")
+        return None
+    return card_id
+
+
+def changer_statut_carte():
+    print("\n" + "=" * 70)
+    print("BLOQUER / ACTIVER CARTE")
+    print("=" * 70)
+
+    card_id = demander_card_id()
+    if card_id is None:
+        return
+
+    print("\n1) Bloquer la carte")
+    print("2) Activer la carte")
+    choix = input("\nChoix : ").strip()
+
+    if choix == "1":
+        statut = "bloquee"
+    elif choix == "2":
+        statut = "active"
+    else:
+        print("[-] Choix invalide")
+        return
+
+    try:
+        response = mqtt_request("set-card-status", {"card_id": card_id, "statut": statut})
+    except Exception as exc:
+        print(f"Erreur serveur auth via MQTT: {exc}")
+        return
+
+    if not response.get("success"):
+        print(f"Operation refusee: {response.get('error')}")
+        return
+
+    carte = response.get("carte", {})
+    if response.get("changed"):
+        print(f"Statut mis a jour: {response.get('ancien_statut')} -> {response.get('nouveau_statut')}")
+    else:
+        print(response.get("message", "Aucun changement necessaire"))
+
+    print(f"card_id: {carte.get('card_id')}")
+    print(f"statut: {carte.get('statut')}")
+
+
+def afficher_cartes_base():
+    print("\n" + "=" * 70)
+    print("CARTES ET AUTHENTIFICATION EN BASE")
+    print("=" * 70)
+
+    try:
+        response = mqtt_request("list-cards", {})
+    except Exception as exc:
+        print(f"Erreur serveur auth via MQTT: {exc}")
+        return
+
+    if not response.get("success"):
+        print(f"Lecture refusee: {response.get('error')}")
+        return
+
+    cartes = response.get("cartes", [])
+    print(f"Nombre de cartes: {response.get('count', len(cartes))}")
+
+    if not cartes:
+        print("Aucune carte en base")
+        return
+
+    for carte in cartes:
+        user = carte.get("user") or {}
+        auth = carte.get("authentification") or {}
+        print("\n" + "-" * 70)
+        print(f"card_id: {carte.get('card_id')}")
+        print(f"statut: {carte.get('statut')}")
+        print(f"secret_configure: {carte.get('secret_configure')}")
+        print(f"user_id: {user.get('id')}")
+        print(f"nom: {user.get('nom')}")
+        print(f"prenom: {user.get('prenom')}")
+        print(f"adresse: {user.get('adresse')}")
+        print(f"preferences: {user.get('preferences')}")
+        print(f"created_at: {user.get('created_at')}")
+        print(f"derniere_connexion: {user.get('derniere_connexion')}")
+        print(f"nombre_sessions: {auth.get('nombre_sessions')}")
+        print(f"derniere_session_id: {auth.get('derniere_session_id')}")
+        print(f"derniere_session: {auth.get('derniere_session')}")
+
+
 def afficher_menu():
     print("\n" + "=" * 70)
     print("MENU PRINCIPAL")
@@ -211,7 +303,9 @@ def afficher_menu():
     print("2) Diagnostic public")
     print("3) Reset complet (User Areas + Access Conditions + Protected)")
     print("4) Enrollement carte")
-    print("5) Quitter")
+    print("5) Bloquer / activer carte")
+    print("6) Afficher cartes et authentification en base")
+    print("7) Quitter")
     return input("\nChoix : ").strip()
 
 
@@ -256,11 +350,14 @@ def main():
             elif choice == "4":
                 try:
                     conn = connect_card()
-                    message = demander_infos_utilisateur()
-                    enrollement_card(conn, csc0, message)
+                    enrollement_card(conn, csc0)
                 except Exception as e:
                     print(f"[-] Erreur : {e}")
             elif choice == "5":
+                changer_statut_carte()
+            elif choice == "6":
+                afficher_cartes_base()
+            elif choice == "7":
                 print("\n[*] Au revoir")
                 break
             else:

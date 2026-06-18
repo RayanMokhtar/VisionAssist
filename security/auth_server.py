@@ -12,7 +12,7 @@ from cryptography.fernet import Fernet
 # Imports relatifs à votre architecture
 from broker.service import get_broker_client
 from configuration import CONFIGURATION
-from persistance.models import User, Carte
+from persistance.models import User, Carte, Session as SessionModel, CardStatus
 from persistance.repository import REPOSITORIES
 from security.jwt_service import create_access_token, create_refresh_token
 
@@ -256,12 +256,12 @@ class CreationEnrollementCarte:
             publish_response_securite(broker, request, {"success": False, "error": "card_id requis"})
             return
             
-        carte_existante = REPOSITORIES.cartes.db.query(Carte).filter_by(card_id=card_id).first()
-        carte = REPOSITORIES.cartes.update_status(carte_existante, "active")
-        
-        if not carte:
+        carte_existante = REPOSITORIES.cartes.get(card_id=card_id)
+        if not carte_existante:
             publish_response_securite(broker, request, {"success": False, "error": "card_id inconnu"})
             return
+
+        carte = REPOSITORIES.cartes.update_status(carte_existante, CardStatus.active)
             
         # secret = CreationEnrollementCarte.generer_secret_from_card_id(card_id)
         # Vous pouvez éventuellement renvoyer le secret généré si besoin côté client
@@ -272,6 +272,116 @@ class CreationEnrollementCarte:
     #     """Fonction qui va générer un secret"""
     #     secret = hmac.new(CONFIGURATION.jwt.secret_key.encode(), card_id.encode(), hashlib.sha256).hexdigest()
     #     return secret
+
+
+class AdministrationCartes:
+
+    @staticmethod
+    def normaliser_statut(statut):
+        statut = str(statut or "").strip().lower()
+        if statut not in CardStatus.__members__:
+            return None
+        return CardStatus[statut]
+
+    @staticmethod
+    def carte_complete_to_dict(carte):
+        user = carte.user
+        derniere_session = (
+            REPOSITORIES.sessions.db.query(SessionModel)
+            .filter_by(card_id=carte.card_id)
+            .order_by(SessionModel.timestamp.desc())
+            .first()
+        )
+        nombre_sessions = (
+            REPOSITORIES.sessions.db.query(SessionModel)
+            .filter_by(card_id=carte.card_id)
+            .count()
+        )
+
+        return {
+            "card_id": carte.card_id,
+            "statut": carte.statut.value if carte.statut else None,
+            "secret_configure": carte.secret_chiffre is not None,
+            "user": {
+                "id": user.id if user else carte.user_id,
+                "nom": user.nom if user else None,
+                "prenom": user.prenom if user else None,
+                "adresse": user.adresse if user else None,
+                "preferences": user.preferences if user else None,
+                "created_at": str(user.created_at) if user and user.created_at else None,
+                "derniere_connexion": str(user.derniere_connexion) if user and user.derniere_connexion else None,
+            },
+            "authentification": {
+                "nombre_sessions": nombre_sessions,
+                "derniere_session_id": str(derniere_session.session_id) if derniere_session else None,
+                "derniere_session": str(derniere_session.timestamp) if derniere_session else None,
+            },
+        }
+
+    @staticmethod
+    def handle_set_card_status(broker, _topic, request):
+        card_id = str(request.get("card_id", "")).strip().upper()
+        statut_demande = AdministrationCartes.normaliser_statut(request.get("statut"))
+
+        if not card_id:
+            publish_response_securite(broker, request, {"success": False, "error": "card_id requis"})
+            return
+        if statut_demande is None:
+            publish_response_securite(
+                broker,
+                request,
+                {"success": False, "error": "statut invalide. Valeurs: active, pending, bloquee, expiree"},
+            )
+            return
+
+        carte = REPOSITORIES.cartes.get(card_id=card_id)
+        if not carte:
+            publish_response_securite(broker, request, {"success": False, "error": "card_id inconnu"})
+            return
+
+        ancien_statut = carte.statut
+        if ancien_statut == statut_demande:
+            publish_response_securite(
+                broker,
+                request,
+                {
+                    "success": True,
+                    "changed": False,
+                    "message": f"Carte deja {statut_demande.value}",
+                    "carte": AdministrationCartes.carte_complete_to_dict(carte),
+                },
+            )
+            return
+
+        carte = REPOSITORIES.cartes.update_status(carte, statut_demande)
+        publish_response_securite(
+            broker,
+            request,
+            {
+                "success": True,
+                "changed": True,
+                "ancien_statut": ancien_statut.value if ancien_statut else None,
+                "nouveau_statut": carte.statut.value,
+                "carte": AdministrationCartes.carte_complete_to_dict(carte),
+            },
+        )
+
+    @staticmethod
+    def handle_list_cards(broker, _topic, request):
+        cartes = (
+            REPOSITORIES.cartes.db.query(Carte)
+            .order_by(Carte.user_id.asc(), Carte.card_id.asc())
+            .all()
+        )
+        publish_response_securite(
+            broker,
+            request,
+            {
+                "success": True,
+                "count": len(cartes),
+                "cartes": [AdministrationCartes.carte_complete_to_dict(carte) for carte in cartes],
+            },
+        )
 
 
 
@@ -291,7 +401,9 @@ def traitement_securite_requete(broker, topic, request):
     elif topic == AUTH_ADMIN_REQUEST_SECURITY:
         handlers = {
             "prepare-card": CreationEnrollementCarte.handle_logique_enrollement,
-            "activate-card": CreationEnrollementCarte.handle_activate_card
+            "activate-card": CreationEnrollementCarte.handle_activate_card,
+            "set-card-status": AdministrationCartes.handle_set_card_status,
+            "list-cards": AdministrationCartes.handle_list_cards,
         }
         
     handler = handlers.get(action)
