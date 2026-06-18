@@ -17,15 +17,13 @@
 
 using namespace cv;
 
-class OpticalFlow{
-
+class OpticalFlow {
 
     public : 
         OpticalFlow();
         Mat exec(const Mat& frame, const Mat& frameOld);
     
     private :
-
         void niveauGris(const Mat& frame, Mat& frameGris);
         void sobelX(const Mat& frame, Mat& frameSobelX);
         void sobelY(const Mat& frame, Mat& frameSobelY);

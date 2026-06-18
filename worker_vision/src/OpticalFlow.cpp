@@ -147,7 +147,6 @@ OpticalFlow::OpticalFlow()
     matDepl.create(640,640,CV_32FC2);
 }
 
-//int id= 0;
 Mat OpticalFlow::exec(const Mat& frame, const Mat& frameOld)
 {
     niveauGris(frame, frameGris);
@@ -157,8 +156,6 @@ Mat OpticalFlow::exec(const Mat& frame, const Mat& frameOld)
     sobelY(frameGris, frameSobelY);
 
     diffIntensite(frameGris, frameGrisOld, frameDiffIntensite);
-
-
 
     matDepl.setTo(cv::Scalar(0,0));
 
@@ -210,55 +207,6 @@ Mat OpticalFlow::exec(const Mat& frame, const Mat& frameOld)
             }
         }
     }
-
-    // cv::imwrite("./sobelx/sobelx_" + std::to_string(id) + ".png", frameSobelX);
-    // cv::imwrite("./sobely/sobely_" + std::to_string(id) + ".png", frameSobelY);
-    // cv::imwrite("./diff/diff_" + std::to_string(id) + ".png", frameDiffIntensite);
-    // cv::imwrite("./flux/f" + std::to_string(id) + ".png", frameDiffIntensite);
-
-    //id++;
-
-    // cv::Mat matOpticalFlow(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
-
-    // int step = 3;
-    // float scale = 1;
-
-    // for (int y = step; y < matDepl.rows - step; y += step)
-    // {
-    //     for (int x = step; x < matDepl.cols - step; x += step)
-    //     {
-    //         float sum_u = 0, sum_v = 0;
-    //         int count = 0;
-
-    //         for (int j = y - step/2; j < y + step/2; j++)
-    //         {
-    //             for (int i = x - step/2; i < x + step/2; i++)
-    //             {
-    //                 cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
-    //                 sum_u += p[0];
-    //                 sum_v += p[1];
-    //                 count++;
-    //             }
-    //         }
-
-    //         float u = sum_u / count;
-    //         float v = sum_v / count;
-
-    //         // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
-    //         // float u = p[0];
-    //         // float v = p[1];
-
-    //         //float norm = sqrt(u*u + v*v);
-    //         //if (norm < 1) continue;
-
-    //         cv::Point p1(x, y);
-    //         cv::Point p2(x + u * scale, y + v * scale);
-
-    //         cv::arrowedLine(matOpticalFlow, p1, p2, cv::Scalar(0, 0, 255), 1);
-    //     }
-    // }
-
-    // cv::imshow("flux optique", matOpticalFlow);
 
     return matDepl;
 }

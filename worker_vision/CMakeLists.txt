@@ -42,36 +42,3 @@ target_link_libraries(main
         OpenMP::OpenMP_CXX
         gpiod
 )
-
-# add_executable(lookUpTable)
-
-# target_sources(lookUpTable
-#     PRIVATE
-#         src/lookUpTable.cpp
-#         src/imu.cpp
-#         src/OpticalFlow.cpp
-#         src/Yolo.cpp
-# )
-
-# target_compile_features(lookUpTable
-#     PRIVATE cxx_std_17
-# )
-
-# target_compile_options(lookUpTable
-#     PRIVATE
-#         -g
-#         -Wall
-#         -O3
-# )
-
-# target_include_directories(lookUpTable
-#     PRIVATE
-#         ${OpenCV_INCLUDE_DIRS}
-# )
-
-# target_link_libraries(lookUpTable
-#     PRIVATE
-#         ${OpenCV_LIBS}
-#         OpenMP::OpenMP_CXX
-#         gpiod
-# )
