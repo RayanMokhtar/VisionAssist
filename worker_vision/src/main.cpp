@@ -24,6 +24,9 @@ using namespace cv;
 #define MAX_FRAMES_DECISION 5
 #define SEUIL_DANGER 120
 
+
+#define TAILLE_WINDOW 450
+
 #define RESET   "\033[0m"
 #define GRIS    "\033[90m"
 #define ROUGE   "\033[91m"
@@ -414,8 +417,8 @@ Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& object
 }
 
 void drawHistogram(const std::vector<ObjectDetected>& objects) {
-    int width = 1800;
-    int height = 640;
+    int width = TAILLE_WINDOW*2;
+    int height = TAILLE_WINDOW;
     int margin = 50;
 
     for (const ObjectDetected& object : objects) {
@@ -714,15 +717,21 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew) {
                 }
             }
 
-            std::cout << decisionColor(finalDecision) << "DECISION FINALE ==> " << "classe: " << object.className << " | id: " << object.id << " | " << decisionText(finalDecision) << RESET << std::endl;
+            auto now = std::chrono::system_clock::now();
+            std::time_t t = std::chrono::system_clock::to_time_t(now);
+            auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()) % 100; 
+            std::cout << std::put_time(std::localtime(&t), "%H:%M:%S") << ':' << std::setfill('0') << std::setw(3) << nanoseconds.count() << decisionColor(finalDecision) << " | DECISION FINALE ==> " << "classe: " << object.className << " | id: " << object.id << " | " << decisionText(finalDecision) << RESET << std::endl;
 
             object.decision = finalDecision;
 
             object.decisions.clear();
 
             if ((norme_gauche > SEUIL_DANGER) && (norme_droite > SEUIL_DANGER) && (norme_haut_bas > SEUIL_DANGER) && (finalDecision != RIEN)) {
-                
-                std::cout << BG_ROUGE << " !!! DAAAAAAAAAAAANNNNNNNNNNNGGGGGGGGGGGGEEEEEEEEEEEERRRRRRRRRRRR !!! " << RESET << std::endl;
+
+                now = std::chrono::system_clock::now();
+                t = std::chrono::system_clock::to_time_t(now);
+                nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()) % 100; 
+                std::cout << std::put_time(std::localtime(&t), "%H:%M:%S") << ':' << std::setfill('0') << std::setw(3) << nanoseconds.count() << BG_ROUGE << " | !!! DAAAAAAAAAAAANNNNNNNNNNNGGGGGGGGGGGGEEEEEEEEEEEERRRRRRRRRRRR !!! " << RESET << std::endl;
 
                 if (finalDecision == AVANT) {
                     startBeepAsync(1);
@@ -821,6 +830,20 @@ int main(int argc, char** argv) {
 
     std::cout << "version opencv " << CV_VERSION << std::endl;
 
+    cv::namedWindow("yolo");
+    cv::namedWindow("flux optique global");
+    cv::namedWindow("flux optique filtrés");
+    cv::namedWindow("flux optique boite englobante");
+    cv::namedWindow("histogramme");
+
+    cv::moveWindow("yolo", 0, 0);
+    cv::moveWindow("flux optique global", 525, 0);
+    cv::moveWindow("flux optique filtrés", 980, 0);
+    cv::moveWindow("flux optique boite englobante", 1435, 0);
+    cv::moveWindow("histogramme", 980, 520);
+
+    int frameId = 0;
+
     for(;;)
     {
         auto tGlobalStart = Clock::now();
@@ -862,11 +885,7 @@ int main(int argc, char** argv) {
 
         decisionMaking(objectsNew);
 
-        auto now = std::chrono::system_clock::now();
-        std::time_t t = std::chrono::system_clock::to_time_t(now);
-        std::cout << std::put_time(std::localtime(&t), "%H:%M:%S") << std::endl;
-
-        Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
+        // Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
         Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
         auto tBeforeYoloDraw = Clock::now();
 
@@ -877,11 +896,25 @@ int main(int argc, char** argv) {
 
         Mat yoloDraw = drawTrackingYolo(frame, objectsNew, fps);
 
-        cv::imshow("yolo", yoloDraw);
-        cv::imshow("flux optique global", matOpticalFlow);
-        cv::imshow("flux optique filtrés", filtredFlow);
-        cv::imshow("flux optique boite englobante", sparseFlowDraw);
-        cv::imshow("moyenne du flux optique sur la bbox", meanFlowDraw);
+        std::cout << "Frame: " << frameId << std::endl;
+
+        frameId++;
+
+        Mat yoloDisplay;
+        Mat opticalFlowDisplay;
+        Mat filtredFlowDisplay;
+        Mat sparseFlowDisplay;
+        
+        cv::resize(yoloDraw, yoloDisplay, cv::Size(TAILLE_WINDOW, TAILLE_WINDOW));
+        cv::resize(matOpticalFlow, opticalFlowDisplay, cv::Size(TAILLE_WINDOW, TAILLE_WINDOW));
+        cv::resize(filtredFlow, filtredFlowDisplay, cv::Size(TAILLE_WINDOW, TAILLE_WINDOW));
+        cv::resize(sparseFlowDraw, sparseFlowDisplay, cv::Size(TAILLE_WINDOW, TAILLE_WINDOW));
+
+        cv::imshow("yolo", yoloDisplay);
+        cv::imshow("flux optique global", opticalFlowDisplay);
+        cv::imshow("flux optique filtrés", filtredFlowDisplay);
+        cv::imshow("flux optique boite englobante", sparseFlowDisplay);
+        // cv::imshow("moyenne du flux optique sur la bbox", meanFlowDraw);
 
         frame.copyTo(frameOld);
 
