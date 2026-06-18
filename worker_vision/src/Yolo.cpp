@@ -1,5 +1,3 @@
-// Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
-
 #include "Yolo.h"
 
 YOLO::YOLO(const std::string &onnxModelPath, const cv::Size &modelInputShape, const std::string &classesTxtFile, const bool &runWithCuda)
@@ -10,7 +8,6 @@ YOLO::YOLO(const std::string &onnxModelPath, const cv::Size &modelInputShape, co
     cudaEnabled = runWithCuda;
 
     loadOnnxNetwork();
-    // loadClassesFromFile(); The classes are hard-coded for this example
 }
 
 std::vector<YOLO::Detection> YOLO::runYOLO(const cv::Mat &input)
@@ -32,9 +29,8 @@ std::vector<YOLO::Detection> YOLO::runYOLO(const cv::Mat &input)
     int dimensions = outputs[0].size[2];
 
     bool yolov8 = false;
-    // yolov5 has an output of shape (batchSize, 25200, 85) (Num classes + box[x,y,w,h] + confidence[c])
-    // yolov8 has an output of shape (batchSize, 84,  8400) (Num classes + box[x,y,w,h])
-    if (dimensions > rows) // Check if the shape[2] is more than shape[1] (yolov8)
+
+    if (dimensions > rows)
     {
         yolov8 = true;
         rows = outputs[0].size[2];
@@ -197,34 +193,9 @@ cv::Mat YOLO::formatToSquare(const cv::Mat &source, int *pad_x, int *pad_y, floa
     return result;
 }
 
-// fonction qui va exécuter directement le yolo
 std::vector<YOLO::Detection> YOLO::exec(const cv::Mat &frame)
 {
-        // Inference starts here...
         std::vector<YOLO::Detection> output = runYOLO(frame);
-
-        // int detections = output.size();
-        // // std::cout << "Number of detections:" << detections << std::endl;
-
-        // for (int i = 0; i < detections; ++i)
-        // {
-        //     YOLO::Detection detection = output[i];
-
-        //     cv::Rect box = detection.box;
-        //     cv::Scalar color = detection.color;
-
-        //     // Detection box
-        //     cv::rectangle(frame, box, color, 2);
-
-        //     // Detection box text
-        //     std::string classString = detection.className + ' ' + std::to_string(detection.confidence).substr(0, 4);
-        //     cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
-        //     cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
-
-        //     cv::rectangle(frame, textBox, color, cv::FILLED);
-        //     cv::putText(frame, classString, cv::Point(box.x + 5, box.y - 10), cv::FONT_HERSHEY_DUPLEX, 1, cv::Scalar(0, 0, 0), 2, 0);
-        // }
-        // // // Inference ends here...
 
         return output;
 }

@@ -1,6 +1,5 @@
 #include "Yolo.h"
 #include "OpticalFlow.h"
-#include "imu.h"
 
 #include "opencv2/opencv.hpp"
 #include <gpiod.h>
@@ -17,13 +16,11 @@ using namespace cv;
 #define USE_WEBCAM_FALLBACK 1  // 1 = activé, 0 = désactivé
 #define FALLBACK_AVEC_CHEMIN_VIDEO "../../data/vid3.mp4"
 #define MAXDISTANCE 100
-#define MAX_PERSISTANCE 10
-#define RAYON_DETECTION 150
+#define MAX_PERSISTANCE 20
 #define PI 3.14159265
 
 #define SEUIL_FILTRAGE 1.2
 #define SEUIL_DECISION_BRUIT 15
-#define SEUIL_DECISION_AVANT_ARRIERE 30
 #define MAX_FRAMES_DECISION 5
 #define SEUIL_DANGER 120
 
@@ -37,8 +34,7 @@ enum Decisions {
     NB_DECISIONS
 };
 
-struct ObjectDetected
-{
+struct ObjectDetected {
     int id;
     int classYolo;
     float confidence;
@@ -48,60 +44,68 @@ struct ObjectDetected
     cv::Scalar color{};
     std::string className{};
     int counterDetectionFailed = 0;
-    std::vector<cv::Point> trajectory;
-    std::vector<cv::Vec2f> velocity;
     std::array<int,360> histo;
     std::vector<Decisions> decisions;
-    float ttc = 0;
     Decisions decision = RIEN;
     float normeHisto = 0.0;
 };
 
 int globalId = 0;
 
-void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDetected>& objectsCopy)
-{
-    //std::cout << "Début tracker ---------------------------------------------------------------------- "<< std::endl;
+bool isDynamicClass(const std::string& className) {
+    static const std::set<std::string> dynamicClasses = {
+        "person",
+        "bicycle",
+        "car",
+        "motorcycle",
+        "airplane",
+        "bus",
+        "train",
+        "truck",
+        "boat",
+        "bird",
+        "cat",
+        "dog",
+        "horse",
+        "sheep",
+        "cow",
+        "elephant",
+        "bear",
+        "zebra",
+        "giraffe",
+        "sports ball",
+        "kite",
+        "skateboard",
+        "surfboard"
+    };
 
-    // for (const ObjectDetected& objectOld : objectsCopy)
-    // {
-    //     std::cout << "objectOld id: " << objectOld.id << " class: " << objectOld.className << std::endl;
-    // }
+    return dynamicClasses.count(className) > 0;
+}
 
-    // for (ObjectDetected& objectNew : objectsNew)
-    // {
-    //     std::cout << "objectNew id: " << objectNew.id << " class: " << objectNew.className << std::endl;
-    // }
-
+void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDetected>& objectsCopy) {
     if (objectsCopy.empty())
         return;
 
     std::set<int> usedIds;
 
-    for (ObjectDetected& objectNew : objectsNew)
-    {
+    for (ObjectDetected& objectNew : objectsNew) {
         float minDist = 1000;
         const ObjectDetected* objectOldRef = nullptr;
 
-        for (const ObjectDetected& objectOld : objectsCopy)
-        {
+        for (const ObjectDetected& objectOld : objectsCopy) {
             if(usedIds.count(objectOld.id)) {
-                //std::cout << "Used id: " << objectOld.id << " class: " << objectOld.className << std::endl;
                 continue;
             }
 
             if (objectOld.classYolo != objectNew.classYolo) {
-                //std::cout << "Class mismatch: " << objectOld.className << " vs " << objectNew.className << " id: " << objectNew.id << std::endl;
                continue;
             }
 
             Point pOld(objectOld.centreGravity.x + objectOld.vect[0], objectOld.centreGravity.y + objectOld.vect[1]);
             Point pNew = objectNew.centreGravity;
 
-            //std::cout << "pOld: " << pOld << " pNew: " << pNew << " id new: " << objectNew.id << " class: " << objectNew.className << " id old: " << objectOld.id << " class old: " << objectOld.className << std::endl;
-
             float dist = sqrt(((pNew.x  - pOld.x) * (pNew.x  - pOld.x)) + ((pNew.y  - pOld.y) * (pNew.y  - pOld.y)));
-            //std::cout << "id new: " << objectNew.id << " class new: " << objectNew.className << " id old: " << objectOld.id << "class old: " << objectOld.className << " dist: " << dist << " > " << MAXDISTANCE << std::endl;
+            
             if (dist > MAXDISTANCE) {
                 continue;
             }
@@ -109,75 +113,39 @@ void tracker(std::vector<ObjectDetected>& objectsNew, const std::vector<ObjectDe
             if (dist < minDist) {
                 minDist = dist;
                 objectOldRef = &objectOld;
-                
             }
         }
 
         if (objectOldRef != nullptr) {
             objectNew.id = objectOldRef->id;
             usedIds.insert(objectOldRef->id);
-            objectNew.trajectory = objectOldRef->trajectory;
-            objectNew.trajectory.push_back(objectNew.centreGravity);
-            objectNew.velocity = objectOldRef->velocity;
-            objectNew.velocity.push_back(objectNew.vect);
             objectNew.normeHisto = objectOldRef->normeHisto;
-
             objectNew.decisions = objectOldRef->decisions;
-            objectNew.ttc = objectOldRef->ttc;
-
-            // if (objectNew.id == 0) {
-            //     cv::Mat vis(620, 620, CV_8UC3, cv::Scalar(255, 255, 255));
-            //     for(const Point& p : objectNew.trajectory) {
-            //         //std::cout << "object id: " << objectNew.id << " class: " << objectNew.className << " trajectory point: " << p << std::endl;
-            //         cv::circle(vis, p, 10, cv::Scalar(0, 0, 255), -1);
-            //     }
-            //     cv::imshow("pointo", vis);
-            // }
-            
-
-            //std::cout << "SET object id: " << objectNew.id << " class: " << objectNew.className << std::endl;   
         }
-        // else {
-        //     objectNew.id = globalId++;    
-        //     std::cout << "new object id: " << objectNew.id << " class: " << objectNew.className << std::endl;   
-        // }
     }
-
-        //std::cout << "Fin tracker ---------------------------------------------------------------------- "<< std::endl;
-
 }
 
-std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vector<YOLO::Detection>& yoloDetection)
-{
+std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vector<YOLO::Detection>& yoloDetection) {
     std::vector<ObjectDetected> objectsNew;
 
-    for (const YOLO::Detection& detect : yoloDetection)
-    {
+    for (const YOLO::Detection& detect : yoloDetection) {
         // if (detect.className == "person")
         //     continue;
 
         float sum_u = 0, sum_v = 0;
         int count = 0;
-        int compteurVecteursFiltresParSeuil = 0 ; 
+        int compteurVecteursFiltresParSeuil = 0; 
         std::array<int,360> histo{};
 
-        // std::vector<float> us;
-        // std::vector<float> vs;
-
-        //std::vector<cv::Vec2f> flows;
-
-        for (int j = detect.box.y; j < detect.box.y + detect.box.height; j++)
-        {
-            for (int i = detect.box.x; i < detect.box.x + detect.box.width; i++)
-            {
+        for (int j = detect.box.y; j < detect.box.y + detect.box.height; j++) {
+            for (int i = detect.box.x; i < detect.box.x + detect.box.width; i++) {
                 // TODO: Yolo out of box
-                if (j >= 0 && j < deplacement.rows && i >= 0 && i < deplacement.cols)
-                {
+                if (j >= 0 && j < deplacement.rows && i >= 0 && i < deplacement.cols) {
                     const cv::Vec2f& p = deplacement.at<cv::Vec2f>(j, i);
 
                     float norme = sqrt(p[0]*p[0] + p[1]*p[1]);
                     
-                    if (norme < SEUIL_FILTRAGE){
+                    if (norme < SEUIL_FILTRAGE) {
                         compteurVecteursFiltresParSeuil++;
                         continue;
                     }
@@ -195,48 +163,19 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
                         std::cout << "angle: " << angle << std::endl;
 
                     histo[angle]++;
-
-                    // us.push_back(p[0]);
-                    // vs.push_back(p[1]);
-
-                    //flows.push_back(p);
                 }
             }
         }
-        //std::cout << "nombre de vecteurs filtres par la norme : => " << compteurVecteursFiltresParSeuil << " => ratio ==> " << (float)((float)(100*compteurVecteursFiltresParSeuil) / (float)((detect.box.height* detect.box.width)))<< std::endl;
-
-        // std::sort(flows.begin(), flows.end(),
-        //     [](const cv::Vec2f& a, const cv::Vec2f& b)
-        //     {
-        //         float angleA = atan((float)a[1]/a[0])*180.0/PI;
-        //         float angleB = atan((float)b[1]/b[0])*180.0/PI;
-        //         //std::cout << "a0: " << a[0] << " a1: " << a[1] << "angle : " << atan((float)a[1]/a[0])*180.0/PI <<std::endl;
-        //         return angleA < angleB;
-        //     });
-
-        // cv::Vec2f medianFlow = flows[flows.size() / 2];
-
-        // float u = medianFlow[0];
-        // float v = medianFlow[1];
-
-        // std::sort(us.begin(), us.end());
-        // std::sort(vs.begin(), vs.end());
-
-        // float u = us[us.size()/2];
-        // float v = vs[vs.size()/2];
 
         float u = sum_u / count;
         float v = sum_v / count;
-
-        // float norm = sqrt(u*u + v*v);
-        // if (norm < 0.1) continue;
 
         int xGravity = detect.box.x + (detect.box.width) / 2;
         int yGravity = detect.box.y + (detect.box.height) / 2;
 
         globalId = globalId % 100000;
 
-        ObjectDetected object{globalId++, detect.class_id, detect.confidence, detect.box, {u, v}, Point(xGravity, yGravity), detect.color, detect.className, 0, {Point(xGravity, yGravity)}, {{u, v}}, histo};
+        ObjectDetected object{globalId++, detect.class_id, detect.confidence, detect.box, Vec2f(u, v), Point(xGravity, yGravity), detect.color, detect.className, 0, histo};
 
         objectsNew.push_back(object);
     }
@@ -244,24 +183,19 @@ std::vector<ObjectDetected> mapping(const cv::Mat& deplacement, const std::vecto
     return objectsNew;
 }
 
-Mat drawOpticalFlow(const Mat& matDepl)
-{
+Mat drawOpticalFlow(const Mat& matDepl) {
     cv::Mat matOpticalFlow(matDepl.rows, matDepl.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
     int step = 3;
     float scale = 1;
 
-    for (int y = step; y < matDepl.rows - step; y += step)
-    {
-        for (int x = step; x < matDepl.cols - step; x += step)
-        {
+    for (int y = step; y < matDepl.rows - step; y += step) {
+        for (int x = step; x < matDepl.cols - step; x += step) {
             float sum_u = 0, sum_v = 0;
             int count = 0;
 
-            for (int j = y - step/2; j <= y + step/2; j++)
-            {
-                for (int i = x - step/2; i <= x + step/2; i++)
-                {
+            for (int j = y - step/2; j <= y + step/2; j++) {
+                for (int i = x - step/2; i <= x + step/2; i++) {
                     const cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
                     sum_u += p[0];
                     sum_v += p[1];
@@ -271,13 +205,6 @@ Mat drawOpticalFlow(const Mat& matDepl)
 
             float u = sum_u / count;
             float v = sum_v / count;
-
-            // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
-            // float u = p[0];
-            // float v = p[1];
-
-            //float norm = sqrt(u*u + v*v);
-            //if (norm < 1) continue;
 
             cv::Point p1(x, y);
             cv::Point p2(x + u * scale, y + v * scale);
@@ -289,24 +216,19 @@ Mat drawOpticalFlow(const Mat& matDepl)
     return matOpticalFlow;
 }
 
-Mat drawOpticalFlowFiltered(const Mat& matDepl)
-{
+Mat drawOpticalFlowFiltered(const Mat& matDepl) {
     cv::Mat matOpticalFlow(matDepl.rows, matDepl.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
     int step = 3;
     float scale = 1;
 
-    for (int y = step; y < matDepl.rows - step; y += step)
-    {
-        for (int x = step; x < matDepl.cols - step; x += step)
-        {
+    for (int y = step; y < matDepl.rows - step; y += step) {
+        for (int x = step; x < matDepl.cols - step; x += step) {
             float sum_u = 0, sum_v = 0;
             int count = 0;
 
-            for (int j = y - step/2; j <= y + step/2; j++)
-            {
-                for (int i = x - step/2; i <= x + step/2; i++)
-                {
+            for (int j = y - step/2; j <= y + step/2; j++) {
+                for (int i = x - step/2; i <= x + step/2; i++) {
                     const cv::Vec2f& p = matDepl.at<cv::Vec2f>(j, i);
                     sum_u += p[0];
                     sum_v += p[1];
@@ -323,13 +245,6 @@ Mat drawOpticalFlowFiltered(const Mat& matDepl)
                 continue;
             }
 
-            // cv::Vec2f& p = matDepl.at<cv::Vec2f>(y, x);
-            // float u = p[0];
-            // float v = p[1];
-
-            //float norm = sqrt(u*u + v*v);
-            //if (norm < 1) continue;
-
             cv::Point p1(x, y);
             cv::Point p2(x + u * scale, y + v * scale);
 
@@ -340,30 +255,24 @@ Mat drawOpticalFlowFiltered(const Mat& matDepl)
     return matOpticalFlow;
 }
 
-Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& objects)
-{
+Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& objects) {
     cv::Mat sparseFlowDraw(deplacement.rows, deplacement.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
     int step = 3;
     float scale = 1;
 
-    for (const ObjectDetected& object : objects)
-    {
+    for (const ObjectDetected& object : objects) {
         float total_u = 0.0;
         float total_v = 0.0;
         int total_count = 00;
 
-        for (int y = (object.box.y + step); y < (object.box.y + object.box.height - step); y += step)
-        {
-            for (int x = (object.box.x + step); x < (object.box.x + object.box.width - step); x += step)
-            {
+        for (int y = (object.box.y + step); y < (object.box.y + object.box.height - step); y += step) {
+            for (int x = (object.box.x + step); x < (object.box.x + object.box.width - step); x += step) {
                 float sum_u = 0, sum_v = 0;
                 int count = 0;
 
-                for (int j = y - step/2; j <= y + step/2; j++)
-                {
-                    for (int i = x - step/2; i <= x + step/2; i++)
-                    {
+                for (int j = y - step/2; j <= y + step/2; j++) {
+                    for (int i = x - step/2; i <= x + step/2; i++) {
                         if ((j < 0 || j >= deplacement.rows) || (i < 0 || i >= deplacement.cols))
                             continue;
 
@@ -383,7 +292,7 @@ Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& ob
 
                 float norme = sqrt(u*u + v*v);
 
-                if (norme < SEUIL_FILTRAGE){
+                if (norme < SEUIL_FILTRAGE) {
                     continue;
                 }
 
@@ -393,26 +302,17 @@ Mat drawSparseFlow(const Mat& deplacement, const std::vector<ObjectDetected>& ob
                 cv::arrowedLine(sparseFlowDraw, p1, p2, cv::Scalar(0, 0, 255), 1);
             }
         }
-
-        float mean_u = total_u / total_count;
-        float mean_v = total_v / total_count;
-
-        float normeFlow = sqrt((mean_u * mean_u) + (mean_v * mean_v));
-
-        //std::cout << "Norme du flux optique: " << normeFlow << " moyenne u: " << mean_u << " moyenne v: " << mean_v << std::endl;
     }
 
     return sparseFlowDraw;
 }
 
-Mat drawMeanFlow(const Mat& frame, const std::vector<ObjectDetected>& objects)
-{
+Mat drawMeanFlow(const Mat& frame, const std::vector<ObjectDetected>& objects) {
     cv::Mat meanFlowDraw(frame.rows, frame.cols, CV_8UC3, cv::Scalar(255, 255, 255));
 
     float scale = 20;
 
-    for (const ObjectDetected& object : objects)
-    {
+    for (const ObjectDetected& object : objects) {
         cv::Point p1(object.centreGravity.x, object.centreGravity.y);
         cv::Point p2(object.centreGravity.x + object.vect[0] * scale, object.centreGravity.y + object.vect[1] * scale);
 
@@ -422,25 +322,20 @@ Mat drawMeanFlow(const Mat& frame, const std::vector<ObjectDetected>& objects)
     return meanFlowDraw;
 }
 
-
-Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& objects, double fps)
-{
+Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& objects, double fps) {
     Mat yoloDraw;
     frame.copyTo(yoloDraw);
     float scale = 20;
 
     int size = objects.size();
-    for (int i = 0; i < size; ++i)
-    {
+    for (int i = 0; i < size; ++i) {
         ObjectDetected object = objects[i];
 
         cv::Rect box = object.box;
         cv::Scalar color = object.color;
 
-        // Detection box
         cv::rectangle(yoloDraw, box, color, 2);
 
-        // Detection box text
         std::string classString = object.className + ' ' + std::to_string(object.confidence).substr(0, 4) + " id:" + std::to_string(object.id);
         cv::Size textSize = cv::getTextSize(classString, cv::FONT_HERSHEY_DUPLEX, 1, 2, 0);
         cv::Rect textBox(box.x, box.y - 40, textSize.width + 10, textSize.height + 20);
@@ -462,33 +357,22 @@ Mat drawTrackingYolo(const Mat& frame, const std::vector<ObjectDetected>& object
     return yoloDraw;
 }
 
-void drawHistogram(const std::vector<ObjectDetected>& objects)
-{
+void drawHistogram(const std::vector<ObjectDetected>& objects) {
     int width = 1800;
     int height = 640;
     int margin = 50;
 
-    for (const ObjectDetected& object : objects)
-    {
-        if (object.className != "person")
+    for (const ObjectDetected& object : objects) {
+        if (!isDynamicClass(object.className))
             continue;
-        // for (int i = 0; i < 360; i++)
-        // {
-        //     std::cout << "[" << i << "]=" << object.histo[i] << " ";
-        // }
-        // std::cout << std::endl;
 
         cv::Mat img(height, width, CV_8UC3, cv::Scalar(255, 255, 255));
 
         int maxVal = 400;
-        // for (int i = 0; i < 360; i++)
-        //     maxVal = std::max(maxVal, object.histo[i]);
 
         float binWidth = (float)(width - 2 * margin) / 360.0f;
 
-        // Grille Y + labels
-        for (int k = 0; k <= 4; k++)
-        {
+        for (int k = 0; k <= 4; k++) {
             int value = (maxVal * k) / 4;
 
             int y = height - margin -
@@ -513,15 +397,10 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
         float norme_haut_bas = 0.0;
         float norme_droite = 0.0;
         float norme_gauche = 0.0;
-        // float taux_haut_bas = 0.0;
-        // float taux_droite = 0.0;
-        // float taux_gauche = 0.0;
         float taux_null_droite = 0.0;
         float taux_null_gauche = 0.0;
 
-        // Histogramme
-        for (int i = 0; i < 360; i++)
-        {
+        for (int i = 0; i < 360; i++) {
             int x1 = margin + (int)(i * binWidth);
             int x2 = margin + (int)((i + 1) * binWidth);
 
@@ -537,13 +416,10 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
 
             norme += object.histo[i];
             if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
-                //taux_haut_bas += object.histo[i];
                 norme_haut_bas += object.histo[i];
             } else if (i > 135 && i <= 225) {
-                //taux_gauche += object.histo[i];
                 norme_gauche += object.histo[i];
             } else {
-                //taux_droite += object.histo[i];
                 norme_droite += object.histo[i];
             }
 
@@ -557,23 +433,14 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
         norme_haut_bas /= 180;
         norme_droite /= 90;
         norme_gauche /= 90;
-        // taux_haut_bas /= norme;
-        // taux_droite /= norme;
-        // taux_gauche /= norme;
         taux_null_droite /= norme;
         taux_null_gauche /= norme;
         norme /= 360.0;
 
-        // taux_haut_bas *= 100;
-        // taux_droite *= 100;
-        // taux_gauche *= 100;
         taux_null_droite *= 100;
         taux_null_gauche *= 100;
-        // taux_haut_bas /= 2;
 
-        // Axe X + graduations
-        for (int angle = 0; angle <= 360; angle += 30)
-        {
+        for (int angle = 0; angle <= 360; angle += 30) {
             int x = margin + (int)(angle * binWidth);
 
             cv::line(img,
@@ -591,9 +458,7 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                         1);
         }
 
-        // Lignes principales 0° 90° 180° 270°
-        for (int angle : {0, 90, 180, 270})
-        {
+        for (int angle : {0, 90, 180, 270}) {
             int x = margin + (int)(angle * binWidth);
 
             cv::line(img,
@@ -603,7 +468,6 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                      1);
         }
 
-        // Axes
         cv::line(img,
                  cv::Point(margin, height - margin),
                  cv::Point(width - margin, height - margin),
@@ -616,7 +480,6 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                  cv::Scalar(0, 0, 0),
                  2);
 
-        // Titre
         cv::putText(img,
                     "Histogramme - " + object.className + " Norme: " + std::to_string(norme)  + " Norme haut bas: " + std::to_string(norme_haut_bas) 
                     + " Norme droite: " + std::to_string(norme_droite) + " Norme gauche: " + std::to_string(norme_gauche),
@@ -626,7 +489,6 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                     cv::Scalar(0, 100, 0),
                     2);
 
-        // Label axe X
         cv::putText(img,
                     "Angle (degres)",
                     cv::Point(width / 2 - 80, height - 5),
@@ -635,7 +497,6 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
                     cv::Scalar(255, 0, 0),
                     2);
 
-        // Label axe Y
         cv::putText(img,
                     "Occurrences",
                     cv::Point(10, margin - 10),
@@ -648,14 +509,11 @@ void drawHistogram(const std::vector<ObjectDetected>& objects)
     }
 }
 
-
-std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDetected> objectsNew, std::vector<ObjectDetected> objectsCopy)
-{
+std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDetected> objectsNew, std::vector<ObjectDetected> objectsCopy) {
     std::vector<ObjectDetected> objectsPersistant;
     objectsPersistant = objectsNew;
 
-    for (ObjectDetected& objectCopy : objectsCopy)
-    {
+    for (ObjectDetected& objectCopy : objectsCopy) {
         bool found = false;
         for (const ObjectDetected& objectNew : objectsNew)
         {
@@ -667,13 +525,6 @@ std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDete
 
         if (!found && objectCopy.counterDetectionFailed < MAX_PERSISTANCE) {
             objectCopy.counterDetectionFailed++;
-            // std::cout << "object id: " << objectCopy.id << " class: " << objectCopy.className << " counterDetectionFailed: " << objectCopy.counterDetectionFailed << std::endl;
-            // objectCopy.centreGravity.x += objectCopy.vect[0];
-            // objectCopy.centreGravity.y += objectCopy.vect[1];
-
-            // objectCopy.box.x += objectCopy.vect[0];
-            // objectCopy.box.y += objectCopy.vect[1];
-
             objectsPersistant.push_back(objectCopy);
         }        
     }
@@ -681,14 +532,11 @@ std::vector<ObjectDetected> persistanceBetweenFrame(const std::vector<ObjectDete
     return objectsPersistant;
 }
 
-void beep(int secondes)
-{
+void beep(int secondes) {
     gpiod_chip* chip = gpiod_chip_open_by_name("gpiochip0");
     gpiod_line* line = gpiod_chip_get_line(chip, 144);
 
     gpiod_line_request_output(line, "buzzer", 0);
-
-    auto fin = std::chrono::steady_clock::now() + std::chrono::seconds(secondes);
 
     gpiod_line_set_value(line, 1);
 
@@ -702,14 +550,12 @@ void beep(int secondes)
 
 std::atomic<bool> beepRunning(false);
 
-void startBeepAsync(int nbBeep)
-{
+void startBeepAsync(int nbBeep) {
     if (beepRunning.exchange(true))
         return;
 
     std::thread([nbBeep]() {
-        for (int i = 0; i < nbBeep; i++)
-        {
+        for (int i = 0; i < nbBeep; i++) {
             beep(1);
             std::this_thread::sleep_for(std::chrono::milliseconds(150));
         }
@@ -718,76 +564,28 @@ void startBeepAsync(int nbBeep)
     }).detach();
 }
 
-void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
-{
+void decisionMaking(std::vector<ObjectDetected>& objectsNew) {
     std::vector<ObjectDetected> decisions;
 
-    for (ObjectDetected& object : objectsNew)
-    {   
-        if (object.className != "person")
+    for (ObjectDetected& object : objectsNew) {   
+        if (!isDynamicClass(object.className))
             continue;
 
-        float dx = object.centreGravity.x - pointRef.x;
-        float dy = object.centreGravity.y - pointRef.y;
- 
-        float r = sqrt(dx*dx + dy*dy);
-        float v = sqrt((object.vect[0]*object.vect[0]) + (object.vect[1]*object.vect[1]));
-
-        //std::cout << "Norme flux optique ===> " << v << std::endl;
-
-        //float vr = (dx*object.vect[0] + dy*object.vect[1]) / r;
-
-        float ttc = -r / v;
-
-        object.ttc += ttc;
-
-        // if (ttc > - 500){
-        //     std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER"<< std::endl;
-        // }
-
-        // if (ttc < 500)
-        // {
-        //     std::cout << "LOOOOOOOOOOOOOOOOOL1" << std::endl;
-        //     startBeepAsync(3);
-        // } else if (ttc < 0)
-        // {
-        //     std::cout << "LOOOOOOOOOOOOOOOOOL2" << std::endl;
-        //     startBeepAsync(6);
-        // } else if (ttc < -500)
-        // {
-        //     std::cout << "LOOOOOOOOOOOOOOOOOL3" << std::endl;
-        //     startBeepAsync(9);
-        // }
-
-        //std::cout << "class: " << object.className << " class id: " << object.id << " r: " << r << std::endl;
-
-        // std::cout << "class: " << object.className << " class id: " << object.id << " ttc: " << ttc << " r: " << r << " v: " << v << std::endl;
-
         float somme =  0.0;
-
-        // float taux_haut_bas = 0.0;
-        // float taux_droite = 0.0;
-        // float taux_gauche = 0.0;
         float norme_haut_bas = 0.0;
         float norme_droite = 0.0;
         float norme_gauche = 0.0;
         float taux_null_droite = 0.0;
         float taux_null_gauche = 0.0;
 
-
-        // Histogramme
-        for (int i = 0; i < 360; i++)
-        {
+        for (int i = 0; i < 360; i++) {
             somme += object.histo[i];
 
             if ((i > 45 && i <= 135) || (i > 225 && i <= 315)) {
-                //taux_haut_bas += object.histo[i];
                 norme_haut_bas += object.histo[i];
             } else if (i > 135 && i <= 225) {
-                //taux_gauche += object.histo[i];
                 norme_gauche += object.histo[i];
             } else {
-                //taux_droite += object.histo[i];
                 norme_droite += object.histo[i];
             }
 
@@ -798,9 +596,6 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             }
         }
 
-        // taux_haut_bas /= somme;
-        // taux_droite /= somme;
-        // taux_gauche /= somme;
         norme_haut_bas /= 180;
         norme_droite /= 90;
         norme_gauche /= 90;
@@ -808,19 +603,9 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
         taux_null_gauche /= somme;
         float norme = somme / 360.0;
 
-        // norme_haut_bas /= 2;
-
-        // taux_haut_bas *= 100;
-        // taux_droite *= 100;
-        // taux_gauche *= 100;
         taux_null_droite *= 100;
         taux_null_gauche *= 100;
 
-        // taux_haut_bas /= 2;
-
-        //std::cout << "norme " << norme << std::endl;
-
-        //float maxTaux = taux_haut_bas;
         float maxTaux = norme_haut_bas;
         Decisions directionMax;
 
@@ -857,27 +642,6 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
         object.decisions.push_back(directionMax);
 
         object.normeHisto = norme;
-        // if (abs(taux_gauche - taux_droite) <= SEUIL_DECISION_BRUIT) {
-        //     //std::cout << "walou" << std::endl;
-        //     object.decisions.push_back(RIEN);
-        // }
-        // else if (abs(taux_gauche - taux_droite) <= SEUIL_DECISION_AVANT_ARRIERE) {
-        //     //std::cout << "ça avance ou ça recule" << std::endl;
-        //     if (norme_histo > 100) {
-        //         //std::cout << "ça avance" << std::endl;
-        //         object.decisions.push_back(AVANT);
-        //     } else {
-        //         //std::cout << "ça recule" << std::endl;
-        //         object.decisions.push_back(ARRIERE);
-        //     }
-        // }
-        // else if (taux_gauche > taux_droite) {
-        //     //std::cout << "ça part vers la gauche" << std::endl;
-        //     object.decisions.push_back(GAUCHE);
-        // } else {
-        //     //std::cout << "ça part vers la droite" << std::endl;
-        //     object.decisions.push_back(DROITE);
-        // }
 
         if (object.decisions.size() == MAX_FRAMES_DECISION) {
             std::array<int,NB_DECISIONS> votes{};
@@ -895,40 +659,32 @@ void decisionMaking(std::vector<ObjectDetected>& objectsNew, Point pointRef)
             }
 
             if (finalDecision == RIEN)
-                std::cout << "DECISION FINAL ==> walou" << std::endl;
+                std::cout << "DECISION FINAL ==> RIEN" << std::endl;
             else if (finalDecision == ARRIERE)
-                std::cout << "DECISION FINAL ==> ARRIERE" << std::endl;
+                std::cout << "DECISION FINAL ==> mouvement vers l'ARRIERE vvvvvvvvv" << std::endl;
             else if (finalDecision == AVANT)
-                std::cout << "DECISION FINAL ==> AVANT " << std::endl;
+                std::cout << "DECISION FINAL ==> mouvement vers l'AVANT ^^^^^^^^^" << std::endl;
             else if (finalDecision == GAUCHE)
-                std::cout << "DECISION FINAL ==> ça part vers la gauche" << std::endl;
+                std::cout << "DECISION FINAL ==> mouvement vers la GAUCHE >>>>>>>>>" << std::endl;
             else if (finalDecision == DROITE)
-                std::cout << "DECISION FINAL ==> ça part vers la droite" << std::endl;
+                std::cout << "DECISION FINAL ==> mouvement vers la DROITE <<<<<<<<<" << std::endl;
 
             object.decision = finalDecision;
 
             object.decisions.clear();
-            //object.decisions.erase(object.decisions.begin());
-
-            float ttcFinal = object.ttc / (float) MAX_FRAMES_DECISION;
-
-            // std::cout<< "norme ==> " << norme << std::endl;
 
             if ((norme_gauche > SEUIL_DANGER) && (norme_droite > SEUIL_DANGER) && (norme_haut_bas > SEUIL_DANGER) && (finalDecision != RIEN)) {
-                std::cout<< "DAAAAAAAAANNNNNNNNNNNGEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEER !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+                std::cout<< "DAAAAAAAAAAAANNNNNNNNNNNGGGGGGGGGGGGEEEEEEEEEEEERRRRRRRRRRRR !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
 
-            //     if (finalDecision == AVANT) {
-            //         startBeepAsync(1);
-            //     } else if (finalDecision == GAUCHE) {
-            //         startBeepAsync(2);
-            //     } else if (finalDecision == DROITE) {
-            //         startBeepAsync(3);
-            //     }
+                if (finalDecision == AVANT) {
+                    startBeepAsync(1);
+                } else if (finalDecision == GAUCHE) {
+                    startBeepAsync(2);
+                } else if (finalDecision == DROITE) {
+                    startBeepAsync(3);
+                }
             }
-
-            object.ttc = 0.0;
         }
-
 
         std::cout << "----------------------" << std::endl;
     }
@@ -943,16 +699,14 @@ static double elapsedMs(
     return std::chrono::duration<double, std::milli>(end - start).count();
 }
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     OpticalFlow opticalFlow;
     YOLO yolo("../YoloUtils/yolov8n.onnx", cv::Size(640, 640), "classes.txt", true);
     Mat frameOld;
     Mat frame;
-    timeval start, end;
 
     VideoCapture cap;   
-    
+
     beep(1);
 
 #if USE_WEBCAM_FALLBACK
@@ -978,36 +732,18 @@ int main(int argc, char** argv)
             if (!cap.isOpened()) {
                 std::cerr << "Webcam fallback erreur, test avec vidéo\n";
             }        
-        }
-        else if (FALLBACK_AVEC_CHEMIN_VIDEO) {
+        } else if (FALLBACK_AVEC_CHEMIN_VIDEO) {
             std::cerr << "Webcam fallback erreur, test avec vidéo\n";
             cap.open(FALLBACK_AVEC_CHEMIN_VIDEO);
             if (!cap.isOpened()) {
                 std::cerr << "Video fallback erreur\n";
                 return -1;
             }
-        }
-        else {
+        } else {
             std::cerr << "pas de fallback actif , vérifier chemin vers video ou potentiels problemes avec l'environnement.\n";
             return -1;
         }
     }
-
-    cap >> frameOld;
-
-    if(frameOld.empty())
-    {
-        std::cerr << "Impossible de lire la premiere frame" << std::endl;
-        return -1;
-    }
-
-    cv::cvtColor(frameOld, frameOld, cv::COLOR_BGRA2BGR);
-    std::vector<ObjectDetected> objects;
-    std::vector<ObjectDetected> objectsNew;
-
-    Point pointRef(frameOld.cols/2, frameOld.rows);
-
-    std::cout << "version opencv " << CV_VERSION << std::endl;
 
     cv::VideoWriter virtualCam;
 
@@ -1020,13 +756,24 @@ int main(int argc, char** argv)
 
     virtualCam.open(pipelineOut, cv::CAP_GSTREAMER, 0, 30, cv::Size(640, 640), true);
 
-    if (!virtualCam.isOpened())
-    {
+    if (!virtualCam.isOpened()) {
         std::cerr << "Impossible d'ouvrir la camera virtuelle /dev/video1" << std::endl;
         return -1;
     }
 
-    int id = 0;
+    cap >> frameOld;
+
+    if(frameOld.empty()) {
+        std::cerr << "Impossible de lire la premiere frame" << std::endl;
+        return -1;
+    }
+
+    cv::cvtColor(frameOld, frameOld, cv::COLOR_BGRA2BGR);
+
+    std::vector<ObjectDetected> objects;
+    std::vector<ObjectDetected> objectsNew;
+
+    std::cout << "version opencv " << CV_VERSION << std::endl;
 
     for(;;)
     {
@@ -1034,8 +781,7 @@ int main(int argc, char** argv)
         
         cap >> frame;
         
-        if(frame.empty())
-        {
+        if(frame.empty()) {
             std::cerr << "Frame vide" << std::endl;
             break;
         }
@@ -1048,7 +794,6 @@ int main(int argc, char** argv)
         Mat matOpticalFlow;
         Mat filtredFlow;
 
-        auto tFlowStart = Clock::now();
         std::thread threadFlow([&]() {
             deplacement = opticalFlow.exec(frame, frameOld); 
             matOpticalFlow = drawOpticalFlow(deplacement);
@@ -1064,69 +809,31 @@ int main(int argc, char** argv)
 
         threadFlow.join();
         threadYolo.join();
-        auto tFlowEnd = Clock::now();
 
-        auto tMappingStart = Clock::now();
         objectsNew = mapping(deplacement, yoloDetection);
-        auto tMappingEnd = Clock::now();
 
-        auto tTrackerStart = Clock::now();
         tracker(objectsNew, objects);
-        auto tTrackerEnd = Clock::now();
 
-        decisionMaking(objectsNew, pointRef);
+        decisionMaking(objectsNew);
 
-        auto tDrawStart = Clock::now();
         Mat meanFlowDraw = drawMeanFlow(frame, objectsNew);
         Mat sparseFlowDraw = drawSparseFlow(deplacement, objectsNew);
         auto tBeforeYoloDraw = Clock::now();
+
+        drawHistogram(objectsNew);
 
         double globalMsTemp = elapsedMs(tGlobalStart, tBeforeYoloDraw);
         double fps = 1000.0 / std::max(globalMsTemp, 1.0);
 
         Mat yoloDraw = drawTrackingYolo(frame, objectsNew, fps);
 
-        drawHistogram(objectsNew);
-        auto tDrawEnd = Clock::now();
-        
-        auto tImshowStart = Clock::now();
         cv::imshow("yolo", yoloDraw);
-        cv::imshow("flux optique", matOpticalFlow);
+        cv::imshow("flux optique global", matOpticalFlow);
         cv::imshow("flux optique filtrés", filtredFlow);
-        cv::imshow("sparse", sparseFlowDraw);
-        cv::imshow("deplacement", meanFlowDraw);
-        auto tImshowEnd = Clock::now();
+        cv::imshow("flux optique boite englobante", sparseFlowDraw);
+        cv::imshow("moyenne du flux optique sur la bbox", meanFlowDraw);
 
-        auto tCopyStart = Clock::now();
         frame.copyTo(frameOld);
-        auto tCopyEnd = Clock::now();
-
-        auto tGlobalEnd = Clock::now();
-
-        double flowMs = elapsedMs(tFlowStart, tFlowEnd);
-        double mappingMs = elapsedMs(tMappingStart, tMappingEnd);
-        double trackerMs = elapsedMs(tTrackerStart, tTrackerEnd);
-        double drawMs = elapsedMs(tDrawStart, tDrawEnd);
-        double imshowMs = elapsedMs(tImshowStart, tImshowEnd);
-        double copyMs = elapsedMs(tCopyStart, tCopyEnd);
-        double globalMs = elapsedMs(tGlobalStart, tGlobalEnd);
-
-        // std::cout << "\n========== PROFILING ==========\n";
-        // std::cout << "GLOBAL        : " << globalMs << " ms | FPS: " << 1000.0 / globalMs << "\n";
-        // std::cout << "Optical flow et YOLO et draw flow : " << flowMs << " ms\n";
-        // std::cout << "Mapping       : " << mappingMs << " ms\n";
-        // std::cout << "Tracker       : " << trackerMs << " ms\n";
-        // std::cout << "Draw all      : " << drawMs << " ms\n";
-        // std::cout << "Imshow        : " << imshowMs << " ms\n";
-        // std::cout << "Copy frame    : " << copyMs << " ms\n";
-        // std::cout << "===============================\n";
-
-        id++;
-        // cv::imwrite("opticalFlow/yolo_" + std::to_string(id) + ".png", yoloDraw);
-        // cv::imwrite("opticalFlow/frame_" + std::to_string(id) + ".png", frame);
-        // cv::imwrite("opticalFlow/opticalFlow_" + std::to_string(id) + ".png", sparseFlowDraw);
-
-        //sleep(0.067);
 
         if(waitKey(1) == 27)
             break;
